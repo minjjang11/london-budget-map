@@ -1,14 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
 
+const notoSansKr = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  display: "swap",
+  variable: "--font-noto-sans-kr",
+});
+
 export const metadata: Metadata = {
-  title: "GeojiMap | London Budget Map",
-  description: "Find and share the cheapest pubs, restaurants, and cafes in London.",
+  title: "거지맵 | 한국 저가 맛집 지도",
+  description: "전국 펍·식당·카페의 최저가를 지도와 랭킹으로 찾아보세요.",
   openGraph: {
-    title: "GeojiMap",
-    description: "Discover budget spots in London — pubs, restaurants, and cafes.",
-    type: "website"
-  }
+    title: "거지맵",
+    description: "한국 스타일 지도로 저가 맛집을 찾고 제보하세요.",
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {
@@ -20,7 +28,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="ko" className={notoSansKr.variable} suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"

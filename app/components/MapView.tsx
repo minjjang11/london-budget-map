@@ -87,8 +87,9 @@ function makeIcon(spot: MapSpot, isSelected: boolean) {
   });
 }
 
-const DEFAULT_CENTER: [number, number] = [51.512, -0.1];
-const DEFAULT_ZOOM = 13;
+/** 한반도 전체가 보이도록 */
+const DEFAULT_CENTER: [number, number] = [36.45, 127.95];
+const DEFAULT_ZOOM = 7;
 
 export default function MapView({
   spots,
