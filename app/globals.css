@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 @theme {
+  /* Editorial / homepage (London budget map) */
+  --color-ldn-paper: #f5f3ee;
+  --color-ldn-ink: #0b0b0c;
+  --color-ldn-pine: #0f3d30;
+  --color-ldn-pine-mid: #165a47;
+  --color-ldn-mist: #e6e4de;
+  --color-ldn-line: #c4c0b8;
   --color-budget-primary: #00a878;
   --color-budget-accent: #00d4a0;
   --color-budget-surface: #e0f7f2;
@@ -22,9 +29,11 @@
 }
 
 @layer base {
-  html,
+  html {
+    @apply min-h-full overflow-x-hidden antialiased;
+  }
   body {
-    @apply h-full min-h-full overflow-hidden bg-budget-bg font-sans text-[15px] text-budget-text antialiased;
+    @apply min-h-full bg-ldn-paper font-sans text-[15px] text-ldn-ink antialiased;
   }
 }
 

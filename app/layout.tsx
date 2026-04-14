@@ -9,15 +9,16 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Budget Map — London",
-  description: "because we're all broke innit — cheap pubs, food & coffee in London.",
+  title: "Budget Map — London prices, actually",
+  description:
+    "Crowdsourced cheap eats, pints & coffee in London. Built for students and young professionals who still read the menu prices.",
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#F7FDFB",
+  themeColor: "#f5f3ee",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
