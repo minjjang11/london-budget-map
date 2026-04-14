@@ -49,7 +49,8 @@ body {
 }
 
 .leaflet-container {
-  background: var(--color-surface) !important;
+  /* Neutral while tiles load — matches Carto Light / Google-ish road map, not mint */
+  background: #e8eaed !important;
   width: 100%;
   height: 100%;
   z-index: 1 !important;

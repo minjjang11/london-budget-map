@@ -110,10 +110,16 @@ export default function MapView({
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
-      maxZoom: 19,
+    // Carto Light (nolabels + labels): cool greys, blue-grey water — closer to Google road map than Voyager.
+    const cartoAttr =
+      '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>';
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+      attribution: cartoAttr,
+      maxZoom: 20,
+      subdomains: "abcd",
+    }).addTo(map);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", {
+      maxZoom: 20,
       subdomains: "abcd",
     }).addTo(map);
 
