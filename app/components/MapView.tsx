@@ -85,19 +85,26 @@ const CARTO_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '&copy; <a href="https://carto.com/attributions">CARTO</a>';
 
+/** streets-v2 = very grey; basic-v2 = clearer colour + contrast (closer to “alive” city maps). */
+const DEFAULT_MAPTILER_MAP = "basic-v2";
+
 function addBasemap(map: L.Map) {
   const key = (process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "").trim();
   if (key) {
-    L.tileLayer(`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${encodeURIComponent(key)}`, {
-      attribution: MAPTILER_ATTR,
-      maxZoom: 22,
-      tileSize: 256,
-    }).addTo(map);
+    const mapId = (process.env.NEXT_PUBLIC_MAPTILER_MAP_ID ?? DEFAULT_MAPTILER_MAP).trim() || DEFAULT_MAPTILER_MAP;
+    L.tileLayer(
+      `https://api.maptiler.com/maps/${encodeURIComponent(mapId)}/{z}/{x}/{y}.png?key=${encodeURIComponent(key)}`,
+      {
+        attribution: MAPTILER_ATTR,
+        maxZoom: 22,
+        tileSize: 256,
+      },
+    ).addTo(map);
     return;
   }
 
-  // Single `light_all` tileset — one colour pipeline (dual nolabels+labels can look slightly "off").
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+  // No key: Voyager — warmer, more saturation than light_all (less “washed out”).
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     attribution: CARTO_ATTR,
     maxZoom: 20,
     subdomains: "abcd",

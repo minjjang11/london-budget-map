@@ -85,7 +85,8 @@
 }
 
 .leaflet-container {
-  background: #e8eaed !important;
+  /* Warm neutral while tiles load — pairs better with Voyager / Basic than cold grey */
+  background: #ece8e2 !important;
   width: 100%;
   height: 100%;
   z-index: 1 !important;
