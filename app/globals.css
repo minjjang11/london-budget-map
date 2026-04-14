@@ -1,3 +1,58 @@
+@import "tailwindcss";
+
+@theme {
+  --color-budget-primary: #00a878;
+  --color-budget-accent: #00d4a0;
+  --color-budget-surface: #e0f7f2;
+  --color-budget-bg: #f7fdfb;
+  --color-budget-text: #0d1f1a;
+  --color-budget-cta: #6a4ff0;
+  --color-budget-white: #ffffff;
+  --color-budget-muted: rgb(13 31 26 / 0.55);
+  --color-budget-subtle: rgb(13 31 26 / 0.45);
+  --color-budget-faint: rgb(13 31 26 / 0.32);
+  --font-sans: var(--font-app), ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shadow-budget-float: 0 8px 32px rgb(13 31 26 / 0.08);
+  --shadow-budget-header: 0 6px 28px rgb(13 31 26 / 0.08);
+  --shadow-budget-sheet: 0 12px 40px rgb(13 31 26 / 0.15);
+  --shadow-budget-nav: 0 -6px 24px rgb(13 31 26 / 0.06);
+  --shadow-budget-cta: 0 8px 24px rgb(106 79 240 / 0.35);
+  --animate-fade-in: fadeIn 0.2s ease;
+  --animate-slide-up: slideUp 0.25s ease;
+}
+
+@layer base {
+  html,
+  body {
+    @apply h-full min-h-full overflow-hidden bg-budget-bg font-sans text-[15px] text-budget-text antialiased;
+  }
+}
+
+@layer components {
+  .budget-chip-row {
+    @apply -mx-1 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+  }
+
+  .budget-tab-panel {
+    @apply absolute left-0 right-0 z-20 overflow-y-auto bg-budget-bg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
+    top: 118px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .budget-input {
+    @apply w-full rounded-xl border border-budget-surface bg-budget-white px-3.5 py-2.5 text-budget-text outline-none transition-shadow focus:border-budget-primary focus:ring-2 focus:ring-budget-primary/25;
+  }
+
+  .budget-input-sm {
+    @apply rounded-xl border border-budget-surface bg-budget-white px-3 py-2.5 text-sm text-budget-text outline-none focus:border-budget-primary/60;
+  }
+
+  .budget-list-btn {
+    @apply mb-2 flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-budget-surface bg-budget-white px-4 py-3.5 text-left shadow-sm transition hover:border-budget-primary/30 hover:shadow-md;
+  }
+}
+
+/* Legacy CSS vars (MapView / attribution) */
 :root {
   --color-primary: #00a878;
   --color-accent: #00d4a0;
@@ -6,37 +61,10 @@
   --color-text: #0d1f1a;
   --color-cta: #6a4ff0;
   --color-white: #ffffff;
-  --shadow-float: 0 8px 32px rgba(13, 31, 26, 0.08);
+  --shadow-float: var(--shadow-budget-float);
   --radius-lg: 22px;
   --radius-md: 16px;
   --radius-pill: 999px;
-}
-
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html,
-body {
-  background: var(--color-bg);
-  min-height: 100%;
-  height: 100%;
-  color: var(--color-text);
-  font-family: var(--font-app), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-  font-size: 15px;
-}
-
-::-webkit-scrollbar {
-  width: 4px;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-accent);
-  border-radius: 4px;
 }
 
 .budget-app {
@@ -48,6 +76,14 @@ body {
   --cta: var(--color-cta);
 }
 
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-accent);
+  border-radius: 4px;
+}
+
 .leaflet-container {
   background: #e8eaed !important;
   width: 100%;
@@ -56,9 +92,9 @@ body {
 }
 
 .leaflet-control-zoom {
-  border: 1px solid rgba(0, 168, 120, 0.2) !important;
+  border: 1px solid rgb(0 168 120 / 0.2) !important;
   border-radius: 12px !important;
-  box-shadow: var(--shadow-float) !important;
+  box-shadow: var(--shadow-budget-float) !important;
   overflow: hidden;
 }
 
@@ -79,9 +115,9 @@ body {
 }
 
 .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.88) !important;
+  background: rgb(255 255 255 / 0.88) !important;
   font-size: 9px !important;
-  color: rgba(13, 31, 26, 0.45) !important;
+  color: rgb(13 31 26 / 0.45) !important;
   border-radius: 8px !important;
   max-width: 60vw;
 }

@@ -7,16 +7,6 @@ import { Map, MessagesSquare, Plus, Bookmark, Route, X, Navigation } from "lucid
 
 const MapView = dynamic(() => import("./components/MapView"), { ssr: false });
 
-const C = {
-  primary: "#00A878",
-  accent: "#00D4A0",
-  surface: "#E0F7F2",
-  bg: "#F7FDFB",
-  text: "#0D1F1A",
-  cta: "#6A4FF0",
-  white: "#ffffff",
-} as const;
-
 type Category = "pub" | "restaurant" | "cafe";
 
 type MenuItem = { name: string; price: number };
@@ -343,22 +333,13 @@ export default function App() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        style={{
-          padding: "9px 16px",
-          borderRadius: 999,
-          border: "none",
-          background: active ? C.primary : C.surface,
-          color: active ? C.white : C.text,
-          fontSize: 13,
-          fontWeight: active ? 700 : 500,
-          cursor: "pointer",
-          whiteSpace: "nowrap",
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-        }}
+        className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] transition-colors ${
+          active ? "bg-budget-primary font-bold text-white" : "bg-budget-surface font-medium text-budget-text"
+        }`}
       >
-        <span style={{ opacity: active ? 1 : 0.4, fontSize: 14 }} aria-hidden>{emoji}</span>
+        <span className={`text-sm ${active ? "" : "opacity-40"}`} aria-hidden>
+          {emoji}
+        </span>
         {label}
       </button>
     );
@@ -367,63 +348,17 @@ export default function App() {
   const savedSpots = spots.filter((s) => savedIds.has(s.id));
 
   return (
-    <div
-      className="budget-app"
-      style={{
-        maxWidth: 440,
-        margin: "0 auto",
-        height: "100svh",
-        background: C.bg,
-        position: "relative",
-        overflow: "hidden",
-        color: C.text,
-      }}
-    >
+    <div className="budget-app relative mx-auto h-svh max-w-[440px] overflow-hidden bg-budget-bg font-sans text-budget-text">
       {/* Full-bleed map layer */}
       {tab === "map" && mounted && (
-        <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
+        <div className="absolute inset-0 z-0">
           <MapView spots={mapSpots} selectedId={selectedId} onSelect={handleSelect} flyTo={flyTo} />
         </div>
       )}
 
-      {/* Floating header — matches ref: title + category chips only */}
-      <header
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          right: 10,
-          zIndex: 50,
-          background: C.white,
-          borderRadius: 20,
-          padding: "16px 14px 14px",
-          boxShadow: "0 6px 28px rgba(13, 31, 26, 0.08)",
-          border: "1px solid rgba(224, 247, 242, 0.9)",
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 22,
-            fontWeight: 800,
-            letterSpacing: "-0.04em",
-            color: C.text,
-            marginBottom: 12,
-            fontFamily: "var(--font-app), ui-sans-serif, system-ui, sans-serif",
-          }}
-        >
-          Budget Map
-        </h1>
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            overflowX: "auto",
-            scrollbarWidth: "none",
-            paddingBottom: 2,
-          }}
-        >
-          {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
-        </div>
+      <header className="absolute left-2.5 right-2.5 top-2.5 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3.5 pb-3.5 pt-4 shadow-budget-header">
+        <h1 className="mb-3 text-[22px] font-extrabold tracking-[-0.04em] text-budget-text">Budget Map</h1>
+        <div className="budget-chip-row">{CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}</div>
       </header>
 
       {/* Map overlays — clean full-bleed map per ref */}
@@ -432,133 +367,59 @@ export default function App() {
           {selected && (
             <div
               role="presentation"
-              style={{
-                position: "absolute",
-                inset: 0,
-                zIndex: 45,
-                background: "rgba(13,31,26,0.25)",
-                animation: "fadeIn 0.2s ease",
-              }}
+              className="absolute inset-0 z-[45] animate-fade-in bg-budget-text/25"
               onClick={() => setSelectedId(null)}
             >
               <div
                 role="dialog"
                 onClick={(e) => e.stopPropagation()}
-                style={{
-                  position: "absolute",
-                  bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-                  left: 12,
-                  right: 12,
-                  maxHeight: "52%",
-                  overflowY: "auto",
-                  background: C.white,
-                  borderRadius: 22,
-                  padding: "16px 16px 18px",
-                  boxShadow: "0 12px 40px rgba(13,31,26,0.15)",
-                  border: `1px solid ${C.surface}`,
-                  animation: "slideUp 0.25s ease",
-                }}
+                className="absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 max-h-[52%] overflow-y-auto rounded-[22px] border border-budget-surface bg-budget-white p-4 pb-[18px] shadow-budget-sheet animate-slide-up [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ flex: 1, paddingRight: 8 }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.primary }}>
-                      {catEmoji(selected.category)} {CATS.find((c) => c.id === selected.category)?.label} · {selected.area}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1 pr-2">
+                    <div className="text-[11px] font-bold text-budget-primary">
+                      {catEmoji(selected.category)} {CATS.find((c) => c.id === selected.category)?.label} ·{" "}
+                      {selected.area}
                     </div>
-                    <div style={{ fontSize: 18, fontWeight: 800, marginTop: 4, color: C.text }}>{selected.name}</div>
-                    <div style={{ fontSize: 12, color: "rgba(13,31,26,0.5)", marginTop: 2 }}>{selected.address}</div>
+                    <div className="mt-1 text-lg font-extrabold text-budget-text">{selected.name}</div>
+                    <div className="mt-0.5 text-xs text-budget-text/50">{selected.address}</div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setSelectedId(null)}
-                    style={{
-                      border: "none",
-                      background: C.surface,
-                      borderRadius: 999,
-                      width: 36,
-                      height: 36,
-                      display: "grid",
-                      placeItems: "center",
-                      cursor: "pointer",
-                      color: C.text,
-                    }}
+                    className="grid size-9 shrink-0 place-items-center rounded-full border-0 bg-budget-surface text-budget-text cursor-pointer"
                   >
                     <X size={18} />
                   </button>
                 </div>
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "inline-block",
-                    background: C.surface,
-                    color: C.text,
-                    fontWeight: 800,
-                    fontSize: 15,
-                    padding: "6px 14px",
-                    borderRadius: 999,
-                  }}
-                >
+                <div className="mt-3 inline-block rounded-full bg-budget-surface px-3.5 py-1.5 text-[15px] font-extrabold text-budget-text">
                   from {formatMapPriceLabel(lowestPrice(selected))}
                 </div>
 
                 {selected.submissions.map((sub) => (
-                  <div
-                    key={sub.id}
-                    style={{
-                      marginTop: 12,
-                      background: C.bg,
-                      borderRadius: 14,
-                      padding: 12,
-                      border: `1px solid ${C.surface}`,
-                    }}
-                  >
-                    <div style={{ fontSize: 10, color: "rgba(13,31,26,0.45)", marginBottom: 6 }}>{sub.date}</div>
+                  <div key={sub.id} className="mt-3 rounded-[14px] border border-budget-surface bg-budget-bg p-3">
+                    <div className="mb-1.5 text-[10px] text-budget-subtle">{sub.date}</div>
                     {sub.items.map((item, ii) => (
-                      <div
-                        key={ii}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: 14,
-                          marginBottom: 4,
-                          color: C.text,
-                        }}
-                      >
+                      <div key={ii} className="mb-1 flex justify-between text-sm text-budget-text">
                         <span>{item.name}</span>
-                        <span style={{ fontWeight: 800 }}>
+                        <span className="font-extrabold">
                           {item.price < 3 ? "🔥 " : ""}£{item.price.toFixed(2)}
                         </span>
                       </div>
                     ))}
                     {sub.review && (
-                      <div
-                        style={{
-                          marginTop: 8,
-                          fontSize: 13,
-                          fontStyle: "italic",
-                          color: "rgba(13,31,26,0.65)",
-                        }}
-                      >
-                        &ldquo;{sub.review}&rdquo;
-                      </div>
+                      <div className="mt-2 text-[13px] italic text-budget-muted">&ldquo;{sub.review}&rdquo;</div>
                     )}
                   </div>
                 ))}
 
-                <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                <div className="mt-3.5 flex gap-2.5">
                   <button
                     type="button"
                     onClick={() => toggleSave(selected.id)}
-                    style={{
-                      flex: 1,
-                      padding: "12px 0",
-                      borderRadius: 14,
-                      border: `1px solid ${C.surface}`,
-                      background: savedIds.has(selected.id) ? C.surface : C.white,
-                      fontWeight: 700,
-                      fontSize: 13,
-                      color: C.text,
-                      cursor: "pointer",
-                    }}
+                    className={`flex-1 cursor-pointer rounded-[14px] border border-budget-surface py-3 text-[13px] font-bold text-budget-text transition ${
+                      savedIds.has(selected.id) ? "bg-budget-surface" : "bg-budget-white"
+                    }`}
                   >
                     {savedIds.has(selected.id) ? "Saved" : "Save"}
                   </button>
@@ -570,21 +431,7 @@ export default function App() {
                         "_blank",
                       );
                     }}
-                    style={{
-                      flex: 1,
-                      padding: "12px 0",
-                      borderRadius: 14,
-                      border: "none",
-                      background: C.primary,
-                      color: C.white,
-                      fontWeight: 700,
-                      fontSize: 13,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                    }}
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[14px] border-0 bg-budget-primary py-3 text-[13px] font-bold text-white"
                   >
                     <Navigation size={16} />
                     Directions
@@ -596,25 +443,10 @@ export default function App() {
         </>
       )}
 
-      {/* Community — ranking + area filter (moved from header for ref layout) */}
       {tab === "community" && (
-        <div
-          style={{
-            position: "absolute",
-            top: 118,
-            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-            left: 0,
-            right: 0,
-            overflowY: "auto",
-            background: C.bg,
-            padding: "0 12px 12px",
-            zIndex: 20,
-          }}
-        >
-          <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(13,31,26,0.45)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Area
-          </p>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+        <div className="budget-tab-panel px-3 pb-3">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Area</p>
+          <div className="mb-4 flex flex-wrap gap-1.5">
             {AREAS.map((area) => {
               const active = activeArea === area;
               return (
@@ -622,25 +454,18 @@ export default function App() {
                   key={area}
                   type="button"
                   onClick={() => setActiveArea(area)}
-                  style={{
-                    padding: "7px 12px",
-                    borderRadius: 999,
-                    border: "none",
-                    background: active ? C.primary : C.surface,
-                    color: active ? C.white : C.text,
-                    fontSize: 12,
-                    fontWeight: active ? 700 : 500,
-                    cursor: "pointer",
-                  }}
+                  className={`cursor-pointer rounded-full border-0 px-3 py-1.5 text-xs ${
+                    active
+                      ? "bg-budget-primary font-bold text-white"
+                      : "bg-budget-surface font-medium text-budget-text"
+                  }`}
                 >
                   {area}
                 </button>
               );
             })}
           </div>
-          <p style={{ fontSize: 13, color: "rgba(13,31,26,0.55)", marginBottom: 12 }}>
-            Cheapest first — tap to fly there on the map.
-          </p>
+          <p className="mb-3 text-sm text-budget-muted">Cheapest first — tap to fly there on the map.</p>
           {ranked.map((spot, i) => (
             <button
               key={spot.id}
@@ -650,129 +475,82 @@ export default function App() {
                 setSelectedId(spot.id);
                 setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
               }}
-              style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "14px 16px",
-                marginBottom: 8,
-                background: C.white,
-                border: `1px solid ${C.surface}`,
-                borderRadius: 16,
-                cursor: "pointer",
-                textAlign: "left",
-                boxShadow: "0 2px 8px rgba(13,31,26,0.04)",
-              }}
+              className="budget-list-btn shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
             >
-              <span style={{ fontSize: 14, fontWeight: 800, color: C.primary }}>#{i + 1}</span>
-              <span style={{ fontSize: 20 }}>{catEmoji(spot.category)}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700, color: C.text }}>{spot.name}</div>
-                <div style={{ fontSize: 12, color: "rgba(13,31,26,0.45)" }}>{spot.area}</div>
+              <span className="text-sm font-extrabold text-budget-primary">#{i + 1}</span>
+              <span className="text-xl">{catEmoji(spot.category)}</span>
+              <div className="min-w-0 flex-1">
+                <div className="font-bold text-budget-text">{spot.name}</div>
+                <div className="text-xs text-budget-subtle">{spot.area}</div>
               </div>
-              <span style={{ fontWeight: 800, color: C.primary }}>{formatMapPriceLabel(lowestPrice(spot))}</span>
+              <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* Submit */}
       {tab === "submit" && (
-        <div
-          style={{
-            position: "absolute",
-            top: 118,
-            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-            left: 0,
-            right: 0,
-            overflowY: "auto",
-            background: C.bg,
-            padding: 16,
-            zIndex: 20,
-          }}
-        >
+        <div className="budget-tab-panel p-4">
           {submitDone ? (
-            <div style={{ textAlign: "center", padding: "48px 0" }}>
-              <div style={{ fontSize: 40, marginBottom: 8 }}>✓</div>
-              <div style={{ fontSize: 17, fontWeight: 800, color: C.primary }}>Snitched successfully</div>
-              <p style={{ fontSize: 13, color: "rgba(13,31,26,0.5)", marginTop: 8 }}>Legend — that&apos;s going on the map.</p>
+            <div className="py-12 text-center">
+              <div className="mb-2 text-[40px]">✓</div>
+              <div className="text-[17px] font-extrabold text-budget-primary">Snitched successfully</div>
+              <p className="mt-2 text-sm text-budget-text/50">Legend — that&apos;s going on the map.</p>
             </div>
           ) : (
             <>
-              <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 6, color: C.text }}>Grass up a cheap eat</h2>
-              <p style={{ fontSize: 12, color: "rgba(13,31,26,0.5)", marginBottom: 18 }}>
+              <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
+              <p className="mb-4 text-xs text-budget-text/50">
                 Spill the beans on prices so the rest of us can survive term time.
               </p>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(13,31,26,0.55)", display: "block", marginBottom: 6 }}>Venue name</label>
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Venue name</label>
               <input
                 value={submitName}
                 onChange={(e) => setSubmitName(e.target.value)}
                 placeholder="e.g. The Royal Oak"
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: `2px solid ${C.primary}`,
-                  background: C.white,
-                  fontSize: 15,
-                  color: C.text,
-                  marginBottom: 14,
-                  outline: "none",
-                }}
+                className="mb-3.5 w-full rounded-[14px] border-2 border-budget-primary bg-budget-white px-3.5 py-3 text-[15px] text-budget-text outline-none focus:ring-2 focus:ring-budget-primary/25"
               />
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(13,31,26,0.55)", display: "block", marginBottom: 6 }}>Category</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Category</label>
+              <div className="mb-3.5 flex gap-2">
                 {(["restaurant", "pub", "cafe"] as Category[]).map((c) => (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setSubmitCat(c)}
-                    style={{
-                      flex: 1,
-                      padding: "10px 6px",
-                      borderRadius: 14,
-                      border: submitCat === c ? `2px solid ${C.primary}` : `1px solid ${C.surface}`,
-                      background: submitCat === c ? C.surface : C.white,
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: C.text,
-                      cursor: "pointer",
-                    }}
+                    className={`flex-1 cursor-pointer rounded-[14px] py-2.5 text-xs font-bold text-budget-text ${
+                      submitCat === c
+                        ? "border-2 border-budget-primary bg-budget-surface"
+                        : "border border-budget-surface bg-budget-white"
+                    }`}
                   >
                     {CATS.find((x) => x.id === c)?.emoji} {CATS.find((x) => x.id === c)?.label}
                   </button>
                 ))}
               </div>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(13,31,26,0.55)", display: "block", marginBottom: 6 }}>Area</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Area</label>
+              <div className="mb-3.5 flex flex-wrap gap-1.5">
                 {AREAS.filter((a) => a !== "All").map((area) => (
                   <button
                     key={area}
                     type="button"
                     onClick={() => setSubmitArea(area)}
-                    style={{
-                      padding: "8px 14px",
-                      borderRadius: 999,
-                      border: "none",
-                      background: submitArea === area ? C.primary : C.surface,
-                      color: submitArea === area ? C.white : C.text,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
+                    className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
+                      submitArea === area
+                        ? "bg-budget-primary text-white"
+                        : "bg-budget-surface text-budget-text"
+                    }`}
                   >
                     {area}
                   </button>
                 ))}
               </div>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(13,31,26,0.55)", display: "block", marginBottom: 6 }}>Menu & prices</label>
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Menu & prices</label>
               {submitItems.map((item, idx) => (
-                <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+                <div key={idx} className="mb-2 flex gap-2">
                   <input
                     value={item.name}
                     placeholder="Item"
@@ -781,27 +559,10 @@ export default function App() {
                       n[idx] = { ...n[idx], name: e.target.value };
                       setSubmitItems(n);
                     }}
-                    style={{
-                      flex: 1,
-                      padding: "10px 12px",
-                      borderRadius: 12,
-                      border: `1px solid ${C.surface}`,
-                      fontSize: 14,
-                      outline: "none",
-                      color: C.text,
-                    }}
+                    className="budget-input-sm min-w-0 flex-1 text-sm"
                   />
-                  <div style={{ position: "relative" }}>
-                    <span
-                      style={{
-                        position: "absolute",
-                        left: 10,
-                        top: "50%",
-                        transform: "translateY(-50%)",
-                        color: "rgba(13,31,26,0.4)",
-                        fontSize: 14,
-                      }}
-                    >
+                  <div className="relative shrink-0">
+                    <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-budget-text/40">
                       £
                     </span>
                     <input
@@ -814,15 +575,7 @@ export default function App() {
                         n[idx] = { ...n[idx], price: parseFloat(e.target.value) || 0 };
                         setSubmitItems(n);
                       }}
-                      style={{
-                        width: 88,
-                        padding: "10px 10px 10px 26px",
-                        borderRadius: 12,
-                        border: `1px solid ${C.surface}`,
-                        fontSize: 14,
-                        outline: "none",
-                        color: C.text,
-                      }}
+                      className="budget-input-sm w-[88px] pl-6 text-sm"
                     />
                   </div>
                 </div>
@@ -830,86 +583,40 @@ export default function App() {
               <button
                 type="button"
                 onClick={() => setSubmitItems([...submitItems, { name: "", price: 0 }])}
-                style={{
-                  width: "100%",
-                  padding: 8,
-                  marginBottom: 14,
-                  borderRadius: 12,
-                  border: `1px dashed ${C.accent}`,
-                  background: "transparent",
-                  color: C.primary,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
+                className="mb-3.5 w-full cursor-pointer rounded-xl border border-dashed border-budget-accent bg-transparent py-2 text-[13px] font-semibold text-budget-primary"
               >
                 + Add item
               </button>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(13,31,26,0.55)", display: "block", marginBottom: 6 }}>Optional: lat / lng</label>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Optional: lat / lng</label>
+              <div className="mb-3.5 flex gap-2">
                 <input
                   value={submitLat}
                   onChange={(e) => setSubmitLat(e.target.value)}
                   placeholder="lat"
-                  style={{
-                    flex: 1,
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: `1px solid ${C.surface}`,
-                    fontSize: 13,
-                    color: C.text,
-                  }}
+                  className="budget-input-sm min-w-0 flex-1 text-[13px]"
                 />
                 <input
                   value={submitLng}
                   onChange={(e) => setSubmitLng(e.target.value)}
                   placeholder="lng"
-                  style={{
-                    flex: 1,
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    border: `1px solid ${C.surface}`,
-                    fontSize: 13,
-                    color: C.text,
-                  }}
+                  className="budget-input-sm min-w-0 flex-1 text-[13px]"
                 />
               </div>
 
-              <label style={{ fontSize: 12, fontWeight: 600, color: "rgba(13,31,26,0.55)", display: "block", marginBottom: 6 }}>Hot take (optional)</label>
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Hot take (optional)</label>
               <input
                 value={submitReview}
                 onChange={(e) => setSubmitReview(e.target.value)}
                 placeholder="e.g. queue's long but the roti slaps"
-                style={{
-                  width: "100%",
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  border: `1px solid ${C.surface}`,
-                  fontSize: 14,
-                  marginBottom: 20,
-                  outline: "none",
-                  color: C.text,
-                }}
+                className="budget-input mb-5 text-sm"
               />
 
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={!submitName || submitItems.every((i) => !i.name || i.price <= 0)}
-                style={{
-                  width: "100%",
-                  padding: 14,
-                  borderRadius: 16,
-                  border: "none",
-                  background: C.cta,
-                  color: C.white,
-                  fontWeight: 800,
-                  fontSize: 15,
-                  cursor: "pointer",
-                  opacity: !submitName || submitItems.every((i) => !i.name || i.price <= 0) ? 0.45 : 1,
-                  boxShadow: "0 8px 24px rgba(106, 79, 240, 0.35)",
-                }}
+                className="w-full cursor-pointer rounded-2xl border-0 bg-budget-cta py-3.5 text-[15px] font-extrabold text-white shadow-budget-cta transition disabled:cursor-not-allowed disabled:opacity-45"
               >
                 Submit spot
               </button>
@@ -918,26 +625,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Saved */}
       {tab === "saved" && (
-        <div
-          style={{
-            position: "absolute",
-            top: 118,
-            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-            left: 0,
-            right: 0,
-            overflowY: "auto",
-            background: C.bg,
-            padding: 16,
-            zIndex: 20,
-          }}
-        >
+        <div className="budget-tab-panel p-4">
           {savedSpots.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "48px 12px", color: "rgba(13,31,26,0.5)" }}>
-              <Bookmark size={40} strokeWidth={1.25} style={{ margin: "0 auto 16px", opacity: 0.35 }} />
-              <p style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Nothing saved yet</p>
-              <p style={{ fontSize: 14, marginTop: 10, fontStyle: "italic" }}>your wallet thanks you (it&apos;s empty too)</p>
+            <div className="px-3 py-12 text-center text-budget-text/50">
+              <Bookmark size={40} strokeWidth={1.25} className="mx-auto mb-4 opacity-[0.35]" />
+              <p className="text-base font-bold text-budget-text">Nothing saved yet</p>
+              <p className="mt-2.5 text-sm italic">your wallet thanks you (it&apos;s empty too)</p>
             </div>
           ) : (
             savedSpots.map((spot) => (
@@ -949,63 +643,30 @@ export default function App() {
                   setSelectedId(spot.id);
                   setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
                 }}
-                style={{
-                  width: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "14px 16px",
-                  marginBottom: 8,
-                  background: C.white,
-                  border: `1px solid ${C.surface}`,
-                  borderRadius: 16,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
+                className="budget-list-btn"
               >
-                <span style={{ fontSize: 20 }}>{catEmoji(spot.category)}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, color: C.text }}>{spot.name}</div>
-                  <div style={{ fontSize: 12, color: "rgba(13,31,26,0.45)" }}>{spot.area}</div>
+                <span className="text-xl">{catEmoji(spot.category)}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-budget-text">{spot.name}</div>
+                  <div className="text-xs text-budget-subtle">{spot.area}</div>
                 </div>
-                <span style={{ fontWeight: 800, color: C.primary }}>{formatMapPriceLabel(lowestPrice(spot))}</span>
+                <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
               </button>
             ))
           )}
         </div>
       )}
 
-      {/* Course */}
       {tab === "course" && (
-        <div
-          style={{
-            position: "absolute",
-            top: 118,
-            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
-            left: 0,
-            right: 0,
-            overflowY: "auto",
-            background: C.bg,
-            padding: 16,
-            zIndex: 20,
-          }}
-        >
-          <div
-            style={{
-              background: C.white,
-              borderRadius: 20,
-              padding: 18,
-              border: `1px solid ${C.surface}`,
-              boxShadow: "0 4px 20px rgba(13,31,26,0.06)",
-            }}
-          >
-            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 8, color: C.text }}>Budget crawl</h2>
-            <p style={{ fontSize: 13, color: "rgba(13,31,26,0.55)", lineHeight: 1.5, marginBottom: 16 }}>
+        <div className="budget-tab-panel p-4">
+          <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
+            <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
+            <p className="mb-4 text-[13px] leading-relaxed text-budget-muted">
               One coffee, one meal, one pint — cheapest trio we can find under your cap.
             </p>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>Max spend</span>
-              <span style={{ fontSize: 20, fontWeight: 800, color: C.primary }}>£{courseBudget}</span>
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[13px] font-semibold text-budget-text">Max spend</span>
+              <span className="text-xl font-extrabold text-budget-primary">£{courseBudget}</span>
             </div>
             <input
               type="range"
@@ -1017,55 +678,26 @@ export default function App() {
                 setCourseBudget(parseInt(e.target.value, 10));
                 setCourseResult(null);
               }}
-              style={{ width: "100%", accentColor: C.primary, marginBottom: 16 }}
+              className="mb-4 w-full accent-budget-primary"
             />
             <button
               type="button"
               onClick={planCourse}
-              style={{
-                width: "100%",
-                padding: 14,
-                borderRadius: 16,
-                border: "none",
-                background: C.primary,
-                color: C.white,
-                fontWeight: 800,
-                fontSize: 15,
-                cursor: "pointer",
-              }}
+              className="w-full cursor-pointer rounded-2xl border-0 bg-budget-primary py-3.5 text-[15px] font-extrabold text-white"
             >
               Plan my crawl
             </button>
           </div>
 
           {courseResult !== null && (
-            <div style={{ marginTop: 16 }}>
+            <div className="mt-4">
               {courseResult.length === 0 ? (
-                <div
-                  style={{
-                    padding: 20,
-                    textAlign: "center",
-                    background: C.surface,
-                    borderRadius: 16,
-                    color: C.text,
-                    fontSize: 14,
-                  }}
-                >
+                <div className="rounded-2xl bg-budget-surface p-5 text-center text-sm text-budget-text">
                   No trio under £{courseBudget}. Treat yourself and bump the slider?
                 </div>
               ) : (
-                <div
-                  style={{
-                    background: C.white,
-                    borderRadius: 20,
-                    padding: 16,
-                    border: `1px solid ${C.surface}`,
-                    marginTop: 8,
-                  }}
-                >
-                  <div style={{ fontSize: 12, fontWeight: 800, color: C.primary, marginBottom: 12 }}>
-                    Total £{courseTotal.toFixed(2)}
-                  </div>
+                <div className="mt-2 rounded-[20px] border border-budget-surface bg-budget-white p-4">
+                  <div className="mb-3 text-xs font-extrabold text-budget-primary">Total £{courseTotal.toFixed(2)}</div>
                   {courseResult.map((spot) => (
                     <button
                       key={spot.id}
@@ -1075,18 +707,7 @@ export default function App() {
                         setSelectedId(spot.id);
                         setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
                       }}
-                      style={{
-                        width: "100%",
-                        padding: "12px 14px",
-                        marginBottom: 8,
-                        borderRadius: 14,
-                        border: `1px solid ${C.surface}`,
-                        background: C.bg,
-                        textAlign: "left",
-                        cursor: "pointer",
-                        fontWeight: 700,
-                        color: C.text,
-                      }}
+                      className="mb-2 w-full cursor-pointer rounded-[14px] border border-budget-surface bg-budget-bg px-3.5 py-3 text-left text-sm font-bold text-budget-text last:mb-0"
                     >
                       {catEmoji(spot.category)} {spot.name} — {formatMapPriceLabel(lowestPrice(spot))}
                     </button>
@@ -1098,25 +719,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Bottom nav — white bar, rounded top only (ref) */}
-      <nav
-        className="budget-bottom-nav"
-        style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 60,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "stretch",
-          padding: "10px 6px calc(10px + env(safe-area-inset-bottom, 0px))",
-          background: C.white,
-          borderRadius: "22px 22px 0 0",
-          boxShadow: "0 -6px 24px rgba(13, 31, 26, 0.06)",
-          borderTop: `1px solid ${C.surface}`,
-        }}
-      >
+      <nav className="budget-bottom-nav absolute bottom-0 left-0 right-0 z-[60] flex items-stretch justify-between rounded-t-[22px] border-t border-budget-surface bg-budget-white px-1.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] pt-2.5 shadow-budget-nav">
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
@@ -1127,7 +730,6 @@ export default function App() {
           ] as const
         ).map(({ id, label, Icon }) => {
           const active = tab === id;
-          const inactive = "rgba(13,31,26,0.32)";
           return (
             <button
               key={id}
@@ -1136,31 +738,12 @@ export default function App() {
                 setTab(id);
                 if (id !== "map") setSelectedId(null);
               }}
-              style={{
-                flex: 1,
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 3,
-                padding: "4px 2px",
-                border: "none",
-                background: "transparent",
-                cursor: "pointer",
-                color: active ? C.primary : inactive,
-              }}
+              className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 bg-transparent px-0.5 py-1 ${
+                active ? "text-budget-primary" : "text-budget-faint"
+              }`}
             >
               <Icon size={22} strokeWidth={active ? 2.2 : 1.65} />
-              <span
-                style={{
-                  fontSize: 10,
-                  fontWeight: active ? 700 : 500,
-                  letterSpacing: 0.01,
-                  color: active ? C.primary : inactive,
-                }}
-              >
-                {label}
-              </span>
+              <span className={`text-[10px] tracking-wide ${active ? "font-bold" : "font-medium"}`}>{label}</span>
             </button>
           );
         })}
