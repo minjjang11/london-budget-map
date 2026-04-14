@@ -19,17 +19,24 @@ const EMOJI: Record<string, string> = {
   cafe: "☕",
 };
 
-/** Mint palette — markers stay readable on light map */
+/** Ref: pubs orange rim, food/coffee soft green */
 const PRIMARY = "#00A878";
-const BORDER_SOFT = "rgba(0, 168, 120, 0.35)";
+const BORDER_GREEN = "rgba(0, 168, 120, 0.42)";
+const BORDER_ORANGE = "rgba(245, 158, 11, 0.75)";
+
+function categoryBorder(cat: MapSpot["category"], selected: boolean): string {
+  const w = selected ? 2 : 1;
+  if (cat === "pub") return `${w}px solid ${BORDER_ORANGE}`;
+  return `${w}px solid ${BORDER_GREEN}`;
+}
 
 function makeIcon(spot: MapSpot, isSelected: boolean) {
   const emoji = EMOJI[spot.category];
-  const scale = isSelected ? "scale(1.08)" : "scale(1)";
-  const border = isSelected ? `2px solid ${PRIMARY}` : `1.5px solid ${BORDER_SOFT}`;
+  const scale = isSelected ? "scale(1.06)" : "scale(1)";
+  const border = categoryBorder(spot.category, isSelected);
   const shadow = isSelected
-    ? `0 4px 16px rgba(0, 168, 120, 0.35)`
-    : `0 2px 10px rgba(13, 31, 26, 0.08)`;
+    ? `0 4px 14px rgba(0, 168, 120, 0.28)`
+    : `0 2px 8px rgba(13, 31, 26, 0.07)`;
 
   const html = `
     <div style="
@@ -42,17 +49,17 @@ function makeIcon(spot: MapSpot, isSelected: boolean) {
         background: #ffffff;
         border: ${border};
         border-radius: 999px;
-        padding: 4px 10px 4px 8px;
+        padding: 3px 8px 3px 7px;
         white-space: nowrap;
         text-align: center;
         box-shadow: ${shadow};
         display: inline-flex;
         align-items: center;
-        gap: 5px;
+        gap: 4px;
       ">
-        <span style="font-size:13px;line-height:1;">${emoji}</span>
+        <span style="font-size:12px;line-height:1;">${emoji}</span>
         <span style="
-          font-size:11px;
+          font-size:10px;
           font-weight: 800;
           letter-spacing: -0.02em;
           color: #0D1F1A;
@@ -63,13 +70,14 @@ function makeIcon(spot: MapSpot, isSelected: boolean) {
   return L.divIcon({
     html,
     className: "spot-marker",
-    iconSize: [88, 36],
-    iconAnchor: [44, 18],
+    iconSize: [76, 30],
+    iconAnchor: [38, 15],
   });
 }
 
-const DEFAULT_CENTER: [number, number] = [51.508, -0.09];
-const DEFAULT_ZOOM = 13;
+/** Chelsea / Sloane — matches reference screenshot framing */
+const DEFAULT_CENTER: [number, number] = [51.4927, -0.1565];
+const DEFAULT_ZOOM = 15;
 
 export default function MapView({
   spots,

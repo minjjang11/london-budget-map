@@ -176,9 +176,14 @@ function lowestPrice(spot: Spot): number {
   return min === Infinity ? 0 : min;
 }
 
+/** Screenshot-style prices: £12, £4.3, £6.5 — 🔥 when under £3 */
 function formatMapPriceLabel(lowest: number): string {
-  const pounds = `£${lowest % 1 === 0 ? lowest.toFixed(0) : lowest.toFixed(2)}`;
-  return lowest < 3 ? `🔥 ${pounds}` : pounds;
+  const fire = lowest < 3 ? "🔥 " : "";
+  const r = Math.round(lowest * 10) / 10;
+  const body = Number.isInteger(r) || Math.abs(r - Math.round(r)) < 0.05
+    ? Math.round(r).toString()
+    : r.toFixed(1).replace(/\.0$/, "");
+  return `${fire}£${body}`;
 }
 
 function catEmoji(c: Category) {
@@ -193,7 +198,6 @@ export default function App() {
   const [activeArea, setActiveArea] = useState("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  const [showRankingPanel, setShowRankingPanel] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
@@ -340,9 +344,9 @@ export default function App() {
           setSelectedId(null);
         }}
         style={{
-          padding: "8px 14px",
+          padding: "9px 16px",
           borderRadius: 999,
-          border: active ? "none" : `1px solid rgba(0, 168, 120, 0.2)`,
+          border: "none",
           background: active ? C.primary : C.surface,
           color: active ? C.white : C.text,
           fontSize: 13,
@@ -351,10 +355,10 @@ export default function App() {
           whiteSpace: "nowrap",
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 7,
         }}
       >
-        <span>{emoji}</span>
+        <span style={{ opacity: active ? 1 : 0.4, fontSize: 14 }} aria-hidden>{emoji}</span>
         {label}
       </button>
     );
@@ -382,29 +386,33 @@ export default function App() {
         </div>
       )}
 
-      {/* Floating header */}
+      {/* Floating header — matches ref: title + category chips only */}
       <header
         style={{
           position: "absolute",
-          top: 12,
-          left: 12,
-          right: 12,
+          top: 10,
+          left: 10,
+          right: 10,
           zIndex: 50,
           background: C.white,
-          borderRadius: 22,
-          padding: "14px 16px 12px",
-          boxShadow: "0 8px 32px rgba(13, 31, 26, 0.1)",
-          border: "1px solid rgba(0, 168, 120, 0.12)",
+          borderRadius: 20,
+          padding: "16px 14px 14px",
+          boxShadow: "0 6px 28px rgba(13, 31, 26, 0.08)",
+          border: "1px solid rgba(224, 247, 242, 0.9)",
         }}
       >
-        <div style={{ marginBottom: 4 }}>
-          <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>
-            Budget Map
-          </h1>
-          <p style={{ fontSize: 12, color: "rgba(13,31,26,0.55)", marginTop: 2, fontStyle: "italic" }}>
-            because we&apos;re all broke innit
-          </p>
-        </div>
+        <h1
+          style={{
+            fontSize: 22,
+            fontWeight: 800,
+            letterSpacing: "-0.04em",
+            color: C.text,
+            marginBottom: 12,
+            fontFamily: "var(--font-app), ui-sans-serif, system-ui, sans-serif",
+          }}
+        >
+          Budget Map
+        </h1>
         <div
           style={{
             display: "flex",
@@ -412,167 +420,15 @@ export default function App() {
             overflowX: "auto",
             scrollbarWidth: "none",
             paddingBottom: 2,
-            marginTop: 10,
           }}
         >
           {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
         </div>
-        <div
-          style={{
-            display: "flex",
-            gap: 6,
-            overflowX: "auto",
-            marginTop: 10,
-            paddingTop: 10,
-            borderTop: `1px solid ${C.surface}`,
-          }}
-        >
-          {AREAS.map((area) => {
-            const active = activeArea === area;
-            return (
-              <button
-                key={area}
-                type="button"
-                onClick={() => setActiveArea(area)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 999,
-                  border: `1px solid ${active ? C.primary : "rgba(13,31,26,0.1)"}`,
-                  background: active ? C.surface : C.white,
-                  color: C.text,
-                  fontSize: 11,
-                  fontWeight: active ? 700 : 500,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {area}
-              </button>
-            );
-          })}
-        </div>
       </header>
 
-      {/* Map overlays (only on map tab) */}
+      {/* Map overlays — clean full-bleed map per ref */}
       {tab === "map" && (
         <>
-          <div
-            style={{
-              position: "absolute",
-              top: 168,
-              right: 12,
-              zIndex: 40,
-              background: C.white,
-              padding: "6px 12px",
-              borderRadius: 999,
-              fontSize: 11,
-              fontWeight: 600,
-              color: "rgba(13,31,26,0.55)",
-              boxShadow: "0 4px 14px rgba(13,31,26,0.08)",
-              border: `1px solid ${C.surface}`,
-            }}
-          >
-            {filtered.length} spots
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setShowRankingPanel(!showRankingPanel)}
-            style={{
-              position: "absolute",
-              top: 168,
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 40,
-              background: C.white,
-              border: `1px solid ${C.primary}`,
-              color: C.primary,
-              padding: "8px 18px",
-              borderRadius: 999,
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: "0 4px 14px rgba(13,31,26,0.08)",
-            }}
-          >
-            {showRankingPanel ? "Hide ranking" : "Show ranking"}
-          </button>
-
-          {showRankingPanel && (
-            <div
-              style={{
-                position: "absolute",
-                bottom: 88,
-                left: 12,
-                right: 12,
-                zIndex: 40,
-                maxHeight: "38%",
-                overflowY: "auto",
-                background: C.white,
-                borderRadius: 20,
-                border: `1px solid ${C.surface}`,
-                boxShadow: "0 -4px 24px rgba(13,31,26,0.08)",
-              }}
-            >
-              <div
-                style={{
-                  padding: "12px 14px",
-                  borderBottom: `1px solid ${C.surface}`,
-                  fontSize: 13,
-                  fontWeight: 800,
-                  color: C.text,
-                  position: "sticky",
-                  top: 0,
-                  background: C.white,
-                }}
-              >
-                Price ranking
-              </div>
-              {ranked.map((spot, i) => (
-                <button
-                  key={spot.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedId(spot.id);
-                    setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
-                  }}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "10px 14px",
-                    border: "none",
-                    borderBottom: `1px solid ${C.surface}`,
-                    background: selectedId === spot.id ? "rgba(224,247,242,0.6)" : C.white,
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 800,
-                      color: i < 3 ? C.primary : "rgba(13,31,26,0.35)",
-                      width: 22,
-                      textAlign: "center",
-                    }}
-                  >
-                    {i + 1}
-                  </span>
-                  <span style={{ fontSize: 16 }}>{catEmoji(spot.category)}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{spot.name}</div>
-                    <div style={{ fontSize: 11, color: "rgba(13,31,26,0.45)" }}>{spot.area}</div>
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: C.primary }}>
-                    {formatMapPriceLabel(lowestPrice(spot))}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
           {selected && (
             <div
               role="presentation"
@@ -590,7 +446,7 @@ export default function App() {
                 onClick={(e) => e.stopPropagation()}
                 style={{
                   position: "absolute",
-                  bottom: 88,
+                  bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
                   left: 12,
                   right: 12,
                   maxHeight: "52%",
@@ -740,13 +596,13 @@ export default function App() {
         </>
       )}
 
-      {/* Community */}
+      {/* Community — ranking + area filter (moved from header for ref layout) */}
       {tab === "community" && (
         <div
           style={{
             position: "absolute",
-            top: 200,
-            bottom: 88,
+            top: 118,
+            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
             left: 0,
             right: 0,
             overflowY: "auto",
@@ -755,7 +611,34 @@ export default function App() {
             zIndex: 20,
           }}
         >
-          <p style={{ fontSize: 13, color: "rgba(13,31,26,0.55)", marginBottom: 12, paddingTop: 8 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "rgba(13,31,26,0.45)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Area
+          </p>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
+            {AREAS.map((area) => {
+              const active = activeArea === area;
+              return (
+                <button
+                  key={area}
+                  type="button"
+                  onClick={() => setActiveArea(area)}
+                  style={{
+                    padding: "7px 12px",
+                    borderRadius: 999,
+                    border: "none",
+                    background: active ? C.primary : C.surface,
+                    color: active ? C.white : C.text,
+                    fontSize: 12,
+                    fontWeight: active ? 700 : 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  {area}
+                </button>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: 13, color: "rgba(13,31,26,0.55)", marginBottom: 12 }}>
             Cheapest first — tap to fly there on the map.
           </p>
           {ranked.map((spot, i) => (
@@ -794,13 +677,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Snitch / Submit */}
+      {/* Submit */}
       {tab === "submit" && (
         <div
           style={{
             position: "absolute",
-            top: 200,
-            bottom: 88,
+            top: 118,
+            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
             left: 0,
             right: 0,
             overflowY: "auto",
@@ -1028,7 +911,7 @@ export default function App() {
                   boxShadow: "0 8px 24px rgba(106, 79, 240, 0.35)",
                 }}
               >
-                Snitch this spot
+                Submit spot
               </button>
             </>
           )}
@@ -1040,8 +923,8 @@ export default function App() {
         <div
           style={{
             position: "absolute",
-            top: 200,
-            bottom: 88,
+            top: 118,
+            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
             left: 0,
             right: 0,
             overflowY: "auto",
@@ -1097,8 +980,8 @@ export default function App() {
         <div
           style={{
             position: "absolute",
-            top: 200,
-            bottom: 88,
+            top: 118,
+            bottom: "calc(72px + env(safe-area-inset-bottom, 0px))",
             left: 0,
             right: 0,
             overflowY: "auto",
@@ -1215,34 +1098,36 @@ export default function App() {
         </div>
       )}
 
-      {/* Bottom nav — floating pill */}
+      {/* Bottom nav — white bar, rounded top only (ref) */}
       <nav
+        className="budget-bottom-nav"
         style={{
           position: "absolute",
-          bottom: 12,
-          left: 12,
-          right: 12,
+          bottom: 0,
+          left: 0,
+          right: 0,
           zIndex: 60,
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
-          padding: "10px 8px",
+          alignItems: "stretch",
+          padding: "10px 6px calc(10px + env(safe-area-inset-bottom, 0px))",
           background: C.white,
-          borderRadius: 999,
-          boxShadow: "0 8px 32px rgba(13, 31, 26, 0.12)",
-          border: `1px solid ${C.surface}`,
+          borderRadius: "22px 22px 0 0",
+          boxShadow: "0 -6px 24px rgba(13, 31, 26, 0.06)",
+          borderTop: `1px solid ${C.surface}`,
         }}
       >
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
             { id: "community" as Tab, label: "Community", Icon: MessagesSquare },
-            { id: "submit" as Tab, label: "Snitch 🐀", Icon: Plus },
+            { id: "submit" as Tab, label: "Submit", Icon: Plus },
             { id: "saved" as Tab, label: "Saved", Icon: Bookmark },
             { id: "course" as Tab, label: "Course", Icon: Route },
           ] as const
         ).map(({ id, label, Icon }) => {
           const active = tab === id;
+          const inactive = "rgba(13,31,26,0.32)";
           return (
             <button
               key={id}
@@ -1256,16 +1141,24 @@ export default function App() {
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
-                gap: 4,
-                padding: "6px 2px",
+                justifyContent: "center",
+                gap: 3,
+                padding: "4px 2px",
                 border: "none",
                 background: "transparent",
                 cursor: "pointer",
-                color: active ? C.primary : "rgba(13,31,26,0.38)",
+                color: active ? C.primary : inactive,
               }}
             >
-              <Icon size={20} strokeWidth={active ? 2.25 : 1.75} />
-              <span style={{ fontSize: 9, fontWeight: active ? 800 : 500, letterSpacing: id === "submit" ? 0 : 0.02 }}>
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.65} />
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: active ? 700 : 500,
+                  letterSpacing: 0.01,
+                  color: active ? C.primary : inactive,
+                }}
+              >
                 {label}
               </span>
             </button>
