@@ -9,7 +9,7 @@ html, body {
   min-height: 100%;
   height: 100%;
   color: #f0ede0;
-  font-family: var(--font-noto-sans-kr), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-family: var(--font-dm-sans), ui-sans-serif, system-ui, sans-serif;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
 }
@@ -20,10 +20,18 @@ html, body {
 }
 
 .leaflet-container {
-  background: #f2efe9 !important;
+  background: #e8eef5 !important;
   width: 100%;
   height: 100%;
   z-index: 1 !important;
+}
+
+.map-shell .map-chrome-wrap {
+  height: 100%;
+}
+
+.map-chrome-wrap .leaflet-container {
+  border-radius: 16px;
 }
 
 .leaflet-control-zoom {

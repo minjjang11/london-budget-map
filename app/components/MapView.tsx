@@ -87,9 +87,8 @@ function makeIcon(spot: MapSpot, isSelected: boolean) {
   });
 }
 
-/** 한반도 전체가 보이도록 */
-const DEFAULT_CENTER: [number, number] = [36.45, 127.95];
-const DEFAULT_ZOOM = 7;
+const DEFAULT_CENTER: [number, number] = [51.508, -0.09];
+const DEFAULT_ZOOM = 13;
 
 export default function MapView({
   spots,
@@ -122,9 +121,9 @@ export default function MapView({
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
       attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
-      maxZoom: 19,
+      maxZoom: 20,
       subdomains: "abcd",
     }).addTo(map);
 
@@ -164,5 +163,50 @@ export default function MapView({
     map.flyTo(center, zoom, { duration: 0.6 });
   }, [flyTo]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <div
+      className="map-chrome-wrap"
+      style={{
+        width: "100%",
+        height: "100%",
+        position: "relative",
+        padding: 6,
+        boxSizing: "border-box",
+        background: "linear-gradient(145deg, rgba(66,133,244,0.12) 0%, rgba(0,0,0,0) 42%, rgba(199,255,77,0.08) 100%)",
+        borderRadius: 22,
+      }}
+    >
+      <div
+        ref={containerRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          borderRadius: 16,
+          overflow: "hidden",
+          boxShadow: "0 12px 40px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
+        }}
+      />
+      <div
+        className="map-chrome-badge"
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 16,
+          left: 16,
+          padding: "5px 11px",
+          borderRadius: 999,
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "#1a1a2e",
+          background: "rgba(255,255,255,0.92)",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
+          pointerEvents: "none",
+        }}
+      >
+        London
+      </div>
+    </div>
+  );
 }
