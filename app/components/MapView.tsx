@@ -19,26 +19,17 @@ const EMOJI: Record<string, string> = {
   cafe: "☕",
 };
 
-const COLORS: Record<string, string> = {
-  pub: "#E67E22",
-  restaurant: "#E74C6F",
-  cafe: "#8B5CF6",
-};
-
-const BG_COLORS: Record<string, string> = {
-  pub: "#FFF7ED",
-  restaurant: "#FFF1F3",
-  cafe: "#F5F0FF",
-};
+/** Mint palette — markers stay readable on light map */
+const PRIMARY = "#00A878";
+const BORDER_SOFT = "rgba(0, 168, 120, 0.35)";
 
 function makeIcon(spot: MapSpot, isSelected: boolean) {
-  const color = COLORS[spot.category];
-  const bg = BG_COLORS[spot.category];
   const emoji = EMOJI[spot.category];
-  const scale = isSelected ? "scale(1.15)" : "scale(1)";
+  const scale = isSelected ? "scale(1.08)" : "scale(1)";
+  const border = isSelected ? `2px solid ${PRIMARY}` : `1.5px solid ${BORDER_SOFT}`;
   const shadow = isSelected
-    ? `0 6px 24px ${color}55, 0 2px 8px rgba(0,0,0,0.15)`
-    : `0 3px 12px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08)`;
+    ? `0 4px 16px rgba(0, 168, 120, 0.35)`
+    : `0 2px 10px rgba(13, 31, 26, 0.08)`;
 
   const html = `
     <div style="
@@ -48,42 +39,32 @@ function makeIcon(spot: MapSpot, isSelected: boolean) {
       transition: transform 0.2s ease;
     ">
       <div style="
-        background: ${isSelected ? color : bg};
-        border: 2.5px solid ${color};
-        border-radius: 16px;
-        padding: 6px 11px;
+        background: #ffffff;
+        border: ${border};
+        border-radius: 999px;
+        padding: 4px 10px 4px 8px;
         white-space: nowrap;
         text-align: center;
         box-shadow: ${shadow};
-        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
       ">
-        <div style="font-size:15px;line-height:1.1;">${emoji}</div>
-        <div style="
-          font-size:10.5px;
-          font-weight:800;
-          letter-spacing:-0.02em;
-          color: ${isSelected ? "#fff" : color};
-          margin-top:2px;
-        ">
-          ${spot.priceLabel}
-        </div>
+        <span style="font-size:13px;line-height:1;">${emoji}</span>
+        <span style="
+          font-size:11px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          color: #0D1F1A;
+        ">${spot.priceLabel}</span>
       </div>
-      <div style="
-        width: 0;
-        height: 0;
-        border-left: 7px solid transparent;
-        border-right: 7px solid transparent;
-        border-top: 8px solid ${isSelected ? color : bg};
-        margin-top: -1px;
-        filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
-      "></div>
     </div>
   `;
   return L.divIcon({
     html,
     className: "spot-marker",
-    iconSize: [80, 65],
-    iconAnchor: [40, 65],
+    iconSize: [88, 36],
+    iconAnchor: [44, 18],
   });
 }
 
@@ -121,9 +102,10 @@ export default function MapView({
 
     L.control.zoom({ position: "bottomright" }).addTo(map);
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      attribution: '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
-      maxZoom: 20,
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>',
+      maxZoom: 19,
       subdomains: "abcd",
     }).addTo(map);
 
@@ -160,53 +142,14 @@ export default function MapView({
     const key = `${center[0]},${center[1]},${zoom}`;
     if (key === lastFlyRef.current) return;
     lastFlyRef.current = key;
-    map.flyTo(center, zoom, { duration: 0.6 });
+    map.flyTo(center, zoom, { duration: 0.55 });
   }, [flyTo]);
 
   return (
     <div
-      className="map-chrome-wrap"
-      style={{
-        width: "100%",
-        height: "100%",
-        position: "relative",
-        padding: 6,
-        boxSizing: "border-box",
-        background: "linear-gradient(145deg, rgba(66,133,244,0.12) 0%, rgba(0,0,0,0) 42%, rgba(199,255,77,0.08) 100%)",
-        borderRadius: 22,
-      }}
-    >
-      <div
-        ref={containerRef}
-        style={{
-          width: "100%",
-          height: "100%",
-          borderRadius: 16,
-          overflow: "hidden",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.12)",
-        }}
-      />
-      <div
-        className="map-chrome-badge"
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: 16,
-          left: 16,
-          padding: "5px 11px",
-          borderRadius: 999,
-          fontSize: 10,
-          fontWeight: 800,
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
-          color: "#1a1a2e",
-          background: "rgba(255,255,255,0.92)",
-          boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
-          pointerEvents: "none",
-        }}
-      >
-        London
-      </div>
-    </div>
+      className="map-fill"
+      ref={containerRef}
+      style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
+    />
   );
 }
