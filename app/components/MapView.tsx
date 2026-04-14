@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import L from "leaflet";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+import { GoogleMap, OverlayViewF, OVERLAY_MOUSE_TARGET, useJsApiLoader } from "@react-google-maps/api";
 
 export type MapSpot = {
   id: string;
@@ -19,7 +19,6 @@ const EMOJI: Record<string, string> = {
   cafe: "☕",
 };
 
-/** Ref: pubs orange rim, food/coffee soft green */
 const PRIMARY = "#00A878";
 const BORDER_GREEN = "rgba(0, 168, 120, 0.42)";
 const BORDER_ORANGE = "rgba(245, 158, 11, 0.75)";
@@ -30,54 +29,119 @@ function categoryBorder(cat: MapSpot["category"], selected: boolean): string {
   return `${w}px solid ${BORDER_GREEN}`;
 }
 
-function makeIcon(spot: MapSpot, isSelected: boolean) {
+/** Chelsea / Sloane */
+const DEFAULT_CENTER = { lat: 51.4927, lng: -0.1565 };
+const DEFAULT_ZOOM = 15;
+
+const mapContainerStyle = { width: "100%", height: "100%" };
+
+function SpotPill({
+  spot,
+  selected,
+  onSelect,
+}: {
+  spot: MapSpot;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const emoji = EMOJI[spot.category];
-  const scale = isSelected ? "scale(1.06)" : "scale(1)";
-  const border = categoryBorder(spot.category, isSelected);
-  const shadow = isSelected
+  const border = categoryBorder(spot.category, selected);
+  const shadow = selected
     ? `0 4px 14px rgba(0, 168, 120, 0.28)`
     : `0 2px 8px rgba(13, 31, 26, 0.07)`;
 
-  const html = `
-    <div style="
-      display:flex;flex-direction:column;align-items:center;
-      cursor:pointer;
-      transform: ${scale};
-      transition: transform 0.2s ease;
-    ">
-      <div style="
-        background: #ffffff;
-        border: ${border};
-        border-radius: 999px;
-        padding: 3px 8px 3px 7px;
-        white-space: nowrap;
-        text-align: center;
-        box-shadow: ${shadow};
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-      ">
-        <span style="font-size:12px;line-height:1;">${emoji}</span>
-        <span style="
-          font-size:10px;
-          font-weight: 800;
-          letter-spacing: -0.02em;
-          color: #0D1F1A;
-        ">${spot.priceLabel}</span>
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        cursor: "pointer",
+        border: "none",
+        padding: 0,
+        background: "none",
+        transform: selected ? "scale(1.06)" : "scale(1)",
+        transition: "transform 0.2s ease",
+        zIndex: selected ? 5 : 1,
+      }}
+    >
+      <div
+        style={{
+          background: "#ffffff",
+          border,
+          borderRadius: 999,
+          padding: "3px 8px 3px 7px",
+          whiteSpace: "nowrap",
+          boxShadow: shadow,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        <span style={{ fontSize: 12, lineHeight: 1 }}>{emoji}</span>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            letterSpacing: "-0.02em",
+            color: "#0D1F1A",
+          }}
+        >
+          {spot.priceLabel}
+        </span>
       </div>
-    </div>
-  `;
-  return L.divIcon({
-    html,
-    className: "spot-marker",
-    iconSize: [76, 30],
-    iconAnchor: [38, 15],
-  });
+    </button>
+  );
 }
 
-/** Chelsea / Sloane — matches reference screenshot framing */
-const DEFAULT_CENTER: [number, number] = [51.4927, -0.1565];
-const DEFAULT_ZOOM = 15;
+function MissingApiKey() {
+  return (
+    <div
+      className="map-fill"
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+        background: "#e8eaed",
+        textAlign: "center",
+        color: "#0D1F1A",
+        fontSize: 14,
+        lineHeight: 1.6,
+      }}
+    >
+      <div>
+        <p style={{ fontWeight: 800, marginBottom: 8 }}>Google Maps API 키가 필요해요</p>
+        <p style={{ opacity: 0.75, marginBottom: 12 }}>
+          프로젝트 루트에 <code style={{ fontSize: 13 }}>.env.local</code> 파일을 만들고 아래를 넣은 뒤 개발 서버를 다시 켜 주세요.
+        </p>
+        <code
+          style={{
+            display: "block",
+            fontSize: 12,
+            padding: "10px 12px",
+            background: "#fff",
+            borderRadius: 10,
+            textAlign: "left",
+            wordBreak: "break-all",
+          }}
+        >
+          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=여기에_키
+        </code>
+        <p style={{ marginTop: 14, fontSize: 12, opacity: 0.6 }}>
+          Google Cloud Console → Maps JavaScript API 활성화 → API 키 발급 (HTTP 리퍼러 제한 권장)
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function MapView({
   spots,
@@ -90,63 +154,63 @@ export default function MapView({
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const markersRef = useRef<L.Marker[]>([]);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
+  if (!apiKey) {
+    return <MissingApiKey />;
+  }
+
+  return <MapViewLoaded spots={spots} selectedId={selectedId} onSelect={onSelect} flyTo={flyTo} apiKey={apiKey} />;
+}
+
+function MapViewLoaded({
+  spots,
+  selectedId,
+  onSelect,
+  flyTo,
+  apiKey,
+}: {
+  spots: MapSpot[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  flyTo?: { center: [number, number]; zoom: number } | null;
+  apiKey: string;
+}) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const lastFlyRef = useRef<string>("");
   const onSelectRef = useRef(onSelect);
   onSelectRef.current = onSelect;
-  const lastFlyRef = useRef<string>("");
 
-  useEffect(() => {
-    if (!containerRef.current) return;
-    if (mapRef.current) return;
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "budget-map-google-script",
+    googleMapsApiKey: apiKey,
+    language: "en",
+    region: "GB",
+  });
 
-    const map = L.map(containerRef.current, {
-      center: DEFAULT_CENTER,
-      zoom: DEFAULT_ZOOM,
-      zoomControl: false,
-      attributionControl: true,
-    });
-
-    L.control.zoom({ position: "bottomright" }).addTo(map);
-
-    // Carto Light (nolabels + labels): cool greys, blue-grey water — closer to Google road map than Voyager.
-    const cartoAttr =
-      '&copy; <a href="https://www.openstreetmap.org">OSM</a> &copy; <a href="https://carto.com">CARTO</a>';
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
-      attribution: cartoAttr,
-      maxZoom: 20,
-      subdomains: "abcd",
-    }).addTo(map);
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", {
-      maxZoom: 20,
-      subdomains: "abcd",
-    }).addTo(map);
-
-    mapRef.current = map;
-
-    return () => {
-      map.remove();
-      mapRef.current = null;
+  const mapOptions = useMemo((): google.maps.MapOptions => {
+    const zoomPos =
+      typeof google !== "undefined"
+        ? google.maps.ControlPosition.RIGHT_BOTTOM
+        : (9 as google.maps.ControlPosition);
+    return {
+      disableDefaultUI: false,
+      zoomControl: true,
+      zoomControlOptions: { position: zoomPos },
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      clickableIcons: false,
+      gestureHandling: "greedy",
     };
+  }, [isLoaded]);
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
   }, []);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
-
-    spots.forEach((spot) => {
-      if (!isFinite(spot.lat) || !isFinite(spot.lng)) return;
-      const isSelected = spot.id === selectedId;
-      const icon = makeIcon(spot, isSelected);
-      const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(map);
-      marker.on("click", () => onSelectRef.current(spot.id));
-      markersRef.current.push(marker);
-    });
-  }, [spots, selectedId]);
+  const onMapUnmount = useCallback(() => {
+    mapRef.current = null;
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -156,14 +220,82 @@ export default function MapView({
     const key = `${center[0]},${center[1]},${zoom}`;
     if (key === lastFlyRef.current) return;
     lastFlyRef.current = key;
-    map.flyTo(center, zoom, { duration: 0.55 });
+    map.panTo({ lat: center[0], lng: center[1] });
+    map.setZoom(zoom);
   }, [flyTo]);
 
+  if (loadError) {
+    return (
+      <div
+        className="map-fill"
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+          background: "#fdecea",
+          color: "#7f1d1d",
+          fontSize: 14,
+          textAlign: "center",
+        }}
+      >
+        지도를 불러오지 못했어요. API 키·결제·Maps JavaScript API 활성화를 확인해 주세요.
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div
+        className="map-fill"
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#e8eaed",
+          color: "#0D1F1A",
+          fontSize: 14,
+        }}
+      >
+        지도 불러오는 중…
+      </div>
+    );
+  }
+
   return (
-    <div
-      className="map-fill"
-      ref={containerRef}
-      style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
-    />
+    <div className="map-fill" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}>
+      <GoogleMap
+        mapContainerStyle={mapContainerStyle}
+        mapContainerClassName="google-map-root"
+        center={DEFAULT_CENTER}
+        zoom={DEFAULT_ZOOM}
+        onLoad={onMapLoad}
+        onUnmount={onMapUnmount}
+        options={mapOptions}
+      >
+        {spots.map((spot) => {
+          if (!isFinite(spot.lat) || !isFinite(spot.lng)) return null;
+          const selected = spot.id === selectedId;
+          return (
+            <OverlayViewF
+              key={spot.id}
+              position={{ lat: spot.lat, lng: spot.lng }}
+              mapPaneName={OVERLAY_MOUSE_TARGET}
+              zIndex={selected ? 1000 : 100}
+              getPixelPositionOffset={(w, h) => ({
+                x: -(w / 2),
+                y: -h,
+              })}
+            >
+              <SpotPill spot={spot} selected={selected} onSelect={() => onSelectRef.current(spot.id)} />
+            </OverlayViewF>
+          );
+        })}
+      </GoogleMap>
+    </div>
   );
 }
