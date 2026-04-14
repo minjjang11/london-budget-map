@@ -96,12 +96,9 @@ function addBasemap(map: L.Map) {
     return;
   }
 
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png", {
+  // Single `light_all` tileset — one colour pipeline (dual nolabels+labels can look slightly "off").
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
     attribution: CARTO_ATTR,
-    maxZoom: 20,
-    subdomains: "abcd",
-  }).addTo(map);
-  L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", {
     maxZoom: 20,
     subdomains: "abcd",
   }).addTo(map);
