@@ -349,7 +349,7 @@ export default function BudgetMapApp() {
   const savedSpots = spots.filter((s) => savedIds.has(s.id));
 
   return (
-    <div className="budget-app relative mx-auto h-svh max-w-[440px] overflow-hidden bg-budget-bg font-sans text-budget-text">
+    <div className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full">
       {/* Full-bleed map layer */}
       {tab === "map" && mounted && (
         <div className="absolute inset-0 z-0">

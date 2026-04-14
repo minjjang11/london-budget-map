@@ -74,7 +74,7 @@ export default function HomePage() {
   );
 
   return (
-    <div className="mx-auto min-h-dvh max-w-md bg-ldn-paper pb-28 text-ldn-ink">
+    <div className="mx-auto flex min-h-dvh w-full max-w-full flex-col bg-ldn-paper pb-28 text-ldn-ink md:h-full md:min-h-0 md:overflow-y-auto">
       {/* Top bar */}
       <header className="sticky top-0 z-30 border-b border-ldn-line/80 bg-ldn-paper/95 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-md">
         <div className="flex items-center justify-between gap-3">
@@ -242,7 +242,7 @@ export default function HomePage() {
 
       {/* Bottom nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 border-t border-ldn-line bg-ldn-paper/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-md">
-        <div className="mx-auto flex max-w-md justify-between">
+        <div className="mx-auto flex w-full max-w-full justify-between px-1">
           {NAV.map(({ href, label, Icon }) => {
             const isActive =
               (label === "Home" && pathname === "/") || (label === "Map" && pathname === "/map");
