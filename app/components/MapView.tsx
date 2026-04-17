@@ -88,6 +88,19 @@ const CARTO_ATTR =
 
 const DEFAULT_MAPTILER_MAP = "basic-v2";
 
+/** Hide map-tile POIs where possible; keep transit (stations/lines) visible. */
+const GOOGLE_MINIMAL_POI_STYLES: google.maps.MapTypeStyle[] = [
+  { featureType: "poi", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.business", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.attraction", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.medical", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.place_of_worship", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.school", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.sports_complex", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.government", stylers: [{ visibility: "off" }] },
+];
+
+/** Raster tiles (Carto/MapTiler) bake labels into PNGs — POIs cannot be toggled off like Google styled maps. */
 function addBasemap(map: L.Map) {
   const key = (process.env.NEXT_PUBLIC_MAPTILER_API_KEY ?? "").trim();
   if (key) {
@@ -265,6 +278,7 @@ function MapViewGoogle({
       fullscreenControl: false,
       clickableIcons: false,
       gestureHandling: "greedy",
+      styles: GOOGLE_MINIMAL_POI_STYLES,
     };
   }, [isLoaded]);
 

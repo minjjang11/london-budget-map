@@ -44,96 +44,24 @@ const AREAS = [
   "Euston", "Borough", "Bethnal Green", "Hackney",
 ];
 
-const SEED_SPOTS: Spot[] = [
-  {
-    id: "ws", name: "Wetherspoons (The Moon Under Water)", category: "pub",
-    area: "Soho", lat: 51.5110, lng: -0.1316, address: "28 Leicester Sq, WC2H",
-    submissions: [{
-      id: "s1", items: [{ name: "Ruddles Best (pint)", price: 2.49 }, { name: "Doom Bar (pint)", price: 3.20 }],
-      review: "cheapest pint in central, always busy", date: "2025-03-15",
-    }],
-  },
-  {
-    id: "ss", name: "Sam Smith's (The Angel)", category: "pub",
-    area: "Borough", lat: 51.5062, lng: -0.0875, address: "101 Bermondsey St, SE1",
-    submissions: [{
-      id: "s2", items: [{ name: "Old Brewery Bitter (pint)", price: 3.20 }],
-      review: "no phones allowed, proper old pub", date: "2025-02-20",
-    }],
-  },
-  {
-    id: "anchor", name: "The Anchor Bankside", category: "pub",
-    area: "Borough", lat: 51.5072, lng: -0.0916, address: "34 Park St, SE1",
-    submissions: [{
-      id: "s3", items: [{ name: "IPA (pint)", price: 5.20 }, { name: "Lager (pint)", price: 4.80 }],
-      review: "river view, decent prices for the area", date: "2025-04-01",
-    }],
-  },
-  {
-    id: "franco", name: "Franco Manca", category: "restaurant",
-    area: "Brixton", lat: 51.4613, lng: -0.1156, address: "4 Market Row, Brixton",
-    submissions: [{
-      id: "s4", items: [{ name: "Margherita", price: 7.50 }, { name: "No.4 (nduja)", price: 9.20 }],
-      review: "best cheap pizza in london honestly", date: "2025-03-10",
-    }],
-  },
-  {
-    id: "roti", name: "Roti King", category: "restaurant",
-    area: "Euston", lat: 51.5281, lng: -0.1330, address: "40 Doric Way, NW1",
-    submissions: [{
-      id: "s5", items: [{ name: "Roti Canai", price: 2.50 }, { name: "Nasi Lemak", price: 8.00 }],
-      review: "massive queue but worth it", date: "2025-01-22",
-    }],
-  },
-  {
-    id: "dish", name: "Dishoom", category: "restaurant",
-    area: "Shoreditch", lat: 51.5244, lng: -0.0773, address: "7 Boundary St, E2",
-    submissions: [{
-      id: "s6", items: [{ name: "Pau Bhaji", price: 6.90 }],
-      review: "lunch set is good value", date: "2025-02-14",
-    }],
-  },
-  {
-    id: "mono", name: "Monmouth Coffee", category: "cafe",
-    area: "Borough", lat: 51.5135, lng: -0.0895, address: "2 Park St, SE1",
-    submissions: [{
-      id: "s7", items: [{ name: "Filter Coffee", price: 3.20 }, { name: "Flat White", price: 3.80 }],
-      review: "best coffee in london", date: "2025-03-28",
-    }],
-  },
-  {
-    id: "pelli", name: "E Pellicci", category: "cafe",
-    area: "Bethnal Green", lat: 51.5274, lng: -0.0609, address: "332 Bethnal Green Rd, E2",
-    submissions: [{
-      id: "s8", items: [{ name: "Cappuccino", price: 2.50 }],
-      review: "proper greasy spoon", date: "2025-03-01",
-    }],
-  },
-  {
-    id: "dept", name: "Dept of Coffee", category: "cafe",
-    area: "Shoreditch", lat: 51.5215, lng: -0.0764, address: "14 Leather Ln, EC1",
-    submissions: [{
-      id: "s9", items: [{ name: "Espresso", price: 2.80 }],
-      review: "solid coffee", date: "2025-04-05",
-    }],
-  },
-];
+/** No demo venues — spots come only from user submissions. */
+const INITIAL_SPOTS: Spot[] = [];
 
-const LS_KEY = "budget-map-spots-v1";
-const LS_SAVED = "budget-map-saved-v1";
+const LS_KEY = "budget-map-spots-v2";
+const LS_SAVED = "budget-map-saved-v2";
 
 function loadSpots(): Spot[] {
-  if (typeof window === "undefined") return SEED_SPOTS;
+  if (typeof window === "undefined") return INITIAL_SPOTS;
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (!raw) {
-      localStorage.setItem(LS_KEY, JSON.stringify(SEED_SPOTS));
-      return SEED_SPOTS;
+      localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
+      return INITIAL_SPOTS;
     }
     return JSON.parse(raw);
   } catch {
-    localStorage.setItem(LS_KEY, JSON.stringify(SEED_SPOTS));
-    return SEED_SPOTS;
+    localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
+    return INITIAL_SPOTS;
   }
 }
 
@@ -359,7 +287,7 @@ export default function BudgetMapApp() {
 
       <header className="absolute left-2.5 right-2.5 top-2.5 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3.5 pb-3.5 pt-4 shadow-budget-header">
         <h1 className="mb-3 text-[22px] font-extrabold tracking-[-0.04em] text-budget-text">
-          <Link href="/" className="hover:text-budget-primary/90">
+          <Link href="/home" className="hover:text-budget-primary/90">
             Budget Map
           </Link>
         </h1>
