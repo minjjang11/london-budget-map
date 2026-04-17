@@ -291,10 +291,15 @@ function MapViewGoogle({
   if (loadError) {
     return (
       <div
-        className="map-fill flex items-center justify-center bg-[#e8eaed] p-6 text-center text-sm text-red-900"
+        className="map-fill flex flex-col items-center justify-center gap-2 bg-[#e8eaed] p-6 text-center text-sm text-red-900"
         style={{ position: "absolute", inset: 0 }}
       >
-        Could not load Google Maps. Check API key, billing, and that Maps JavaScript API is enabled.
+        <p className="font-semibold">Google Maps could not load.</p>
+        <p className="max-w-[280px] text-xs leading-relaxed text-red-950/80">
+          Google Cloud: enable <strong>Maps JavaScript API</strong>, link billing, and confirm the key. Vercel: set{" "}
+          <code className="rounded bg-white/80 px-1">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> for{" "}
+          <strong>Production</strong>, then <strong>Redeploy</strong>. Open DevTools → Console for the exact error.
+        </p>
       </div>
     );
   }
@@ -351,7 +356,8 @@ export default function MapView(props: {
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
 }) {
-  const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").trim();
+  /* Strip all whitespace — Vercel paste often inserts accidental spaces inside the key */
+  const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, "");
   if (googleKey) {
     return <MapViewGoogle {...props} apiKey={googleKey} />;
   }
