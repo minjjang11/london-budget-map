@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
+import { GoogleMap, OverlayViewF, OVERLAY_MOUSE_TARGET, useJsApiLoader } from "@react-google-maps/api";
 
 export type MapSpot = {
   id: string;
@@ -28,7 +29,7 @@ function categoryBorder(cat: MapSpot["category"], selected: boolean): string {
   return `${w}px solid ${BORDER_GREEN}`;
 }
 
-function makeIcon(spot: MapSpot, isSelected: boolean) {
+function makeLeafletIcon(spot: MapSpot, isSelected: boolean) {
   const emoji = EMOJI[spot.category];
   const scale = isSelected ? "scale(1.06)" : "scale(1)";
   const border = categoryBorder(spot.category, isSelected);
@@ -73,8 +74,8 @@ function makeIcon(spot: MapSpot, isSelected: boolean) {
   });
 }
 
-/** Chelsea / Sloane */
 const DEFAULT_CENTER: [number, number] = [51.4927, -0.1565];
+const DEFAULT_CENTER_LATLNG = { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
 const DEFAULT_ZOOM = 15;
 
 const MAPTILER_ATTR =
@@ -85,7 +86,6 @@ const CARTO_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '&copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-/** streets-v2 = very grey; basic-v2 = clearer colour + contrast (closer to “alive” city maps). */
 const DEFAULT_MAPTILER_MAP = "basic-v2";
 
 function addBasemap(map: L.Map) {
@@ -103,7 +103,6 @@ function addBasemap(map: L.Map) {
     return;
   }
 
-  // No key: Voyager — warmer, more saturation than light_all (less “washed out”).
   L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     attribution: CARTO_ATTR,
     maxZoom: 20,
@@ -111,7 +110,46 @@ function addBasemap(map: L.Map) {
   }).addTo(map);
 }
 
-export default function MapView({
+function SpotPill({
+  spot,
+  selected,
+  onSelect,
+}: {
+  spot: MapSpot;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const emoji = EMOJI[spot.category];
+  const border = categoryBorder(spot.category, selected);
+  const shadow = selected
+    ? `0 4px 14px rgba(0, 168, 120, 0.28)`
+    : `0 2px 8px rgba(13, 31, 26, 0.07)`;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      className="flex cursor-pointer flex-col items-center border-0 bg-transparent p-0 transition-transform"
+      style={{
+        transform: selected ? "scale(1.06)" : "scale(1)",
+        zIndex: selected ? 5 : 1,
+      }}
+    >
+      <div
+        className="inline-flex items-center gap-1 rounded-full border bg-white"
+        style={{ border, boxShadow: shadow, padding: "3px 8px 3px 7px" }}
+      >
+        <span className="text-xs leading-none">{emoji}</span>
+        <span className="text-[10px] font-extrabold tracking-tight text-[#0D1F1A]">{spot.priceLabel}</span>
+      </div>
+    </button>
+  );
+}
+
+function MapViewLeaflet({
   spots,
   selectedId,
   onSelect,
@@ -161,7 +199,7 @@ export default function MapView({
     spots.forEach((spot) => {
       if (!isFinite(spot.lat) || !isFinite(spot.lng)) return;
       const isSelected = spot.id === selectedId;
-      const icon = makeIcon(spot, isSelected);
+      const icon = makeLeafletIcon(spot, isSelected);
       const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(map);
       marker.on("click", () => onSelectRef.current(spot.id));
       markersRef.current.push(marker);
@@ -186,4 +224,136 @@ export default function MapView({
       style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}
     />
   );
+}
+
+function MapViewGoogle({
+  spots,
+  selectedId,
+  onSelect,
+  flyTo,
+  apiKey,
+}: {
+  spots: MapSpot[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  flyTo?: { center: [number, number]; zoom: number } | null;
+  apiKey: string;
+}) {
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const lastFlyRef = useRef<string>("");
+  const onSelectRef = useRef(onSelect);
+  onSelectRef.current = onSelect;
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: "budget-map-google-maps",
+    googleMapsApiKey: apiKey,
+    language: "en",
+    region: "GB",
+  });
+
+  const mapOptions = useMemo((): google.maps.MapOptions => {
+    const zoomPos =
+      typeof google !== "undefined"
+        ? google.maps.ControlPosition.RIGHT_BOTTOM
+        : (9 as google.maps.ControlPosition);
+    return {
+      disableDefaultUI: false,
+      zoomControl: true,
+      zoomControlOptions: { position: zoomPos },
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: false,
+      clickableIcons: false,
+      gestureHandling: "greedy",
+    };
+  }, [isLoaded]);
+
+  const onMapLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+  }, []);
+
+  const onMapUnmount = useCallback(() => {
+    mapRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !flyTo) return;
+    const { center, zoom } = flyTo;
+    if (!isFinite(center[0]) || !isFinite(center[1])) return;
+    const key = `${center[0]},${center[1]},${zoom}`;
+    if (key === lastFlyRef.current) return;
+    lastFlyRef.current = key;
+    map.panTo({ lat: center[0], lng: center[1] });
+    map.setZoom(zoom);
+  }, [flyTo]);
+
+  if (loadError) {
+    return (
+      <div
+        className="map-fill flex items-center justify-center bg-[#e8eaed] p-6 text-center text-sm text-red-900"
+        style={{ position: "absolute", inset: 0 }}
+      >
+        Could not load Google Maps. Check API key, billing, and that Maps JavaScript API is enabled.
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div
+        className="map-fill flex items-center justify-center bg-[#e8eaed] text-sm text-[#0D1F1A]"
+        style={{ position: "absolute", inset: 0 }}
+      >
+        Loading map…
+      </div>
+    );
+  }
+
+  return (
+    <div className="map-fill" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}>
+      <GoogleMap
+        mapContainerStyle={{ width: "100%", height: "100%" }}
+        mapContainerClassName="google-map-root"
+        center={DEFAULT_CENTER_LATLNG}
+        zoom={DEFAULT_ZOOM}
+        onLoad={onMapLoad}
+        onUnmount={onMapUnmount}
+        options={mapOptions}
+      >
+        {spots.map((spot) => {
+          if (!isFinite(spot.lat) || !isFinite(spot.lng)) return null;
+          const selected = spot.id === selectedId;
+          return (
+            <OverlayViewF
+              key={spot.id}
+              position={{ lat: spot.lat, lng: spot.lng }}
+              mapPaneName={OVERLAY_MOUSE_TARGET}
+              zIndex={selected ? 1000 : 100}
+              getPixelPositionOffset={(w, h) => ({
+                x: -(w / 2),
+                y: -h,
+              })}
+            >
+              <SpotPill spot={spot} selected={selected} onSelect={() => onSelectRef.current(spot.id)} />
+            </OverlayViewF>
+          );
+        })}
+      </GoogleMap>
+    </div>
+  );
+}
+
+/** Google Maps when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is set; otherwise Leaflet + MapTiler/Carto. */
+export default function MapView(props: {
+  spots: MapSpot[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  flyTo?: { center: [number, number]; zoom: number } | null;
+}) {
+  const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").trim();
+  if (googleKey) {
+    return <MapViewGoogle {...props} apiKey={googleKey} />;
+  }
+  return <MapViewLeaflet {...props} />;
 }
