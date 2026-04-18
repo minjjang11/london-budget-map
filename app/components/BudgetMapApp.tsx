@@ -4,7 +4,18 @@ import Link from "next/link";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { MapSpot } from "./MapView";
-import { Map, MessagesSquare, Plus, Bookmark, Route, X, Navigation } from "lucide-react";
+import {
+  Map,
+  MessagesSquare,
+  Plus,
+  Bookmark,
+  Route,
+  X,
+  Navigation,
+  ThumbsUp,
+  LocateFixed,
+  Scale,
+} from "lucide-react";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -19,6 +30,12 @@ type Submission = {
   date: string;
 };
 
+type SpotComment = {
+  id: string;
+  text: string;
+  date: string;
+};
+
 type Spot = {
   id: string;
   name: string;
@@ -28,9 +45,17 @@ type Spot = {
   lng: number;
   address: string;
   submissions: Submission[];
+  /** When the spot was first registered (ISO) — used for 7-day community review window. */
+  registeredAt?: string;
+  upvotes?: number;
+  comments?: SpotComment[];
 };
 
 type Tab = "map" | "community" | "submit" | "saved" | "course";
+
+type CommunitySort = "price" | "buzz" | "snitches";
+
+type PlaceSheetTab = "info" | "buzz";
 
 const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
   { id: "all", emoji: "📍", label: "All" },
@@ -44,72 +69,38 @@ const AREAS = [
   "Euston", "Borough", "Bethnal Green", "Hackney",
 ];
 
-/** Demo spots — remove once real submissions exist. */
-const INITIAL_SPOTS: Spot[] = [
-  {
-    id: "demo_001",
-    name: "Pho 68",
-    category: "restaurant",
-    area: "Shoreditch",
-    lat: 51.5221,
-    lng: -0.0782,
-    address: "Shoreditch, London",
-    submissions: [
-      {
-        id: "sub_demo_001",
-        items: [
-          { name: "Beef Pho", price: 6.5 },
-          { name: "Spring Rolls", price: 3.5 },
-        ],
-        review: "Massive portions, the pho actually slaps",
-        date: "2025-01-15",
-      },
-    ],
-  },
-  {
-    id: "demo_002",
-    name: "The Crosse Keys",
-    category: "pub",
-    area: "Bank",
-    lat: 51.5133,
-    lng: -0.0886,
-    address: "Bank, London",
-    submissions: [
-      {
-        id: "sub_demo_002",
-        items: [
-          { name: "Pint of Lager", price: 3.2 },
-          { name: "Pint of Ale", price: 3.5 },
-        ],
-        review: "Cheapest pint in the City, no cap",
-        date: "2025-01-20",
-      },
-    ],
-  },
-  {
-    id: "demo_003",
-    name: "Monmouth Coffee",
-    category: "cafe",
-    area: "Borough",
-    lat: 51.5055,
-    lng: -0.0908,
-    address: "Borough, London",
-    submissions: [
-      {
-        id: "sub_demo_003",
-        items: [
-          { name: "Flat White", price: 2.8 },
-          { name: "Filter Coffee", price: 2.0 },
-        ],
-        review: "Best coffee in London at this price, queue moves fast",
-        date: "2025-01-22",
-      },
-    ],
-  },
-];
+/** No demo venues — spots come only from user submissions. */
+const INITIAL_SPOTS: Spot[] = [];
 
 const LS_KEY = "budget-map-spots-v2";
 const LS_SAVED = "budget-map-saved-v2";
+
+const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function normalizeSpot(raw: Spot): Spot {
+  const first = raw.submissions?.[0];
+  const fallbackReg =
+    raw.registeredAt ||
+    (first?.date?.includes("T") ? first.date : first?.date ? `${first.date}T12:00:00.000Z` : undefined) ||
+    new Date().toISOString();
+  return {
+    ...raw,
+    submissions: raw.submissions ?? [],
+    registeredAt: fallbackReg,
+    upvotes: raw.upvotes ?? 0,
+    comments: Array.isArray(raw.comments) ? raw.comments : [],
+  };
+}
+
+/** New spots stay “on trial” for 7 days for community scrutiny (local UX until backend). */
+function trialDaysLeft(registeredAt: string | undefined): number | null {
+  if (!registeredAt) return null;
+  const start = new Date(registeredAt).getTime();
+  if (!Number.isFinite(start)) return null;
+  const end = start + TRIAL_MS;
+  if (Date.now() >= end) return null;
+  return Math.max(1, Math.ceil((end - Date.now()) / (24 * 60 * 60 * 1000)));
+}
 
 function loadSpots(): Spot[] {
   if (typeof window === "undefined") return INITIAL_SPOTS;
@@ -124,12 +115,7 @@ function loadSpots(): Spot[] {
       localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
       return INITIAL_SPOTS;
     }
-    // Older builds seeded `[]` into LS; once defaults exist, replace empty cache so demos show.
-    if (parsed.length === 0 && INITIAL_SPOTS.length > 0) {
-      localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
-      return INITIAL_SPOTS;
-    }
-    return parsed as Spot[];
+    return (parsed as Spot[]).map(normalizeSpot);
   } catch {
     localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
     return INITIAL_SPOTS;
@@ -197,7 +183,13 @@ export default function BudgetMapApp() {
   const [submitReview, setSubmitReview] = useState("");
   const [submitLat, setSubmitLat] = useState("");
   const [submitLng, setSubmitLng] = useState("");
-  const [submitDone, setSubmitDone] = useState(false);
+  const [submitErrors, setSubmitErrors] = useState<{ name?: string; menu?: string; geo?: string }>({});
+  const [locating, setLocating] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const [communitySort, setCommunitySort] = useState<CommunitySort>("price");
+  const [placeSheetTab, setPlaceSheetTab] = useState<PlaceSheetTab>("info");
+  const [commentDraft, setCommentDraft] = useState("");
 
   const [courseBudget, setCourseBudget] = useState(25);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
@@ -208,7 +200,7 @@ export default function BudgetMapApp() {
     setSavedIds(loadSaved());
   }, []);
   useEffect(() => {
-    if (spots.length) saveSpots(spots);
+    saveSpots(spots);
   }, [spots]);
   useEffect(() => {
     saveSavedIds(savedIds);
@@ -224,10 +216,22 @@ export default function BudgetMapApp() {
     [spots, activeCat, activeArea],
   );
 
-  const ranked = useMemo(
-    () => [...filtered].sort((a, b) => lowestPrice(a) - lowestPrice(b)),
-    [filtered],
-  );
+  const ranked = useMemo(() => {
+    const arr = [...filtered];
+    if (communitySort === "price") {
+      return arr.sort((a, b) => lowestPrice(a) - lowestPrice(b));
+    }
+    if (communitySort === "buzz") {
+      return arr.sort(
+        (a, b) =>
+          (b.upvotes ?? 0) - (a.upvotes ?? 0) || lowestPrice(a) - lowestPrice(b),
+      );
+    }
+    return arr.sort(
+      (a, b) =>
+        b.submissions.length - a.submissions.length || lowestPrice(a) - lowestPrice(b),
+    );
+  }, [filtered, communitySort]);
 
   const mapSpots: MapSpot[] = useMemo(
     () =>
@@ -248,6 +252,11 @@ export default function BudgetMapApp() {
 
   const selected = spots.find((s) => s.id === selectedId) || null;
 
+  useEffect(() => {
+    setPlaceSheetTab("info");
+    setCommentDraft("");
+  }, [selectedId]);
+
   const toggleSave = (id: string) => {
     setSavedIds((prev) => {
       const n = new Set(prev);
@@ -262,37 +271,111 @@ export default function BudgetMapApp() {
   }, []);
 
   const handleSubmit = () => {
-    const validItems = submitItems.filter((i) => i.name && i.price > 0);
-    if (!submitName || validItems.length === 0) return;
+    const validItems = submitItems.filter((i) => i.name.trim() && i.price > 0);
+    const nextErr: { name?: string; menu?: string } = {};
+    if (!submitName.trim()) nextErr.name = "Add a venue name.";
+    if (validItems.length === 0) nextErr.menu = "Add at least one menu item with a price above £0.";
+    setSubmitErrors(nextErr);
+    if (Object.keys(nextErr).length) return;
+
     const lat = parseFloat(submitLat) || 51.51 + (Math.random() - 0.5) * 0.03;
     const lng = parseFloat(submitLng) || -0.09 + (Math.random() - 0.5) * 0.05;
-    const newSpot: Spot = {
-      id: `spot_${Date.now()}`,
-      name: submitName,
+    const nowIso = new Date().toISOString();
+    const newId = `spot_${Date.now()}`;
+    const newSpot: Spot = normalizeSpot({
+      id: newId,
+      name: submitName.trim(),
       category: submitCat,
       area: submitArea,
       lat,
       lng,
       address: `${submitArea}, London`,
+      registeredAt: nowIso,
+      upvotes: 0,
+      comments: [],
       submissions: [
         {
           id: `sub_${Date.now()}`,
           items: validItems,
-          review: submitReview || undefined,
-          date: new Date().toISOString().split("T")[0],
+          review: submitReview.trim() || undefined,
+          date: nowIso.split("T")[0],
         },
       ],
-    };
+    });
     setSpots([...spots, newSpot]);
-    setSubmitDone(true);
-    setTimeout(() => {
-      setSubmitDone(false);
-      setSubmitName("");
-      setSubmitItems([{ name: "", price: 0 }]);
-      setSubmitReview("");
-      setSubmitLat("");
-      setSubmitLng("");
-    }, 1600);
+    setSubmitName("");
+    setSubmitItems([{ name: "", price: 0 }]);
+    setSubmitReview("");
+    setSubmitLat("");
+    setSubmitLng("");
+    setSubmitErrors({});
+    setTab("map");
+    setSelectedId(newId);
+    setFlyTo({ center: [lat, lng], zoom: 16 });
+    setToast("Spot added — on trial for 7 days for community review.");
+    window.setTimeout(() => setToast(null), 4000);
+  };
+
+  const fillLocationFromDevice = () => {
+    if (!navigator.geolocation) {
+      setSubmitErrors((e) => ({ ...e, geo: "This browser doesn’t support location." }));
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setSubmitLat(String(pos.coords.latitude.toFixed(5)));
+        setSubmitLng(String(pos.coords.longitude.toFixed(5)));
+        setLocating(false);
+        setSubmitErrors({});
+      },
+      () => {
+        setLocating(false);
+        setSubmitErrors((e) => ({ ...e, geo: "Couldn’t read location — allow permission or enter lat/lng." }));
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+    );
+  };
+
+  const flyToMyLocation = () => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setFlyTo({ center: [lat, lng], zoom: 15 });
+        setTab("map");
+      },
+      () => {
+        setToast("Location blocked — check browser permissions.");
+        window.setTimeout(() => setToast(null), 3000);
+      },
+      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
+    );
+  };
+
+  const bumpUpvote = (spotId: string) => {
+    setSpots((prev) =>
+      prev.map((s) =>
+        s.id === spotId ? { ...s, upvotes: (s.upvotes ?? 0) + 1 } : s,
+      ),
+    );
+  };
+
+  const addComment = (spotId: string, text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const c: SpotComment = {
+      id: `c_${Date.now()}`,
+      text: trimmed,
+      date: new Date().toISOString().split("T")[0],
+    };
+    setSpots((prev) =>
+      prev.map((s) =>
+        s.id === spotId ? { ...s, comments: [...(s.comments ?? []), c] } : s,
+      ),
+    );
+    setCommentDraft("");
   };
 
   const planCourse = () => {
@@ -363,7 +446,33 @@ export default function BudgetMapApp() {
           </Link>
         </h1>
         <div className="budget-chip-row">{CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}</div>
+        <div className="mt-2.5 flex items-center justify-end gap-2 border-t border-budget-surface/60 pt-2.5">
+          <button
+            type="button"
+            onClick={flyToMyLocation}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-budget-surface bg-budget-bg px-3 py-1.5 text-[11px] font-bold text-budget-text"
+          >
+            <LocateFixed size={14} className="text-budget-primary" />
+            My location
+          </button>
+        </div>
       </header>
+
+      {toast && tab === "map" && (
+        <div
+          role="status"
+          className="pointer-events-none absolute left-3 right-3 top-[calc(118px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
+        >
+          {toast}
+        </div>
+      )}
+
+      {tab === "map" && mounted && spots.length === 0 && (
+        <div className="absolute left-3 right-3 top-[calc(168px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
+          <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
+          Open <strong>Submit</strong> to add the first cheap eat — it&apos;ll show here for everyone on this device.
+        </div>
+      )}
 
       {/* Map overlays — clean full-bleed map per ref */}
       {tab === "map" && (
@@ -376,8 +485,9 @@ export default function BudgetMapApp() {
             >
               <div
                 role="dialog"
+                aria-label="Place details"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 max-h-[52%] overflow-y-auto rounded-[22px] border border-budget-surface bg-budget-white p-4 pb-[18px] shadow-budget-sheet animate-slide-up [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 max-h-[58%] overflow-y-auto rounded-[22px] border border-budget-surface bg-budget-white p-4 pb-[18px] shadow-budget-sheet animate-slide-up [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1 pr-2">
@@ -396,26 +506,99 @@ export default function BudgetMapApp() {
                     <X size={18} />
                   </button>
                 </div>
-                <div className="mt-3 inline-block rounded-full bg-budget-surface px-3.5 py-1.5 text-[15px] font-extrabold text-budget-text">
-                  from {formatMapPriceLabel(lowestPrice(selected))}
+
+                {trialDaysLeft(selected.registeredAt) !== null && (
+                  <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-[11px] font-extrabold text-amber-950">
+                    <Scale size={14} strokeWidth={2.25} aria-hidden />
+                    On trial · {trialDaysLeft(selected.registeredAt)}d left — verify prices and cheer if it&apos;s legit
+                  </div>
+                )}
+
+                <div className="mt-3 flex gap-1 rounded-[14px] bg-budget-surface p-1">
+                  {(["info", "buzz"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setPlaceSheetTab(t)}
+                      className={`flex-1 cursor-pointer rounded-[10px] py-2 text-center text-[12px] font-extrabold transition ${
+                        placeSheetTab === t ? "bg-budget-white text-budget-text shadow-sm" : "text-budget-muted"
+                      }`}
+                    >
+                      {t === "info" ? "Details" : "Buzz"}
+                    </button>
+                  ))}
                 </div>
 
-                {selected.submissions.map((sub) => (
-                  <div key={sub.id} className="mt-3 rounded-[14px] border border-budget-surface bg-budget-bg p-3">
-                    <div className="mb-1.5 text-[10px] text-budget-subtle">{sub.date}</div>
-                    {sub.items.map((item, ii) => (
-                      <div key={ii} className="mb-1 flex justify-between text-sm text-budget-text">
-                        <span>{item.name}</span>
-                        <span className="font-extrabold">
-                          {item.price < 3 ? "🔥 " : ""}£{item.price.toFixed(2)}
-                        </span>
+                {placeSheetTab === "info" && (
+                  <>
+                    <div className="mt-3 inline-block rounded-full bg-budget-surface px-3.5 py-1.5 text-[15px] font-extrabold text-budget-text">
+                      from {formatMapPriceLabel(lowestPrice(selected))}
+                    </div>
+
+                    {selected.submissions.map((sub) => (
+                      <div key={sub.id} className="mt-3 rounded-[14px] border border-budget-surface bg-budget-bg p-3">
+                        <div className="mb-1.5 text-[10px] text-budget-subtle">{sub.date}</div>
+                        {sub.items.map((item, ii) => (
+                          <div key={ii} className="mb-1 flex justify-between text-sm text-budget-text">
+                            <span>{item.name}</span>
+                            <span className="font-extrabold">
+                              {item.price < 3 ? "🔥 " : ""}£{item.price.toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                        {sub.review && (
+                          <div className="mt-2 text-[13px] italic text-budget-muted">&ldquo;{sub.review}&rdquo;</div>
+                        )}
                       </div>
                     ))}
-                    {sub.review && (
-                      <div className="mt-2 text-[13px] italic text-budget-muted">&ldquo;{sub.review}&rdquo;</div>
-                    )}
+                  </>
+                )}
+
+                {placeSheetTab === "buzz" && (
+                  <div className="mt-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => bumpUpvote(selected.id)}
+                        className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-[14px] border border-budget-surface bg-budget-bg py-3 text-[13px] font-extrabold text-budget-text"
+                      >
+                        <ThumbsUp size={18} className="text-budget-primary" />
+                        Rate it ({selected.upvotes ?? 0})
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-budget-subtle">
+                      Stored on this device until we ship a shared backend.
+                    </p>
+                    <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-[14px] border border-budget-surface bg-budget-bg p-2">
+                      {(selected.comments ?? []).length === 0 ? (
+                        <p className="px-2 py-3 text-center text-[12px] text-budget-muted">No comments yet.</p>
+                      ) : (
+                        (selected.comments ?? []).map((cm) => (
+                          <div key={cm.id} className="rounded-xl bg-budget-white px-3 py-2 text-[13px] text-budget-text">
+                            <div className="text-[10px] font-bold text-budget-subtle">{cm.date}</div>
+                            <div className="mt-0.5">{cm.text}</div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <input
+                        value={commentDraft}
+                        onChange={(e) => setCommentDraft(e.target.value)}
+                        placeholder="Add a quick note…"
+                        className="budget-input-sm min-w-0 flex-1 text-[13px]"
+                        maxLength={280}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => addComment(selected.id, commentDraft)}
+                        className="shrink-0 cursor-pointer rounded-[14px] border-0 bg-budget-primary px-4 py-2.5 text-[12px] font-extrabold text-white"
+                      >
+                        Post
+                      </button>
+                    </div>
                   </div>
-                ))}
+                )}
 
                 <div className="mt-3.5 flex gap-2.5">
                   <button
@@ -449,6 +632,32 @@ export default function BudgetMapApp() {
 
       {tab === "community" && (
         <div className="budget-tab-panel px-3 pb-3">
+          <h2 className="mb-1 text-lg font-extrabold text-budget-text">Rankings</h2>
+          <p className="mb-3 text-[12px] text-budget-muted">How the list is sorted — tap a row to open it on the map.</p>
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Sort</p>
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            {(
+              [
+                { id: "price" as const, label: "Cheapest" },
+                { id: "buzz" as const, label: "Most rated" },
+                { id: "snitches" as const, label: "Most reports" },
+              ] as const
+            ).map(({ id, label }) => {
+              const active = communitySort === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setCommunitySort(id)}
+                  className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
+                    active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Area</p>
           <div className="mb-4 flex flex-wrap gap-1.5">
             {AREAS.map((area) => {
@@ -469,7 +678,7 @@ export default function BudgetMapApp() {
               );
             })}
           </div>
-          <p className="mb-3 text-sm text-budget-muted">Cheapest first — tap to fly there on the map.</p>
+          <p className="mb-3 text-sm text-budget-muted">Tap a row to fly there on the map.</p>
           {ranked.map((spot, i) => (
             <button
               key={spot.id}
@@ -487,7 +696,12 @@ export default function BudgetMapApp() {
                 <div className="font-bold text-budget-text">{spot.name}</div>
                 <div className="text-xs text-budget-subtle">{spot.area}</div>
               </div>
-              <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
+              <div className="flex flex-col items-end gap-0.5">
+                <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
+                {(spot.upvotes ?? 0) > 0 && (
+                  <span className="text-[10px] font-semibold text-budget-subtle">👍 {spot.upvotes}</span>
+                )}
+              </div>
             </button>
           ))}
         </div>
@@ -495,28 +709,31 @@ export default function BudgetMapApp() {
 
       {tab === "submit" && (
         <div className="budget-tab-panel p-4">
-          {submitDone ? (
-            <div className="py-12 text-center">
-              <div className="mb-2 text-[40px]">✓</div>
-              <div className="text-[17px] font-extrabold text-budget-primary">Snitched successfully</div>
-              <p className="mt-2 text-sm text-budget-text/50">Legend — that&apos;s going on the map.</p>
-            </div>
-          ) : (
-            <>
-              <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
-              <p className="mb-4 text-xs text-budget-text/50">
-                Spill the beans on prices so the rest of us can survive term time.
-              </p>
+          <>
+            <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
+            <p className="mb-4 text-xs text-budget-text/50">
+              Spill the beans on prices so the rest of us can survive term time. New spots stay{" "}
+              <strong>on trial for 7 days</strong> so others can sanity-check them.
+            </p>
 
-              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Venue name</label>
-              <input
-                value={submitName}
-                onChange={(e) => setSubmitName(e.target.value)}
-                placeholder="e.g. The Royal Oak"
-                className="mb-3.5 w-full rounded-[14px] border-2 border-budget-primary bg-budget-white px-3.5 py-3 text-[15px] text-budget-text outline-none focus:ring-2 focus:ring-budget-primary/25"
-              />
+            <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Venue name</label>
+            <input
+              value={submitName}
+              onChange={(e) => {
+                setSubmitName(e.target.value);
+                if (submitErrors.name) setSubmitErrors((er) => ({ ...er, name: undefined }));
+              }}
+              placeholder="e.g. The Royal Oak"
+              aria-invalid={!!submitErrors.name}
+              className={`mb-1 w-full rounded-[14px] border-2 bg-budget-white px-3.5 py-3 text-[15px] text-budget-text outline-none focus:ring-2 focus:ring-budget-primary/25 ${
+                submitErrors.name ? "border-red-400" : "border-budget-primary"
+              }`}
+            />
+            {submitErrors.name && (
+              <p className="mb-3 text-[12px] font-semibold text-red-600">{submitErrors.name}</p>
+            )}
 
-              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Category</label>
+              <label className="mb-1.5 mt-3 block text-xs font-semibold text-budget-muted">Category</label>
               <div className="mb-3.5 flex gap-2">
                 {(["restaurant", "pub", "cafe"] as Category[]).map((c) => (
                   <button
@@ -553,6 +770,9 @@ export default function BudgetMapApp() {
               </div>
 
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Menu & prices</label>
+              {submitErrors.menu && (
+                <p className="mb-2 text-[12px] font-semibold text-red-600">{submitErrors.menu}</p>
+              )}
               {submitItems.map((item, idx) => (
                 <div key={idx} className="mb-2 flex gap-2">
                   <input
@@ -562,6 +782,7 @@ export default function BudgetMapApp() {
                       const n = [...submitItems];
                       n[idx] = { ...n[idx], name: e.target.value };
                       setSubmitItems(n);
+                      if (submitErrors.menu) setSubmitErrors((er) => ({ ...er, menu: undefined }));
                     }}
                     className="budget-input-sm min-w-0 flex-1 text-sm"
                   />
@@ -578,6 +799,7 @@ export default function BudgetMapApp() {
                         const n = [...submitItems];
                         n[idx] = { ...n[idx], price: parseFloat(e.target.value) || 0 };
                         setSubmitItems(n);
+                        if (submitErrors.menu) setSubmitErrors((er) => ({ ...er, menu: undefined }));
                       }}
                       className="budget-input-sm w-[88px] pl-6 text-sm"
                     />
@@ -592,17 +814,37 @@ export default function BudgetMapApp() {
                 + Add item
               </button>
 
-              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Optional: lat / lng</label>
+              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                <label className="text-xs font-semibold text-budget-muted">Pin (optional)</label>
+                <button
+                  type="button"
+                  onClick={fillLocationFromDevice}
+                  disabled={locating}
+                  className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-budget-surface bg-budget-bg px-2.5 py-1 text-[11px] font-bold text-budget-text disabled:opacity-50"
+                >
+                  <LocateFixed size={12} className="text-budget-primary" />
+                  {locating ? "Locating…" : "Use my location"}
+                </button>
+              </div>
+              {submitErrors.geo && (
+                <p className="mb-2 text-[12px] font-semibold text-red-600">{submitErrors.geo}</p>
+              )}
               <div className="mb-3.5 flex gap-2">
                 <input
                   value={submitLat}
-                  onChange={(e) => setSubmitLat(e.target.value)}
+                  onChange={(e) => {
+                    setSubmitLat(e.target.value);
+                    if (submitErrors.geo) setSubmitErrors((er) => ({ ...er, geo: undefined }));
+                  }}
                   placeholder="lat"
                   className="budget-input-sm min-w-0 flex-1 text-[13px]"
                 />
                 <input
                   value={submitLng}
-                  onChange={(e) => setSubmitLng(e.target.value)}
+                  onChange={(e) => {
+                    setSubmitLng(e.target.value);
+                    if (submitErrors.geo) setSubmitErrors((er) => ({ ...er, geo: undefined }));
+                  }}
                   placeholder="lng"
                   className="budget-input-sm min-w-0 flex-1 text-[13px]"
                 />
@@ -619,13 +861,11 @@ export default function BudgetMapApp() {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={!submitName || submitItems.every((i) => !i.name || i.price <= 0)}
-                className="w-full cursor-pointer rounded-2xl border-0 bg-budget-cta py-3.5 text-[15px] font-extrabold text-white shadow-budget-cta transition disabled:cursor-not-allowed disabled:opacity-45"
+                className="w-full cursor-pointer rounded-2xl border-0 bg-budget-cta py-3.5 text-[15px] font-extrabold text-white shadow-budget-cta transition"
               >
                 Submit spot
               </button>
             </>
-          )}
         </div>
       )}
 
@@ -665,9 +905,14 @@ export default function BudgetMapApp() {
         <div className="budget-tab-panel p-4">
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
-            <p className="mb-4 text-[13px] leading-relaxed text-budget-muted">
-              One coffee, one meal, one pint — cheapest trio we can find under your cap.
+            <p className="mb-2 text-[13px] leading-relaxed text-budget-muted">
+              One coffee, one meal, one pint — we search every spot on this map for the cheapest trio under your cap.
             </p>
+            <ul className="mb-4 list-disc space-y-1 pl-4 text-[12px] text-budget-subtle">
+              <li>Uses <strong>lowest menu price</strong> per venue (from submissions).</li>
+              <li>Needs at least one <strong>pub</strong>, one <strong>restaurant</strong>, and one <strong>cafe</strong>.</li>
+              <li>Picks the trio with the <strong>smallest total</strong> that still fits under your max spend.</li>
+            </ul>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[13px] font-semibold text-budget-text">Max spend</span>
               <span className="text-xl font-extrabold text-budget-primary">£{courseBudget}</span>
@@ -727,7 +972,7 @@ export default function BudgetMapApp() {
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
-            { id: "community" as Tab, label: "Community", Icon: MessagesSquare },
+            { id: "community" as Tab, label: "Rankings", Icon: MessagesSquare },
             { id: "submit" as Tab, label: "Submit", Icon: Plus },
             { id: "saved" as Tab, label: "Saved", Icon: Bookmark },
             { id: "course" as Tab, label: "Course", Icon: Route },
