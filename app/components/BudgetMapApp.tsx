@@ -15,6 +15,7 @@ import {
   ThumbsUp,
   LocateFixed,
   Scale,
+  ChevronRight,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -60,7 +61,18 @@ function normalizeSpot(raw: Spot): Spot {
     registeredAt: fallbackReg,
     upvotes: raw.upvotes ?? 0,
     comments: Array.isArray(raw.comments) ? raw.comments : [],
+    description: raw.description?.trim() || undefined,
   };
+}
+
+/** Short text for compact marker preview: DB description, else first review, else default. */
+function spotPreviewBlurb(spot: Spot): string {
+  const fromDb = spot.description?.trim();
+  if (fromDb) return fromDb;
+  for (const sub of spot.submissions) {
+    if (sub.review?.trim()) return sub.review.trim();
+  }
+  return "Crowdsourced prices — open full details for the menu breakdown and buzz.";
 }
 
 /** New spots stay “on trial” for 7 days for community scrutiny (local UX until backend). */
@@ -161,6 +173,8 @@ export default function BudgetMapApp() {
   const [communitySort, setCommunitySort] = useState<CommunitySort>("price");
   const [placeSheetTab, setPlaceSheetTab] = useState<PlaceSheetTab>("info");
   const [commentDraft, setCommentDraft] = useState("");
+  /** After marker tap: compact preview first; "Full details" opens existing sheet body. */
+  const [placeDetailExpanded, setPlaceDetailExpanded] = useState(false);
 
   const [courseBudget, setCourseBudget] = useState(25);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
@@ -255,6 +269,7 @@ export default function BudgetMapApp() {
   useEffect(() => {
     setPlaceSheetTab("info");
     setCommentDraft("");
+    setPlaceDetailExpanded(false);
   }, [selectedId]);
 
   const toggleSave = (id: string) => {
@@ -504,11 +519,87 @@ export default function BudgetMapApp() {
             >
               <div
                 role="dialog"
-                aria-label="Place details"
+                aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 max-h-[62vh] overflow-y-auto rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-5 pt-5 shadow-budget-sheet animate-slide-up [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className={`absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
+                  placeDetailExpanded
+                    ? "max-h-[62vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                    : "max-h-[min(48vh,420px)] overflow-hidden pb-4"
+                }`}
               >
-                <div className="flex gap-3.5">
+                {!placeDetailExpanded ? (
+                  <div className="flex gap-3">
+                    <div
+                      className="grid size-[48px] shrink-0 place-items-center rounded-2xl bg-budget-surface text-[24px] leading-none shadow-[inset_0_1px_0_rgb(255_255_255_/0.65)]"
+                      aria-hidden
+                    >
+                      {catEmoji(selected.category)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
+                          {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
+                          {selected.area.toUpperCase()}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(null)}
+                          className="grid size-9 shrink-0 place-items-center rounded-full border-0 bg-budget-surface text-budget-text cursor-pointer transition hover:bg-budget-surface/80"
+                          aria-label="Close"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <h2 className="mt-1 text-[1.2rem] font-extrabold leading-[1.15] tracking-[-0.03em] text-budget-text">
+                        {selected.name}
+                      </h2>
+                      <div className="mt-2.5">
+                        <span className="inline-flex rounded-full bg-budget-primary px-3 py-1.5 text-[13px] font-extrabold text-white shadow-[0_4px_12px_rgb(0_168_120_/0.35)]">
+                          from {formatMapPriceLabel(lowestPrice(selected))}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[11px] leading-snug text-budget-text/50">{selected.address}</p>
+                      <p className="mt-2 line-clamp-4 text-[13px] leading-snug text-budget-text/75">
+                        {spotPreviewBlurb(selected)}
+                      </p>
+                      <div className="mt-4 flex flex-col gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.open(
+                              `https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`,
+                              "_blank",
+                            );
+                          }}
+                          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-3 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
+                        >
+                          <Navigation size={17} strokeWidth={2.25} />
+                          Directions in Google Maps
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPlaceDetailExpanded(true)}
+                          className="inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-2xl border-2 border-budget-surface bg-budget-white py-3 text-[13px] font-extrabold text-budget-text"
+                        >
+                          Full details
+                          <ChevronRight size={18} className="text-budget-primary" aria-hidden />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-3 flex items-center border-b border-budget-surface/60 pb-2.5">
+                      <button
+                        type="button"
+                        onClick={() => setPlaceDetailExpanded(false)}
+                        className="cursor-pointer rounded-full border-0 bg-budget-surface px-3 py-1.5 text-[12px] font-extrabold text-budget-text transition hover:bg-budget-surface/80"
+                      >
+                        ← Summary
+                      </button>
+                    </div>
+
+                    <div className="flex gap-3.5">
                   <div
                     className="grid size-[52px] shrink-0 place-items-center rounded-2xl bg-budget-surface text-[26px] leading-none shadow-[inset_0_1px_0_rgb(255_255_255_/0.65)]"
                     aria-hidden
@@ -680,6 +771,8 @@ export default function BudgetMapApp() {
                     Directions
                   </button>
                 </div>
+                  </>
+                )}
               </div>
             </div>
           )}

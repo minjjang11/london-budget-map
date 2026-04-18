@@ -85,6 +85,7 @@ export function mapPlaceRowToSpot(row: PlaceRow): Spot {
     lat: row.lat,
     lng: row.lng,
     address: row.address?.trim() || `${row.area}, London`,
+    description: row.description?.trim() || undefined,
     submissions,
     registeredAt: fallbackReg,
     upvotes: row.upvotes ?? 0,

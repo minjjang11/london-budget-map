@@ -13,6 +13,8 @@ export type PlaceRow = {
   category: Category;
   area: string;
   address: string | null;
+  /** Short public blurb for map preview (column added in 002 migration). */
+  description?: string | null;
   lat: number;
   lng: number;
   /** Lowest menu price in GBP for map pill when submissions JSON is empty. */

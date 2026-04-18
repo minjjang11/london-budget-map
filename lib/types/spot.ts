@@ -25,6 +25,8 @@ export type Spot = {
   lat: number;
   lng: number;
   address: string;
+  /** Optional short blurb (e.g. from Supabase `places.description`). */
+  description?: string;
   submissions: SpotSubmissionRecord[];
   /** When the spot was first registered (ISO) — used for 7-day community review window. */
   registeredAt?: string;
