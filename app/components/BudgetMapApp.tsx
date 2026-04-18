@@ -467,6 +467,15 @@ export default function BudgetMapApp() {
         </div>
       )}
 
+      {tab === "map" && mounted && spots.length > 0 && (
+        <div
+          className="absolute right-3 top-[calc(124px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
+          aria-live="polite"
+        >
+          {mapSpots.length} spot{mapSpots.length === 1 ? "" : "s"}
+        </div>
+      )}
+
       {tab === "map" && mounted && spots.length === 0 && (
         <div className="absolute left-3 right-3 top-[calc(168px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
@@ -487,40 +496,61 @@ export default function BudgetMapApp() {
                 role="dialog"
                 aria-label="Place details"
                 onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 max-h-[58%] overflow-y-auto rounded-[22px] border border-budget-surface bg-budget-white p-4 pb-[18px] shadow-budget-sheet animate-slide-up [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 max-h-[62vh] overflow-y-auto rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-5 pt-5 shadow-budget-sheet animate-slide-up [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 flex-1 pr-2">
-                    <div className="text-[11px] font-bold text-budget-primary">
-                      {catEmoji(selected.category)} {CATS.find((c) => c.id === selected.category)?.label} ·{" "}
-                      {selected.area}
-                    </div>
-                    <div className="mt-1 text-lg font-extrabold text-budget-text">{selected.name}</div>
-                    <div className="mt-0.5 text-xs text-budget-text/50">{selected.address}</div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(null)}
-                    className="grid size-9 shrink-0 place-items-center rounded-full border-0 bg-budget-surface text-budget-text cursor-pointer"
+                <div className="flex gap-3.5">
+                  <div
+                    className="grid size-[52px] shrink-0 place-items-center rounded-2xl bg-budget-surface text-[26px] leading-none shadow-[inset_0_1px_0_rgb(255_255_255_/0.65)]"
+                    aria-hidden
                   >
-                    <X size={18} />
-                  </button>
+                    {catEmoji(selected.category)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
+                          {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
+                          {selected.area.toUpperCase()}
+                        </p>
+                        <h2 className="mt-1.5 text-[1.35rem] font-extrabold leading-[1.15] tracking-[-0.035em] text-budget-text">
+                          {selected.name}
+                        </h2>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedId(null)}
+                        className="grid size-10 shrink-0 place-items-center rounded-full border-0 bg-budget-surface text-budget-text cursor-pointer transition hover:bg-budget-surface/80"
+                        aria-label="Close"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-budget-primary px-3.5 py-1.5 text-[14px] font-extrabold text-white shadow-[0_4px_12px_rgb(0_168_120_/0.35)]">
+                        from {formatMapPriceLabel(lowestPrice(selected))}
+                      </span>
+                      <span className="text-[12px] font-semibold text-budget-muted">
+                        {selected.submissions.length} report{selected.submissions.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    <p className="mt-1.5 text-[11px] leading-snug text-budget-text/45">{selected.address}</p>
+                  </div>
                 </div>
 
                 {trialDaysLeft(selected.registeredAt) !== null && (
-                  <div className="mt-2.5 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-[11px] font-extrabold text-amber-950">
-                    <Scale size={14} strokeWidth={2.25} aria-hidden />
+                  <div className="mt-3 inline-flex w-full items-center gap-1.5 rounded-2xl bg-amber-100 px-3 py-2 text-[11px] font-extrabold leading-snug text-amber-950">
+                    <Scale size={14} strokeWidth={2.25} aria-hidden className="shrink-0" />
                     On trial · {trialDaysLeft(selected.registeredAt)}d left — verify prices and cheer if it&apos;s legit
                   </div>
                 )}
 
-                <div className="mt-3 flex gap-1 rounded-[14px] bg-budget-surface p-1">
+                <div className="mt-4 flex gap-1 rounded-[14px] bg-budget-surface/90 p-1">
                   {(["info", "buzz"] as const).map((t) => (
                     <button
                       key={t}
                       type="button"
                       onClick={() => setPlaceSheetTab(t)}
-                      className={`flex-1 cursor-pointer rounded-[10px] py-2 text-center text-[12px] font-extrabold transition ${
+                      className={`flex-1 cursor-pointer rounded-[11px] py-2.5 text-center text-[12px] font-extrabold transition ${
                         placeSheetTab === t ? "bg-budget-white text-budget-text shadow-sm" : "text-budget-muted"
                       }`}
                     >
@@ -530,37 +560,45 @@ export default function BudgetMapApp() {
                 </div>
 
                 {placeSheetTab === "info" && (
-                  <>
-                    <div className="mt-3 inline-block rounded-full bg-budget-surface px-3.5 py-1.5 text-[15px] font-extrabold text-budget-text">
-                      from {formatMapPriceLabel(lowestPrice(selected))}
-                    </div>
-
+                  <div className="mt-4 space-y-3">
                     {selected.submissions.map((sub) => (
-                      <div key={sub.id} className="mt-3 rounded-[14px] border border-budget-surface bg-budget-bg p-3">
-                        <div className="mb-1.5 text-[10px] text-budget-subtle">{sub.date}</div>
+                      <div
+                        key={sub.id}
+                        className="rounded-2xl bg-[#e8f2ed] px-3.5 py-3.5 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
+                      >
+                        <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">
+                          Report · {sub.date}
+                        </div>
                         {sub.items.map((item, ii) => (
-                          <div key={ii} className="mb-1 flex justify-between text-sm text-budget-text">
-                            <span>{item.name}</span>
-                            <span className="font-extrabold">
+                          <div
+                            key={ii}
+                            className={`flex justify-between gap-3 text-[14px] text-budget-text ${ii > 0 ? "mt-2.5" : "mt-3"}`}
+                          >
+                            <span className="min-w-0 font-semibold leading-snug">{item.name}</span>
+                            <span className="shrink-0 font-extrabold text-budget-primary">
                               {item.price < 3 ? "🔥 " : ""}£{item.price.toFixed(2)}
                             </span>
                           </div>
                         ))}
                         {sub.review && (
-                          <div className="mt-2 text-[13px] italic text-budget-muted">&ldquo;{sub.review}&rdquo;</div>
+                          <div className="mt-3 rounded-xl border-l-[4px] border-budget-primary bg-emerald-50/95 px-3 py-2.5 text-[13px] font-medium leading-snug text-budget-text">
+                            <span className="text-budget-primary/80">&ldquo;</span>
+                            {sub.review}
+                            <span className="text-budget-primary/80">&rdquo;</span>
+                          </div>
                         )}
                       </div>
                     ))}
-                  </>
+                  </div>
                 )}
 
                 {placeSheetTab === "buzz" && (
-                  <div className="mt-3 space-y-3">
+                  <div className="mt-4 space-y-3">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => bumpUpvote(selected.id)}
-                        className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-[14px] border border-budget-surface bg-budget-bg py-3 text-[13px] font-extrabold text-budget-text"
+                        className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
                       >
                         <ThumbsUp size={18} className="text-budget-primary" />
                         Rate it ({selected.upvotes ?? 0})
@@ -569,14 +607,19 @@ export default function BudgetMapApp() {
                     <p className="text-[11px] text-budget-subtle">
                       Stored on this device until we ship a shared backend.
                     </p>
-                    <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-[14px] border border-budget-surface bg-budget-bg p-2">
+                    <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-2xl border border-budget-surface/80 bg-[#e8f2ed] p-2">
                       {(selected.comments ?? []).length === 0 ? (
-                        <p className="px-2 py-3 text-center text-[12px] text-budget-muted">No comments yet.</p>
+                        <p className="px-2 py-4 text-center text-[12px] text-budget-muted">No comments yet.</p>
                       ) : (
                         (selected.comments ?? []).map((cm) => (
-                          <div key={cm.id} className="rounded-xl bg-budget-white px-3 py-2 text-[13px] text-budget-text">
-                            <div className="text-[10px] font-bold text-budget-subtle">{cm.date}</div>
-                            <div className="mt-0.5">{cm.text}</div>
+                          <div
+                            key={cm.id}
+                            className="rounded-xl border border-white/60 bg-white px-3 py-2.5 text-[13px] text-budget-text shadow-sm"
+                          >
+                            <div className="text-[10px] font-extrabold uppercase tracking-wide text-budget-subtle">
+                              {cm.date}
+                            </div>
+                            <div className="mt-1">{cm.text}</div>
                           </div>
                         ))
                       )}
@@ -592,7 +635,7 @@ export default function BudgetMapApp() {
                       <button
                         type="button"
                         onClick={() => addComment(selected.id, commentDraft)}
-                        className="shrink-0 cursor-pointer rounded-[14px] border-0 bg-budget-primary px-4 py-2.5 text-[12px] font-extrabold text-white"
+                        className="shrink-0 cursor-pointer rounded-2xl border-0 bg-budget-primary px-4 py-2.5 text-[12px] font-extrabold text-white"
                       >
                         Post
                       </button>
@@ -600,14 +643,15 @@ export default function BudgetMapApp() {
                   </div>
                 )}
 
-                <div className="mt-3.5 flex gap-2.5">
+                <div className="mt-5 flex gap-3">
                   <button
                     type="button"
                     onClick={() => toggleSave(selected.id)}
-                    className={`flex-1 cursor-pointer rounded-[14px] border border-budget-surface py-3 text-[13px] font-bold text-budget-text transition ${
+                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface py-3.5 text-[13px] font-extrabold text-budget-text transition ${
                       savedIds.has(selected.id) ? "bg-budget-surface" : "bg-budget-white"
                     }`}
                   >
+                    <Bookmark size={18} strokeWidth={2} className="text-budget-primary" />
                     {savedIds.has(selected.id) ? "Saved" : "Save"}
                   </button>
                   <button
@@ -618,9 +662,9 @@ export default function BudgetMapApp() {
                         "_blank",
                       );
                     }}
-                    className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[14px] border-0 bg-budget-primary py-3 text-[13px] font-bold text-white"
+                    className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-3.5 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
                   >
-                    <Navigation size={16} />
+                    <Navigation size={18} strokeWidth={2.25} />
                     Directions
                   </button>
                 </div>

@@ -20,48 +20,40 @@ const EMOJI: Record<string, string> = {
   cafe: "☕",
 };
 
-const BORDER_GREEN = "rgba(0, 168, 120, 0.42)";
-const BORDER_ORANGE = "rgba(245, 158, 11, 0.75)";
+const PRIMARY = "#00a878";
 
-function categoryBorder(cat: MapSpot["category"], selected: boolean): string {
-  const w = selected ? 2 : 1;
-  if (cat === "pub") return `${w}px solid ${BORDER_ORANGE}`;
-  return `${w}px solid ${BORDER_GREEN}`;
-}
-
+/** Selected = solid brand green pill; unselected = soft white pill (reference UI). */
 function makeLeafletIcon(spot: MapSpot, isSelected: boolean) {
   const emoji = EMOJI[spot.category];
-  const scale = isSelected ? "scale(1.06)" : "scale(1)";
-  const border = categoryBorder(spot.category, isSelected);
-  const shadow = isSelected
-    ? `0 4px 14px rgba(0, 168, 120, 0.28)`
-    : `0 2px 8px rgba(13, 31, 26, 0.07)`;
+  const scale = isSelected ? "scale(1.08)" : "scale(1)";
+  const pillStyle = isSelected
+    ? `background:${PRIMARY};border:2px solid #00c896;color:#fff;box-shadow:0 6px 18px rgba(0,168,120,0.45);`
+    : `background:rgba(255,255,255,0.94);border:1px solid rgba(0,168,120,0.38);color:#0D1F1A;box-shadow:0 2px 10px rgba(13,31,26,0.08);opacity:0.9;`;
+  const labelColor = isSelected ? "#ffffff" : "#0D1F1A";
 
   const html = `
     <div style="
       display:flex;flex-direction:column;align-items:center;
       cursor:pointer;
       transform: ${scale};
-      transition: transform 0.2s ease;
+      transition: transform 0.2s ease, opacity 0.2s ease;
     ">
       <div style="
-        background: #ffffff;
-        border: ${border};
+        ${pillStyle}
         border-radius: 999px;
-        padding: 3px 8px 3px 7px;
+        padding: 4px 10px 4px 8px;
         white-space: nowrap;
         text-align: center;
-        box-shadow: ${shadow};
         display: inline-flex;
         align-items: center;
-        gap: 4px;
+        gap: 5px;
       ">
-        <span style="font-size:12px;line-height:1;">${emoji}</span>
+        <span style="font-size:13px;line-height:1;">${emoji}</span>
         <span style="
-          font-size:10px;
+          font-size:11px;
           font-weight: 800;
           letter-spacing: -0.02em;
-          color: #0D1F1A;
+          color: ${labelColor};
         ">${spot.priceLabel}</span>
       </div>
     </div>
@@ -69,8 +61,8 @@ function makeLeafletIcon(spot: MapSpot, isSelected: boolean) {
   return L.divIcon({
     html,
     className: "spot-marker",
-    iconSize: [76, 30],
-    iconAnchor: [38, 15],
+    iconSize: [84, 34],
+    iconAnchor: [42, 17],
   });
 }
 
@@ -133,10 +125,6 @@ function SpotPill({
   onSelect: () => void;
 }) {
   const emoji = EMOJI[spot.category];
-  const border = categoryBorder(spot.category, selected);
-  const shadow = selected
-    ? `0 4px 14px rgba(0, 168, 120, 0.28)`
-    : `0 2px 8px rgba(13, 31, 26, 0.07)`;
 
   return (
     <button
@@ -147,16 +135,24 @@ function SpotPill({
       }}
       className="flex cursor-pointer flex-col items-center border-0 bg-transparent p-0 transition-transform"
       style={{
-        transform: selected ? "scale(1.06)" : "scale(1)",
+        transform: selected ? "scale(1.08)" : "scale(1)",
         zIndex: selected ? 5 : 1,
       }}
     >
       <div
-        className="inline-flex items-center gap-1 rounded-full border bg-white"
-        style={{ border, boxShadow: shadow, padding: "3px 8px 3px 7px" }}
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-shadow ${
+          selected
+            ? "bg-[#00a878] text-white shadow-[0_6px_18px_rgba(0,168,120,0.45)] ring-2 ring-[#00a878]/30"
+            : "border border-[#00a878]/38 bg-white/95 text-[#0D1F1A] opacity-90 shadow-[0_2px_10px_rgba(13,31,26,0.08)]"
+        }`}
+        style={{ padding: "4px 10px 4px 8px" }}
       >
-        <span className="text-xs leading-none">{emoji}</span>
-        <span className="text-[10px] font-extrabold tracking-tight text-[#0D1F1A]">{spot.priceLabel}</span>
+        <span className="text-[13px] leading-none">{emoji}</span>
+        <span
+          className={`text-[11px] font-extrabold tracking-tight ${selected ? "text-white" : "text-[#0D1F1A]"}`}
+        >
+          {spot.priceLabel}
+        </span>
       </div>
     </button>
   );
