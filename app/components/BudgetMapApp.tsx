@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { MapSpot } from "./MapView";
 import {
@@ -16,40 +16,11 @@ import {
   LocateFixed,
   Scale,
 } from "lucide-react";
+import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
+import { getBrowserSupabase } from "@/lib/supabase/client";
+import { fetchApprovedPlaces } from "@/lib/places/fetchApprovedPlaces";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
-
-type Category = "pub" | "restaurant" | "cafe";
-
-type MenuItem = { name: string; price: number };
-
-type Submission = {
-  id: string;
-  items: MenuItem[];
-  review?: string;
-  date: string;
-};
-
-type SpotComment = {
-  id: string;
-  text: string;
-  date: string;
-};
-
-type Spot = {
-  id: string;
-  name: string;
-  category: Category;
-  area: string;
-  lat: number;
-  lng: number;
-  address: string;
-  submissions: Submission[];
-  /** When the spot was first registered (ISO) — used for 7-day community review window. */
-  registeredAt?: string;
-  upvotes?: number;
-  comments?: SpotComment[];
-};
 
 type Tab = "map" | "community" | "submit" | "saved" | "course";
 
@@ -179,7 +150,7 @@ export default function BudgetMapApp() {
   const [submitName, setSubmitName] = useState("");
   const [submitArea, setSubmitArea] = useState("Soho");
   const [submitCat, setSubmitCat] = useState<Category>("restaurant");
-  const [submitItems, setSubmitItems] = useState<MenuItem[]>([{ name: "", price: 0 }]);
+  const [submitItems, setSubmitItems] = useState<SpotMenuItem[]>([{ name: "", price: 0 }]);
   const [submitReview, setSubmitReview] = useState("");
   const [submitLat, setSubmitLat] = useState("");
   const [submitLng, setSubmitLng] = useState("");
@@ -193,11 +164,40 @@ export default function BudgetMapApp() {
 
   const [courseBudget, setCourseBudget] = useState(25);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
+  const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
+
+  const remoteIds = useMemo(
+    () => new Set(remoteApprovedSpots.map((s) => s.id)),
+    [remoteApprovedSpots],
+  );
+
+  const allSpots = useMemo(() => {
+    const locals = spots.filter((s) => !remoteIds.has(s.id));
+    return [...remoteApprovedSpots, ...locals];
+  }, [remoteApprovedSpots, spots, remoteIds]);
 
   useEffect(() => {
     setMounted(true);
     setSpots(loadSpots());
     setSavedIds(loadSaved());
+  }, []);
+
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    if (!client) return;
+    let cancelled = false;
+    void (async () => {
+      const res = await fetchApprovedPlaces(client);
+      if (cancelled) return;
+      if (!res.ok) {
+        console.warn("[budget-map] Could not load approved places:", res.message);
+        return;
+      }
+      setRemoteApprovedSpots(res.spots);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
   useEffect(() => {
     saveSpots(spots);
@@ -208,12 +208,12 @@ export default function BudgetMapApp() {
 
   const filtered = useMemo(
     () =>
-      spots.filter((s) => {
+      allSpots.filter((s) => {
         if (activeCat !== "all" && s.category !== activeCat) return false;
         if (activeArea !== "All" && s.area !== activeArea) return false;
         return true;
       }),
-    [spots, activeCat, activeArea],
+    [allSpots, activeCat, activeArea],
   );
 
   const ranked = useMemo(() => {
@@ -250,7 +250,7 @@ export default function BudgetMapApp() {
     [filtered],
   );
 
-  const selected = spots.find((s) => s.id === selectedId) || null;
+  const selected = allSpots.find((s) => s.id === selectedId) || null;
 
   useEffect(() => {
     setPlaceSheetTab("info");
@@ -298,7 +298,7 @@ export default function BudgetMapApp() {
           id: `sub_${Date.now()}`,
           items: validItems,
           review: submitReview.trim() || undefined,
-          date: nowIso.split("T")[0],
+          date: nowIso.split("T")[0]!,
         },
       ],
     });
@@ -355,6 +355,11 @@ export default function BudgetMapApp() {
   };
 
   const bumpUpvote = (spotId: string) => {
+    if (remoteIds.has(spotId)) {
+      setToast("Verified spots: shared ratings will need login soon.");
+      window.setTimeout(() => setToast(null), 3500);
+      return;
+    }
     setSpots((prev) =>
       prev.map((s) =>
         s.id === spotId ? { ...s, upvotes: (s.upvotes ?? 0) + 1 } : s,
@@ -363,6 +368,11 @@ export default function BudgetMapApp() {
   };
 
   const addComment = (spotId: string, text: string) => {
+    if (remoteIds.has(spotId)) {
+      setToast("Verified spots: comments will need login soon.");
+      window.setTimeout(() => setToast(null), 3500);
+      return;
+    }
     const trimmed = text.trim();
     if (!trimmed) return;
     const c: SpotComment = {
@@ -380,7 +390,7 @@ export default function BudgetMapApp() {
 
   const planCourse = () => {
     const by: Record<Category, Spot[]> = { pub: [], restaurant: [], cafe: [] };
-    spots.forEach((s) => by[s.category].push(s));
+    allSpots.forEach((s) => by[s.category].push(s));
     let best: Spot[] | null = null;
     let bestTotal = Infinity;
     if (by.pub.length === 0 || by.restaurant.length === 0 || by.cafe.length === 0) {
@@ -428,7 +438,7 @@ export default function BudgetMapApp() {
     );
   };
 
-  const savedSpots = spots.filter((s) => savedIds.has(s.id));
+  const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
 
   return (
     <div className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full">
@@ -467,7 +477,7 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      {tab === "map" && mounted && spots.length > 0 && (
+      {tab === "map" && mounted && allSpots.length > 0 && (
         <div
           className="absolute right-3 top-[calc(124px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
           aria-live="polite"
@@ -476,10 +486,10 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      {tab === "map" && mounted && spots.length === 0 && (
+      {tab === "map" && mounted && allSpots.length === 0 && (
         <div className="absolute left-3 right-3 top-[calc(168px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
-          Open <strong>Submit</strong> to add the first cheap eat — it&apos;ll show here for everyone on this device.
+          Open <strong>Submit</strong> to add a cheap eat, or connect Supabase to show verified spots from the database.
         </div>
       )}
 
@@ -605,7 +615,9 @@ export default function BudgetMapApp() {
                       </button>
                     </div>
                     <p className="text-[11px] text-budget-subtle">
-                      Stored on this device until we ship a shared backend.
+                      {remoteIds.has(selected.id)
+                        ? "Verified listing from the database."
+                        : "Stored on this device until we ship a shared backend."}
                     </p>
                     <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-2xl border border-budget-surface/80 bg-[#e8f2ed] p-2">
                       {(selected.comments ?? []).length === 0 ? (
