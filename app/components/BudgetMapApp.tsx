@@ -44,8 +44,69 @@ const AREAS = [
   "Euston", "Borough", "Bethnal Green", "Hackney",
 ];
 
-/** No demo venues — spots come only from user submissions. */
-const INITIAL_SPOTS: Spot[] = [];
+/** Demo spots — remove once real submissions exist. */
+const INITIAL_SPOTS: Spot[] = [
+  {
+    id: "demo_001",
+    name: "Pho 68",
+    category: "restaurant",
+    area: "Shoreditch",
+    lat: 51.5221,
+    lng: -0.0782,
+    address: "Shoreditch, London",
+    submissions: [
+      {
+        id: "sub_demo_001",
+        items: [
+          { name: "Beef Pho", price: 6.5 },
+          { name: "Spring Rolls", price: 3.5 },
+        ],
+        review: "Massive portions, the pho actually slaps",
+        date: "2025-01-15",
+      },
+    ],
+  },
+  {
+    id: "demo_002",
+    name: "The Crosse Keys",
+    category: "pub",
+    area: "Bank",
+    lat: 51.5133,
+    lng: -0.0886,
+    address: "Bank, London",
+    submissions: [
+      {
+        id: "sub_demo_002",
+        items: [
+          { name: "Pint of Lager", price: 3.2 },
+          { name: "Pint of Ale", price: 3.5 },
+        ],
+        review: "Cheapest pint in the City, no cap",
+        date: "2025-01-20",
+      },
+    ],
+  },
+  {
+    id: "demo_003",
+    name: "Monmouth Coffee",
+    category: "cafe",
+    area: "Borough",
+    lat: 51.5055,
+    lng: -0.0908,
+    address: "Borough, London",
+    submissions: [
+      {
+        id: "sub_demo_003",
+        items: [
+          { name: "Flat White", price: 2.8 },
+          { name: "Filter Coffee", price: 2.0 },
+        ],
+        review: "Best coffee in London at this price, queue moves fast",
+        date: "2025-01-22",
+      },
+    ],
+  },
+];
 
 const LS_KEY = "budget-map-spots-v2";
 const LS_SAVED = "budget-map-saved-v2";
@@ -58,7 +119,17 @@ function loadSpots(): Spot[] {
       localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
       return INITIAL_SPOTS;
     }
-    return JSON.parse(raw);
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) {
+      localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
+      return INITIAL_SPOTS;
+    }
+    // Older builds seeded `[]` into LS; once defaults exist, replace empty cache so demos show.
+    if (parsed.length === 0 && INITIAL_SPOTS.length > 0) {
+      localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
+      return INITIAL_SPOTS;
+    }
+    return parsed as Spot[];
   } catch {
     localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
     return INITIAL_SPOTS;
