@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import L from "leaflet";
 import { GoogleMap, OverlayViewF, OVERLAY_MOUSE_TARGET, useJsApiLoader } from "@react-google-maps/api";
+import {
+  BUDGET_MAP_GOOGLE_LANG,
+  BUDGET_MAP_GOOGLE_LIBRARIES,
+  BUDGET_MAP_GOOGLE_LOADER_ID,
+  BUDGET_MAP_GOOGLE_REGION,
+} from "@/lib/googleMapsLoader";
 
 export type MapSpot = {
   id: string;
@@ -254,10 +260,11 @@ function MapViewGoogle({
   onSelectRef.current = onSelect;
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: "budget-map-google-maps",
+    id: BUDGET_MAP_GOOGLE_LOADER_ID,
     googleMapsApiKey: apiKey,
-    language: "en",
-    region: "GB",
+    libraries: BUDGET_MAP_GOOGLE_LIBRARIES,
+    language: BUDGET_MAP_GOOGLE_LANG,
+    region: BUDGET_MAP_GOOGLE_REGION,
   });
 
   const mapOptions = useMemo((): google.maps.MapOptions => {

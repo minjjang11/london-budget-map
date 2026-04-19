@@ -2,6 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { useJsApiLoader } from "@react-google-maps/api";
+import {
+  BUDGET_MAP_GOOGLE_LANG,
+  BUDGET_MAP_GOOGLE_LIBRARIES,
+  BUDGET_MAP_GOOGLE_LOADER_ID,
+  BUDGET_MAP_GOOGLE_REGION,
+} from "@/lib/googleMapsLoader";
 
 export type SubmitPlacePick = {
   name: string;
@@ -15,22 +21,28 @@ type Props = {
   onPick: (p: SubmitPlacePick) => void;
 };
 
-/** Standalone Google Places Autocomplete for the Submit tab (no map mount required). */
-export default function SubmitPlacesAutocomplete({ onPick }: Props) {
+/**
+ * Google Places Autocomplete for the Submit tab.
+ * Wrapper has no hooks — inner always runs `useJsApiLoader` with the same options as `MapView`.
+ */
+export default function SubmitPlacesAutocomplete(props: Props) {
+  const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, "");
+  if (!googleKey) return null;
+  return <SubmitPlacesAutocompleteInner {...props} googleMapsApiKey={googleKey} />;
+}
+
+function SubmitPlacesAutocompleteInner({ onPick, googleMapsApiKey }: Props & { googleMapsApiKey: string }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const acRef = useRef<google.maps.places.Autocomplete | null>(null);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
 
-  const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, "");
-  if (!googleKey) return null;
-
   const { isLoaded, loadError } = useJsApiLoader({
-    id: "budget-map-submit-places",
-    googleMapsApiKey: googleKey,
-    libraries: ["places"],
-    language: "en",
-    region: "GB",
+    id: BUDGET_MAP_GOOGLE_LOADER_ID,
+    googleMapsApiKey,
+    libraries: BUDGET_MAP_GOOGLE_LIBRARIES,
+    language: BUDGET_MAP_GOOGLE_LANG,
+    region: BUDGET_MAP_GOOGLE_REGION,
   });
 
   useEffect(() => {
