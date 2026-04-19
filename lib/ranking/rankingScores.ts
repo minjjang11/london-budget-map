@@ -1,10 +1,13 @@
 /**
  * Central ranking math — adjust weights here instead of scattering magic numbers in UI.
  *
- * Weekly vs all-time: we do not yet persist time-bounded vote events on `places`.
- * - **All-time** uses cumulative `upvotes` / `downvotes` on the row.
- * - **Weekly** reuses the same cumulative scores on the subset of places whose
- *   `registeredAt` falls in the trailing window (new on the map this week).
+ * Approved-place counts shown in Rankings come from **`place_votes`** aggregates merged in
+ * `fetchApprovedPlaces` (not the legacy `places.upvotes` / `places.downvotes` columns).
+ * For time-windowed weekly scores, query `place_votes` by `created_at` / `updated_at` (see migration 013).
+ *
+ * Weekly vs all-time (current UI): we do not yet slice votes by calendar week in SQL.
+ * - **All-time** uses merged cumulative up/down from `place_votes`.
+ * - **Weekly** reuses the same scores on places whose `registeredAt` is in the trailing window.
  */
 
 export const RANKING_RULES = {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 import type { MapSpot } from "./MapView";
@@ -35,6 +35,18 @@ import {
   upsertSubmissionVote,
 } from "@/lib/places/submissionVotes";
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
+import { fetchPlaceVoteData, removePlaceVote, upsertPlaceVote } from "@/lib/places/placeVotes";
+import { deleteSavedPlace, fetchMySavedPlaceIds, insertSavedPlace } from "@/lib/places/savedPlaces";
+import {
+  fetchMyPlaceReviewTags,
+  fetchPlaceReviewTagCountsByPlace,
+  replaceMyPlaceReviewTags,
+} from "@/lib/places/placeReviewTagDb";
+import {
+  labelForPlaceReviewSlug,
+  MAX_PLACE_REVIEW_TAGS_PER_USER,
+  PLACE_REVIEW_TAG_SLUGS,
+} from "@/lib/places/placeReviewTags";
 import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicate";
 import { rankingNetScore, registeredWithinTrailingDays, RANKING_RULES } from "@/lib/ranking/rankingScores";
 import AuthPanel from "./AuthPanel";
@@ -220,7 +232,16 @@ function truncateText(s: string, max: number): string {
 
 export default function BudgetMapApp() {
   const [spots, setSpots] = useState<Spot[]>([]);
-  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  /** Device-only bookmarks (local spots + legacy LS entries). */
+  const [savedLocalIds, setSavedLocalIds] = useState<Set<string>>(new Set());
+  /** Account bookmarks for approved `places` rows (Supabase). */
+  const [savedRemoteIds, setSavedRemoteIds] = useState<Set<string>>(new Set());
+  const [savePlaceBusy, setSavePlaceBusy] = useState(false);
+
+  const savedIds = useMemo(
+    () => new Set([...savedLocalIds, ...savedRemoteIds]),
+    [savedLocalIds, savedRemoteIds],
+  );
   const [tab, setTab] = useState<Tab>("map");
   const [activeCat, setActiveCat] = useState<Category | "all">("all");
   const [activeArea, setActiveArea] = useState("All");
@@ -256,6 +277,8 @@ export default function BudgetMapApp() {
   const [isModerator, setIsModerator] = useState(false);
   const [approvedPlacesTick, setApprovedPlacesTick] = useState(0);
   const [moderationBusyId, setModerationBusyId] = useState<string | null>(null);
+  /** Current user's vote on approved map places (place id → vote). */
+  const [placeMyVotes, setPlaceMyVotes] = useState<Record<string, SubmissionVoteType>>({});
   const [voteTallies, setVoteTallies] = useState<Record<string, { up: number; down: number }>>({});
   const [myVotes, setMyVotes] = useState<Record<string, SubmissionVoteType>>({});
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
@@ -302,6 +325,11 @@ export default function BudgetMapApp() {
   const [commentDraft, setCommentDraft] = useState("");
   /** After marker tap: compact preview first; "Full details" opens existing sheet body. */
   const [placeDetailExpanded, setPlaceDetailExpanded] = useState(false);
+  const [placeReviewTagCountsByPlace, setPlaceReviewTagCountsByPlace] = useState<
+    Record<string, Record<string, number>>
+  >({});
+  const [myPlaceReviewDraft, setMyPlaceReviewDraft] = useState<string[]>([]);
+  const [placeReviewTagsBusy, setPlaceReviewTagsBusy] = useState(false);
 
   const [courseBudget, setCourseBudget] = useState(25);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
@@ -312,6 +340,9 @@ export default function BudgetMapApp() {
     [remoteApprovedSpots],
   );
 
+  const remoteIdsRef = useRef(remoteIds);
+  remoteIdsRef.current = remoteIds;
+
   const allSpots = useMemo(() => {
     const locals = spots.filter((s) => !remoteIds.has(s.id));
     return [...remoteApprovedSpots, ...locals];
@@ -320,7 +351,7 @@ export default function BudgetMapApp() {
   useEffect(() => {
     setMounted(true);
     setSpots(loadSpots());
-    setSavedIds(loadSaved());
+    setSavedLocalIds(loadSaved());
   }, []);
 
   useEffect(() => {
@@ -344,8 +375,30 @@ export default function BudgetMapApp() {
     saveSpots(spots);
   }, [spots]);
   useEffect(() => {
-    saveSavedIds(savedIds);
-  }, [savedIds]);
+    saveSavedIds(savedLocalIds);
+  }, [savedLocalIds]);
+
+  useEffect(() => {
+    const c = getBrowserSupabase();
+    if (!c || !isSupabaseConfigured() || !session?.user?.id) {
+      setSavedRemoteIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { ids, error } = await fetchMySavedPlaceIds(c);
+      if (cancelled) return;
+      if (error) {
+        console.warn("[budget-map] saved places:", error);
+        setSavedRemoteIds(new Set());
+        return;
+      }
+      setSavedRemoteIds(new Set(ids));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (tab !== "submit") setSubmitSuccess(false);
@@ -517,8 +570,49 @@ export default function BudgetMapApp() {
     setPlaceDetailExpanded(false);
   }, [selectedId]);
 
-  const toggleSave = (id: string) => {
-    setSavedIds((prev) => {
+  const toggleSave = async (id: string) => {
+    if (remoteIds.has(id)) {
+      if (!session?.user?.id) {
+        setToast("Sign in to save verified places — use the Review tab magic link.");
+        window.setTimeout(() => setToast(null), 4500);
+        return;
+      }
+      const c = getBrowserSupabase();
+      if (!c) return;
+      const uid = session.user.id;
+      setSavePlaceBusy(true);
+      if (savedIds.has(id)) {
+        const { error } = await deleteSavedPlace(c, id, uid);
+        setSavePlaceBusy(false);
+        if (error) {
+          setToast(error);
+          window.setTimeout(() => setToast(null), 5000);
+          return;
+        }
+        setSavedRemoteIds((prev) => {
+          const n = new Set(prev);
+          n.delete(id);
+          return n;
+        });
+        setSavedLocalIds((prev) => {
+          if (!prev.has(id)) return prev;
+          const n = new Set(prev);
+          n.delete(id);
+          return n;
+        });
+        return;
+      }
+      const { error } = await insertSavedPlace(c, id, uid);
+      setSavePlaceBusy(false);
+      if (error) {
+        setToast(error);
+        window.setTimeout(() => setToast(null), 5000);
+        return;
+      }
+      setSavedRemoteIds((prev) => new Set(prev).add(id));
+      return;
+    }
+    setSavedLocalIds((prev) => {
       const n = new Set(prev);
       if (n.has(id)) n.delete(id);
       else n.add(id);
@@ -724,6 +818,139 @@ export default function BudgetMapApp() {
     [session?.user],
   );
 
+  const refreshPlaceVoteDisplay = useCallback(
+    async (placeId: string) => {
+      const c = getBrowserSupabase();
+      if (!c) return;
+      const uid = session?.user?.id ?? null;
+      const { tallies, myVote, error } = await fetchPlaceVoteData(c, [placeId], uid);
+      if (error) {
+        console.warn("[budget-map] place vote fetch:", error);
+        return;
+      }
+      const t = tallies.get(placeId);
+      const mv = myVote.get(placeId);
+      setRemoteApprovedSpots((prev) =>
+        prev.map((s) => (s.id === placeId ? { ...s, upvotes: t?.up ?? 0, downvotes: t?.down ?? 0 } : s)),
+      );
+      setPlaceMyVotes((prev) => {
+        const next = { ...prev };
+        if (mv) next[placeId] = mv;
+        else delete next[placeId];
+        return next;
+      });
+    },
+    [session?.user?.id],
+  );
+
+  const handleVoteOnPlace = useCallback(
+    async (placeId: string, voteType: SubmissionVoteType) => {
+      const c = getBrowserSupabase();
+      const uid = session?.user?.id;
+      if (!c || !uid) {
+        setToast("Sign in to vote — open the Review tab and use the same magic-link sign-in.");
+        window.setTimeout(() => setToast(null), 4500);
+        return;
+      }
+      const current = placeMyVotes[placeId];
+      if (current === voteType) {
+        const { error } = await removePlaceVote(c, placeId, uid);
+        if (error) {
+          setToast(error);
+          window.setTimeout(() => setToast(null), 5000);
+          return;
+        }
+      } else {
+        const { error } = await upsertPlaceVote(c, placeId, uid, voteType);
+        if (error) {
+          setToast(error);
+          window.setTimeout(() => setToast(null), 5000);
+          return;
+        }
+      }
+      await refreshPlaceVoteDisplay(placeId);
+    },
+    [session?.user?.id, placeMyVotes, refreshPlaceVoteDisplay],
+  );
+
+  const reloadPlaceReviewTagsFor = useCallback(async (placeId: string) => {
+    const c = getBrowserSupabase();
+    if (!c) return;
+    const { byPlace, error } = await fetchPlaceReviewTagCountsByPlace(c, [placeId]);
+    if (error) return;
+    setPlaceReviewTagCountsByPlace((prev) => ({
+      ...prev,
+      [placeId]: byPlace.get(placeId) ?? {},
+    }));
+  }, []);
+
+  const togglePlaceReviewDraftTag = useCallback(
+    (slug: string) => {
+      if (!session?.user) {
+        setToast("Sign in to add tags — use the Review tab magic link.");
+        window.setTimeout(() => setToast(null), 4500);
+        return;
+      }
+      setMyPlaceReviewDraft((prev) => {
+        if (prev.includes(slug)) return prev.filter((x) => x !== slug);
+        if (prev.length >= MAX_PLACE_REVIEW_TAGS_PER_USER) return prev;
+        return [...prev, slug];
+      });
+    },
+    [session?.user],
+  );
+
+  const savePlaceReviewTags = useCallback(async () => {
+    if (!selectedId || !session?.user?.id) return;
+    const c = getBrowserSupabase();
+    if (!c) return;
+    setPlaceReviewTagsBusy(true);
+    const { error } = await replaceMyPlaceReviewTags(c, selectedId, session.user.id, myPlaceReviewDraft);
+    setPlaceReviewTagsBusy(false);
+    if (error) {
+      setToast(error);
+      window.setTimeout(() => setToast(null), 5000);
+      return;
+    }
+    await reloadPlaceReviewTagsFor(selectedId);
+    const mine = await fetchMyPlaceReviewTags(c, selectedId, session.user.id);
+    if (!mine.error) setMyPlaceReviewDraft(mine.tags);
+  }, [selectedId, session?.user?.id, myPlaceReviewDraft, reloadPlaceReviewTagsFor]);
+
+  useEffect(() => {
+    if (!selectedId || !isSupabaseConfigured() || !getBrowserSupabase()) return;
+    if (!remoteIdsRef.current.has(selectedId)) return;
+    void refreshPlaceVoteDisplay(selectedId);
+  }, [selectedId, session?.user?.id, refreshPlaceVoteDisplay]);
+
+  useEffect(() => {
+    if (!selectedId || !remoteIdsRef.current.has(selectedId)) {
+      setMyPlaceReviewDraft([]);
+      return;
+    }
+    const c = getBrowserSupabase();
+    if (!c || !isSupabaseConfigured()) return;
+    let cancelled = false;
+    void (async () => {
+      const { byPlace, error } = await fetchPlaceReviewTagCountsByPlace(c, [selectedId]);
+      if (cancelled) return;
+      if (!error) {
+        const rec = byPlace.get(selectedId) ?? {};
+        setPlaceReviewTagCountsByPlace((prev) => ({ ...prev, [selectedId]: rec }));
+      }
+      if (!session?.user?.id) {
+        if (!cancelled) setMyPlaceReviewDraft([]);
+        return;
+      }
+      const mine = await fetchMyPlaceReviewTags(c, selectedId, session.user.id);
+      if (cancelled || mine.error) return;
+      setMyPlaceReviewDraft(mine.tags);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId, session?.user?.id]);
+
   const runModerationEvaluate = useCallback(async () => {
     setModerationBusyId("__eval__");
     try {
@@ -838,11 +1065,7 @@ export default function BudgetMapApp() {
   };
 
   const bumpUpvote = (spotId: string) => {
-    if (remoteIds.has(spotId)) {
-      setToast("Verified spots: shared ratings will need login soon.");
-      window.setTimeout(() => setToast(null), 3500);
-      return;
-    }
+    if (remoteIds.has(spotId)) return;
     setSpots((prev) =>
       prev.map((s) =>
         s.id === spotId ? { ...s, upvotes: (s.upvotes ?? 0) + 1 } : s,
@@ -1030,6 +1253,12 @@ export default function BudgetMapApp() {
                       <p className="mt-2 line-clamp-4 text-[13px] leading-snug text-budget-text/75">
                         {spotPreviewBlurb(selected)}
                       </p>
+                      {remoteIds.has(selected.id) ? (
+                        <p className="mt-2 text-[11px] font-semibold text-budget-muted">
+                          👍 {selected.upvotes ?? 0} · 👎 {selected.downvotes ?? 0}
+                          {!session?.user ? " · Sign in (Review tab) to vote" : null}
+                        </p>
+                      ) : null}
                       <div className="mt-4 flex flex-col gap-2">
                         <button
                           type="button"
@@ -1101,6 +1330,11 @@ export default function BudgetMapApp() {
                       <span className="text-[12px] font-semibold text-budget-muted">
                         {selected.submissions.length} report{selected.submissions.length === 1 ? "" : "s"}
                       </span>
+                      {remoteIds.has(selected.id) ? (
+                        <span className="text-[12px] font-semibold text-budget-muted">
+                          👍 {selected.upvotes ?? 0} · 👎 {selected.downvotes ?? 0}
+                        </span>
+                      ) : null}
                     </div>
                     <p className="mt-1.5 text-[11px] leading-snug text-budget-text/45">{selected.address}</p>
                   </div>
@@ -1163,81 +1397,209 @@ export default function BudgetMapApp() {
 
                 {placeSheetTab === "buzz" && (
                   <div className="mt-4 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => bumpUpvote(selected.id)}
-                        className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
-                      >
-                        <ThumbsUp size={18} className="text-budget-primary" />
-                        Rate it ({selected.upvotes ?? 0})
-                      </button>
-                    </div>
-                    <p className="text-[11px] text-budget-subtle">
-                      {remoteIds.has(selected.id)
-                        ? "Verified listing from the database."
-                        : "Stored on this device until we ship a shared backend."}
-                    </p>
-                    <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-2xl border border-budget-surface/80 bg-[#e8f2ed] p-2">
-                      {(selected.comments ?? []).length === 0 ? (
-                        <p className="px-2 py-4 text-center text-[12px] text-budget-muted">No comments yet.</p>
-                      ) : (
-                        (selected.comments ?? []).map((cm) => (
-                          <div
-                            key={cm.id}
-                            className="rounded-xl border border-white/60 bg-white px-3 py-2.5 text-[13px] text-budget-text shadow-sm"
+                    {remoteIds.has(selected.id) ? (
+                      <>
+                        <p className="text-[11px] font-semibold text-budget-muted">
+                          Community votes (signed in). Counts feed Rankings.
+                        </p>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleVoteOnPlace(selected.id, "upvote")}
+                            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
+                              placeMyVotes[selected.id] === "upvote"
+                                ? "border-budget-primary bg-budget-surface text-budget-text"
+                                : "border-budget-surface bg-budget-bg text-budget-text"
+                            }`}
                           >
-                            <div className="text-[10px] font-extrabold uppercase tracking-wide text-budget-subtle">
-                              {cm.date}
+                            <ThumbsUp size={18} className="text-budget-primary" />
+                            Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleVoteOnPlace(selected.id, "downvote")}
+                            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
+                              placeMyVotes[selected.id] === "downvote"
+                                ? "border-budget-primary bg-budget-surface text-budget-text"
+                                : "border-budget-surface bg-budget-bg text-budget-text"
+                            }`}
+                          >
+                            <ThumbsDown size={18} className="text-budget-muted" />
+                            Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
+                          </button>
+                        </div>
+                        {!session?.user ? (
+                          <p className="text-[11px] text-amber-900/90">
+                            Sign in via the <strong>Review</strong> tab (same account) to vote and pick tags.
+                          </p>
+                        ) : null}
+                        <div className="rounded-2xl border border-budget-surface/80 bg-budget-bg/40 px-3 py-3">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
+                            Top tags
+                          </p>
+                          {(() => {
+                            const rec = placeReviewTagCountsByPlace[selected.id] ?? {};
+                            const entries = Object.entries(rec).sort(
+                              (a, b) =>
+                                b[1] - a[1] ||
+                                labelForPlaceReviewSlug(a[0]).localeCompare(labelForPlaceReviewSlug(b[0])),
+                            );
+                            if (entries.length === 0) {
+                              return (
+                                <p className="mt-2 text-[12px] text-budget-muted">No tags yet — be the first.</p>
+                              );
+                            }
+                            return (
+                              <div className="mt-2 flex flex-wrap gap-1.5">
+                                {entries.slice(0, 16).map(([slug, n]) => (
+                                  <span
+                                    key={slug}
+                                    className="inline-flex items-center gap-1 rounded-full bg-budget-surface px-2.5 py-1 text-[11px] font-extrabold text-budget-text"
+                                  >
+                                    {labelForPlaceReviewSlug(slug)}
+                                    <span className="tabular-nums text-budget-muted">×{n}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        {session?.user ? (
+                          <div className="rounded-2xl border border-budget-surface/80 bg-budget-white px-3 py-3 shadow-sm">
+                            <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
+                              Your tags
+                            </p>
+                            <p className="mt-1 text-[11px] text-budget-muted">
+                              Pick up to {MAX_PLACE_REVIEW_TAGS_PER_USER} — tap again to remove, then save.
+                            </p>
+                            <div className="mt-2 flex max-h-[22vh] flex-wrap gap-1.5 overflow-y-auto">
+                              {PLACE_REVIEW_TAG_SLUGS.map((slug) => {
+                                const on = myPlaceReviewDraft.includes(slug);
+                                return (
+                                  <button
+                                    key={slug}
+                                    type="button"
+                                    onClick={() => togglePlaceReviewDraftTag(slug)}
+                                    className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition ${
+                                      on
+                                        ? "border-budget-primary bg-budget-primary/10 text-budget-text"
+                                        : "border-budget-surface/80 bg-budget-bg text-budget-text hover:border-budget-primary/40"
+                                    }`}
+                                  >
+                                    {labelForPlaceReviewSlug(slug)}
+                                  </button>
+                                );
+                              })}
                             </div>
-                            <div className="mt-1">{cm.text}</div>
+                            <button
+                              type="button"
+                              disabled={placeReviewTagsBusy}
+                              onClick={() => void savePlaceReviewTags()}
+                              className="mt-3 w-full cursor-pointer rounded-2xl border-0 bg-budget-primary py-2.5 text-[12px] font-extrabold text-white disabled:cursor-wait disabled:opacity-60"
+                            >
+                              {placeReviewTagsBusy ? "Saving…" : "Save your tags"}
+                            </button>
                           </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <input
-                        value={commentDraft}
-                        onChange={(e) => setCommentDraft(e.target.value)}
-                        placeholder="Add a quick note…"
-                        className="budget-input-sm min-w-0 flex-1 text-[13px]"
-                        maxLength={280}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => addComment(selected.id, commentDraft)}
-                        className="shrink-0 cursor-pointer rounded-2xl border-0 bg-budget-primary px-4 py-2.5 text-[12px] font-extrabold text-white"
-                      >
-                        Post
-                      </button>
-                    </div>
+                        ) : (
+                          <p className="text-[11px] text-budget-muted">
+                            Tags are read-only until you sign in — same magic link as the Review tab.
+                          </p>
+                        )}
+                        <p className="text-[11px] text-budget-subtle">Verified listing from the database.</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => bumpUpvote(selected.id)}
+                            className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
+                          >
+                            <ThumbsUp size={18} className="text-budget-primary" />
+                            Rate it ({selected.upvotes ?? 0})
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-budget-subtle">
+                          Stored on this device until we ship a shared backend.
+                        </p>
+                      </>
+                    )}
+                    {!remoteIds.has(selected.id) ? (
+                      <>
+                        <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-2xl border border-budget-surface/80 bg-[#e8f2ed] p-2">
+                          {(selected.comments ?? []).length === 0 ? (
+                            <p className="px-2 py-4 text-center text-[12px] text-budget-muted">No comments yet.</p>
+                          ) : (
+                            (selected.comments ?? []).map((cm) => (
+                              <div
+                                key={cm.id}
+                                className="rounded-xl border border-white/60 bg-white px-3 py-2.5 text-[13px] text-budget-text shadow-sm"
+                              >
+                                <div className="text-[10px] font-extrabold uppercase tracking-wide text-budget-subtle">
+                                  {cm.date}
+                                </div>
+                                <div className="mt-1">{cm.text}</div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            value={commentDraft}
+                            onChange={(e) => setCommentDraft(e.target.value)}
+                            placeholder="Add a quick note…"
+                            className="budget-input-sm min-w-0 flex-1 text-[13px]"
+                            maxLength={280}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => addComment(selected.id, commentDraft)}
+                            className="shrink-0 cursor-pointer rounded-2xl border-0 bg-budget-primary px-4 py-2.5 text-[12px] font-extrabold text-white"
+                          >
+                            Post
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 )}
 
-                <div className="mt-5 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => toggleSave(selected.id)}
-                    className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface py-3.5 text-[13px] font-extrabold text-budget-text transition ${
-                      savedIds.has(selected.id) ? "bg-budget-surface" : "bg-budget-white"
-                    }`}
-                  >
-                    <Bookmark size={18} strokeWidth={2} className="text-budget-primary" />
-                    {savedIds.has(selected.id) ? "Saved" : "Save"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      window.open(
-                        `https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`,
-                        "_blank",
-                      );
-                    }}
-                    className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-3.5 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
-                  >
-                    <Navigation size={18} strokeWidth={2.25} />
-                    Directions
-                  </button>
+                <div className="mt-5">
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      disabled={savePlaceBusy && remoteIds.has(selected.id)}
+                      onClick={() => void toggleSave(selected.id)}
+                      className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface py-3.5 text-[13px] font-extrabold text-budget-text transition disabled:cursor-wait disabled:opacity-60 ${
+                        savedIds.has(selected.id) ? "bg-budget-surface" : "bg-budget-white"
+                      }`}
+                    >
+                      <Bookmark size={18} strokeWidth={2} className="text-budget-primary" />
+                      {savePlaceBusy && remoteIds.has(selected.id)
+                        ? "…"
+                        : savedIds.has(selected.id)
+                          ? "Saved"
+                          : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.open(
+                          `https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`,
+                          "_blank",
+                        );
+                      }}
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-3.5 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
+                    >
+                      <Navigation size={18} strokeWidth={2.25} />
+                      Directions
+                    </button>
+                  </div>
+                  {remoteIds.has(selected.id) && !session?.user ? (
+                    <p className="mt-2 text-center text-[11px] text-budget-muted">
+                      Verified spots save to your account after sign-in (Review tab).
+                    </p>
+                  ) : null}
                 </div>
                   </>
                 )}
@@ -1861,6 +2223,16 @@ export default function BudgetMapApp() {
 
       {tab === "saved" && (
         <div className="budget-tab-panel p-4">
+          {isSupabaseConfigured() && getBrowserSupabase() && !session?.user ? (
+            <div
+              role="note"
+              className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
+            >
+              <span className="font-extrabold">Signed out</span> — device-only saves appear here.{" "}
+              <span className="font-semibold">Sign in</span> via the Review tab to sync verified map spots to your
+              account.
+            </div>
+          ) : null}
           {savedSpots.length === 0 ? (
             <div className="px-3 py-12 text-center text-budget-text/50">
               <Bookmark size={40} strokeWidth={1.25} className="mx-auto mb-4 opacity-[0.35]" />
