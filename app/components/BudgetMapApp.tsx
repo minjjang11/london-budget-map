@@ -36,6 +36,7 @@ import {
 } from "@/lib/places/submissionVotes";
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
 import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicate";
+import { rankingNetScore, registeredWithinTrailingDays, RANKING_RULES } from "@/lib/ranking/rankingScores";
 import AuthPanel from "./AuthPanel";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 
@@ -46,6 +47,8 @@ const HAS_GOOGLE_MAPS_KEY = Boolean((process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 type Tab = "map" | "community" | "review" | "submit" | "saved" | "course";
 
 type CommunitySort = "price" | "buzz" | "snitches";
+
+type RankingWindow = "weekly" | "alltime";
 
 type PlaceSheetTab = "info" | "buzz";
 
@@ -80,6 +83,7 @@ function normalizeSpot(raw: Spot): Spot {
     submissions: raw.submissions ?? [],
     registeredAt: fallbackReg,
     upvotes: raw.upvotes ?? 0,
+    downvotes: raw.downvotes ?? 0,
     comments: Array.isArray(raw.comments) ? raw.comments : [],
     description: raw.description?.trim() || undefined,
   };
@@ -153,6 +157,21 @@ function lowestPrice(spot: Spot): number {
     if (i.price < min) min = i.price;
   }));
   return min === Infinity ? 0 : min;
+}
+
+function rankingAddressLine(spot: Spot): string {
+  const addr = spot.address?.trim() || "";
+  if (!addr) return spot.area?.trim() || "London";
+  const compact = addr.replace(/\s+/g, " ");
+  return compact.length > 52 ? `${compact.slice(0, 50)}…` : compact;
+}
+
+function rankingSocialLine(spot: Spot): string {
+  const u = spot.upvotes ?? 0;
+  const d = spot.downvotes ?? 0;
+  const score = rankingNetScore(u, d);
+  if (u === 0 && d === 0) return "No votes yet";
+  return `Net ${score} · 👍 ${u} · 👎 ${d}`;
 }
 
 /** Screenshot-style prices: £12, £4.3, £6.5 — 🔥 when under £3 */
@@ -278,6 +297,7 @@ export default function BudgetMapApp() {
   const [toast, setToast] = useState<string | null>(null);
 
   const [communitySort, setCommunitySort] = useState<CommunitySort>("price");
+  const [rankingWindow, setRankingWindow] = useState<RankingWindow>("alltime");
   const [placeSheetTab, setPlaceSheetTab] = useState<PlaceSheetTab>("info");
   const [commentDraft, setCommentDraft] = useState("");
   /** After marker tap: compact preview first; "Full details" opens existing sheet body. */
@@ -436,22 +456,41 @@ export default function BudgetMapApp() {
     [allSpots, activeCat, activeArea],
   );
 
+  /** Rankings tab: approved remote places only (same cat/area filters as the map list). */
+  const communityApprovedFiltered = useMemo(
+    () =>
+      remoteApprovedSpots.filter((s) => {
+        if (activeCat !== "all" && s.category !== activeCat) return false;
+        if (activeArea !== "All" && s.area !== activeArea) return false;
+        return true;
+      }),
+    [remoteApprovedSpots, activeCat, activeArea],
+  );
+
   const ranked = useMemo(() => {
-    const arr = [...filtered];
-    if (communitySort === "price") {
-      return arr.sort((a, b) => lowestPrice(a) - lowestPrice(b));
-    }
-    if (communitySort === "buzz") {
-      return arr.sort(
-        (a, b) =>
-          (b.upvotes ?? 0) - (a.upvotes ?? 0) || lowestPrice(a) - lowestPrice(b),
+    let pool = [...communityApprovedFiltered];
+    if (rankingWindow === "weekly") {
+      pool = pool.filter((s) =>
+        registeredWithinTrailingDays(s.registeredAt, RANKING_RULES.weeklyRegistrationDays),
       );
     }
-    return arr.sort(
+    const up = (s: Spot) => s.upvotes ?? 0;
+    const down = (s: Spot) => s.downvotes ?? 0;
+    if (communitySort === "price") {
+      return pool.sort((a, b) => lowestPrice(a) - lowestPrice(b));
+    }
+    if (communitySort === "buzz") {
+      return pool.sort(
+        (a, b) =>
+          rankingNetScore(up(b), down(b)) - rankingNetScore(up(a), down(a)) ||
+          lowestPrice(a) - lowestPrice(b),
+      );
+    }
+    return pool.sort(
       (a, b) =>
         b.submissions.length - a.submissions.length || lowestPrice(a) - lowestPrice(b),
     );
-  }, [filtered, communitySort]);
+  }, [communityApprovedFiltered, rankingWindow, communitySort]);
 
   const mapSpots: MapSpot[] = useMemo(
     () =>
@@ -1211,14 +1250,41 @@ export default function BudgetMapApp() {
       {tab === "community" && (
         <div className="budget-tab-panel px-3 pb-3">
           <h2 className="mb-1 text-lg font-extrabold text-budget-text">Rankings</h2>
-          <p className="mb-3 text-[12px] text-budget-muted">How the list is sorted — tap a row to open it on the map.</p>
+          <p className="mb-3 text-[12px] leading-snug text-budget-muted">
+            Verified map spots only (not device-only tips). Weekly uses spots that first appeared in the last{" "}
+            {RANKING_RULES.weeklyRegistrationDays} days; scores use cumulative 👍/👎 until per-week vote history
+            exists.
+          </p>
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Window</p>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {(
+              [
+                { id: "weekly" as const, label: "Weekly" },
+                { id: "alltime" as const, label: "All-time" },
+              ] as const
+            ).map(({ id, label }) => {
+              const active = rankingWindow === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setRankingWindow(id)}
+                  className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
+                    active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
           <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Sort</p>
           <div className="mb-4 flex flex-wrap gap-1.5">
             {(
               [
                 { id: "price" as const, label: "Cheapest" },
-                { id: "buzz" as const, label: "Most rated" },
-                { id: "snitches" as const, label: "Most reports" },
+                { id: "buzz" as const, label: "Net score" },
+                { id: "snitches" as const, label: "Most tips" },
               ] as const
             ).map(({ id, label }) => {
               const active = communitySort === id;
@@ -1256,32 +1322,59 @@ export default function BudgetMapApp() {
               );
             })}
           </div>
-          <p className="mb-3 text-sm text-budget-muted">Tap a row to fly there on the map.</p>
-          {ranked.map((spot, i) => (
-            <button
-              key={spot.id}
-              type="button"
-              onClick={() => {
-                setTab("map");
-                setSelectedId(spot.id);
-                setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
-              }}
-              className="budget-list-btn shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
-            >
-              <span className="text-sm font-extrabold text-budget-primary">#{i + 1}</span>
-              <span className="text-xl">{catEmoji(spot.category)}</span>
-              <div className="min-w-0 flex-1">
-                <div className="font-bold text-budget-text">{spot.name}</div>
-                <div className="text-xs text-budget-subtle">{spot.area}</div>
-              </div>
-              <div className="flex flex-col items-end gap-0.5">
-                <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
-                {(spot.upvotes ?? 0) > 0 && (
-                  <span className="text-[10px] font-semibold text-budget-subtle">👍 {spot.upvotes}</span>
-                )}
-              </div>
-            </button>
-          ))}
+          <p className="mb-3 text-sm text-budget-muted">Tap a row to open it on the map (same flow as the map tab).</p>
+          {remoteApprovedSpots.length === 0 ? (
+            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
+              No approved spots from the server yet — rankings appear after moderation promotes tips to the map.
+            </div>
+          ) : communityApprovedFiltered.length === 0 ? (
+            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
+              No spots match this category and area. Try <strong>All</strong> filters.
+            </div>
+          ) : rankingWindow === "weekly" && ranked.length === 0 ? (
+            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
+              Nothing new on the map in the last {RANKING_RULES.weeklyRegistrationDays} days for these filters.{" "}
+              <button
+                type="button"
+                onClick={() => setRankingWindow("alltime")}
+                className="font-extrabold text-budget-primary underline decoration-budget-primary/40 underline-offset-2"
+              >
+                Switch to All-time
+              </button>
+            </div>
+          ) : (
+            ranked.map((spot, i) => {
+              const catLabel = CATS.find((c) => c.id === spot.category)?.label ?? "Spot";
+              return (
+                <button
+                  key={spot.id}
+                  type="button"
+                  onClick={() => {
+                    setTab("map");
+                    setSelectedId(spot.id);
+                    setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
+                  }}
+                  className="budget-list-btn shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
+                >
+                  <span className="text-sm font-extrabold text-budget-primary">#{i + 1}</span>
+                  <span className="text-xl">{catEmoji(spot.category)}</span>
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="font-bold text-budget-text">{spot.name}</div>
+                    <div className="text-[11px] font-semibold text-budget-subtle">
+                      {catLabel} · {rankingAddressLine(spot)}
+                    </div>
+                    <div className="mt-0.5 text-[10px] font-medium text-budget-faint">{rankingSocialLine(spot)}</div>
+                  </div>
+                  <div className="flex flex-col items-end gap-0.5 self-center">
+                    <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
+                    <span className="text-[9px] font-extrabold uppercase tracking-wide text-budget-muted">
+                      {rankingWindow === "weekly" ? "Weekly" : "All-time"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })
+          )}
         </div>
       )}
 

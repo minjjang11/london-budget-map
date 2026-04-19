@@ -25,6 +25,7 @@ export type PlaceRow = {
   submissions: unknown;
   registered_at: string | null;
   upvotes: number | null;
+  downvotes?: number | null;
   comments: unknown;
   created_at?: string;
   updated_at?: string;
@@ -45,6 +46,7 @@ export type PlaceInsert = {
   submissions: unknown;
   registered_at: string | null;
   upvotes: number;
+  downvotes: number;
   comments: unknown;
 };
 

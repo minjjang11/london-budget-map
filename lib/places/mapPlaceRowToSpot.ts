@@ -89,6 +89,7 @@ export function mapPlaceRowToSpot(row: PlaceRow): Spot {
     submissions,
     registeredAt: fallbackReg,
     upvotes: row.upvotes ?? 0,
+    downvotes: row.downvotes ?? 0,
     comments: parseComments(row.comments),
   };
 }

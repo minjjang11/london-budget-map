@@ -31,5 +31,7 @@ export type Spot = {
   /** When the spot was first registered (ISO) — used for 7-day community review window. */
   registeredAt?: string;
   upvotes?: number;
+  /** Cumulative downvotes on approved `places` rows (rankings / future map voting). */
+  downvotes?: number;
   comments?: SpotComment[];
 };

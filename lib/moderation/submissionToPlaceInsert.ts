@@ -32,6 +32,7 @@ export function submissionRowToPlaceInsert(sub: PlaceSubmissionRow): PlaceInsert
     submissions: submissionJson,
     registered_at: sub.submitted_at,
     upvotes: 0,
+    downvotes: 0,
     comments: [],
   };
 }
