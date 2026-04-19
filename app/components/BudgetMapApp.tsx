@@ -16,16 +16,19 @@ import {
   LocateFixed,
   Scale,
   ChevronRight,
+  ClipboardList,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchApprovedPlaces } from "@/lib/places/fetchApprovedPlaces";
 import { insertPlaceSubmission } from "@/lib/places/insertPlaceSubmission";
+import { fetchPendingPlaceSubmissions } from "@/lib/places/fetchPendingPlaceSubmissions";
+import type { PlaceSubmissionRow } from "@/lib/types/places";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
-type Tab = "map" | "community" | "submit" | "saved" | "course";
+type Tab = "map" | "community" | "review" | "submit" | "saved" | "course";
 
 type CommunitySort = "price" | "buzz" | "snitches";
 
@@ -151,6 +154,36 @@ function catEmoji(c: Category) {
   return c === "pub" ? "🍺" : c === "restaurant" ? "🍽️" : "☕";
 }
 
+function formatSubmittedDisplay(iso: string): string {
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return iso;
+  return new Date(iso).toLocaleDateString("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatReviewTimeRemaining(reviewEndsAt: string): string {
+  const end = new Date(reviewEndsAt).getTime();
+  if (!Number.isFinite(end)) return "—";
+  if (Date.now() >= end) return "Review window ended";
+  const ms = end - Date.now();
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  if (days >= 1) return `${days}d ${hours}h left`;
+  if (hours >= 1) return `${hours}h left`;
+  const mins = Math.max(1, Math.floor((ms % 3600000) / 60000));
+  return `${mins}m left`;
+}
+
+function truncateText(s: string, max: number): string {
+  const t = s.trim();
+  if (t.length <= max) return t;
+  return `${t.slice(0, max - 1)}…`;
+}
+
 export default function BudgetMapApp() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
@@ -174,6 +207,11 @@ export default function BudgetMapApp() {
   );
   const [submitBusy, setSubmitBusy] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  const [pendingRows, setPendingRows] = useState<PlaceSubmissionRow[]>([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [pendingError, setPendingError] = useState<string | null>(null);
+  const [pendingRefreshTick, setPendingRefreshTick] = useState(0);
   const [locating, setLocating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -230,6 +268,28 @@ export default function BudgetMapApp() {
   useEffect(() => {
     if (tab !== "submit") setSubmitSuccess(false);
   }, [tab]);
+
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    if (!client || tab !== "review") return;
+    let cancelled = false;
+    setPendingLoading(true);
+    setPendingError(null);
+    void (async () => {
+      const res = await fetchPendingPlaceSubmissions(client);
+      if (cancelled) return;
+      setPendingLoading(false);
+      if (!res.ok) {
+        setPendingError(res.message);
+        setPendingRows([]);
+        return;
+      }
+      setPendingRows(res.rows);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, pendingRefreshTick]);
 
   const filtered = useMemo(
     () =>
@@ -347,6 +407,7 @@ export default function BudgetMapApp() {
       setSubmitLng("");
       setSubmitErrors({});
       setSubmitSuccess(true);
+      setPendingRefreshTick((n) => n + 1);
       return;
     }
 
@@ -915,6 +976,80 @@ export default function BudgetMapApp() {
         </div>
       )}
 
+      {tab === "review" && (
+        <div className="budget-tab-panel px-3 pb-3">
+          <h2 className="mb-1 text-lg font-extrabold text-budget-text">Review queue</h2>
+          <p className="mb-3 text-[12px] leading-snug text-budget-muted">
+            Tips waiting for moderation — they stay off the main map until approved.
+          </p>
+
+          {!isSupabaseConfigured() || !getBrowserSupabase() ? (
+            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
+              Connect Supabase and run the latest migrations (including the policy that allows reading pending rows) to
+              see the shared queue here.
+            </div>
+          ) : pendingLoading ? (
+            <p className="py-12 text-center text-sm text-budget-muted">Loading queue…</p>
+          ) : pendingError ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-900">
+              {pendingError}
+            </div>
+          ) : pendingRows.length === 0 ? (
+            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-10 text-center text-[13px] text-budget-muted">
+              Nothing in the queue yet. Open <strong>Submit</strong> to add a cheap eat.
+            </div>
+          ) : (
+            pendingRows.map((row) => {
+              const catLabel = CATS.find((c) => c.id === row.category)?.label ?? "Spot";
+              const priceNum = Number(row.price_gbp);
+              const desc = row.description?.trim();
+              return (
+                <article
+                  key={row.id}
+                  className="mb-2.5 rounded-2xl border border-budget-surface bg-budget-white px-4 py-3.5 text-left shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
+                >
+                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-amber-950">
+                      Under review
+                    </span>
+                    <span className="text-[11px] font-bold text-budget-primary">
+                      {formatReviewTimeRemaining(row.review_ends_at)}
+                    </span>
+                  </div>
+                  <div className="flex gap-3">
+                    <span className="text-xl leading-none" aria-hidden>
+                      {catEmoji(row.category)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
+                        {catLabel}
+                        {row.area ? ` · ${row.area}` : ""}
+                      </p>
+                      <h3 className="mt-1 text-base font-extrabold leading-tight tracking-tight text-budget-text">
+                        {row.place_name}
+                      </h3>
+                      <p className="mt-1 text-[12px] font-semibold text-budget-muted">{row.menu_item_name}</p>
+                      <p className="mt-0.5 text-[14px] font-extrabold text-budget-primary">
+                        {Number.isFinite(priceNum) && priceNum > 0 ? formatMapPriceLabel(priceNum) : "—"}
+                      </p>
+                      <p className="mt-2 text-[11px] leading-snug text-budget-subtle">{row.address}</p>
+                      {desc ? (
+                        <p className="mt-2 line-clamp-3 text-[13px] leading-snug text-budget-text/85">
+                          {truncateText(desc, 220)}
+                        </p>
+                      ) : null}
+                      <p className="mt-2.5 text-[10px] font-extrabold uppercase tracking-wider text-budget-faint">
+                        Submitted {formatSubmittedDisplay(row.submitted_at)}
+                      </p>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      )}
+
       {tab === "submit" && (
         <div className="budget-tab-panel p-4">
           <>
@@ -1228,6 +1363,7 @@ export default function BudgetMapApp() {
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
             { id: "community" as Tab, label: "Rankings", Icon: MessagesSquare },
+            { id: "review" as Tab, label: "Review", Icon: ClipboardList },
             { id: "submit" as Tab, label: "Submit", Icon: Plus },
             { id: "saved" as Tab, label: "Saved", Icon: Bookmark },
             { id: "course" as Tab, label: "Course", Icon: Route },
