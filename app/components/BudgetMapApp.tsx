@@ -35,6 +35,7 @@ import {
   upsertSubmissionVote,
 } from "@/lib/places/submissionVotes";
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
+import { fetchPendingSubmissionReportCounts } from "@/lib/places/submissionReportCounts";
 import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicate";
 import AuthPanel from "./AuthPanel";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
@@ -239,6 +240,7 @@ export default function BudgetMapApp() {
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
   const [reportText, setReportText] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
+  const [reportCounts, setReportCounts] = useState<Record<string, number>>({});
 
   const refreshSession = useCallback(async () => {
     const c = getBrowserSupabase();
@@ -255,17 +257,30 @@ export default function BudgetMapApp() {
     if (!c || pendingRows.length === 0) return;
     const ids = pendingRows.map((r) => r.id);
     const uid = session?.user?.id ?? null;
-    const { tallies, myVote, error } = await fetchSubmissionVoteData(c, ids, uid);
-    if (error) {
-      console.warn("[budget-map] vote load:", error);
+    const [voteRes, reportRes] = await Promise.all([
+      fetchSubmissionVoteData(c, ids, uid),
+      fetchPendingSubmissionReportCounts(c, ids),
+    ]);
+    if (voteRes.error) {
+      console.warn("[budget-map] vote load:", voteRes.error);
       return;
     }
+    if (reportRes.error) {
+      console.warn("[budget-map] report counts:", reportRes.error);
+      setReportCounts({});
+    } else {
+      const rc: Record<string, number> = {};
+      reportRes.counts.forEach((n, k) => {
+        rc[k] = n;
+      });
+      setReportCounts(rc);
+    }
     const t: Record<string, { up: number; down: number }> = {};
-    tallies.forEach((v, k) => {
+    voteRes.tallies.forEach((v, k) => {
       t[k] = v;
     });
     const m: Record<string, SubmissionVoteType> = {};
-    myVote.forEach((v, k) => {
+    voteRes.myVote.forEach((v, k) => {
       m[k] = v;
     });
     setVoteTallies(t);
@@ -345,9 +360,17 @@ export default function BudgetMapApp() {
   }, [refreshSession]);
 
   useEffect(() => {
+    if (!session?.user) {
+      setReportTargetId(null);
+      setReportText("");
+    }
+  }, [session?.user]);
+
+  useEffect(() => {
     if (tab !== "review") {
       setVoteTallies({});
       setMyVotes({});
+      setReportCounts({});
       return;
     }
     void reloadReviewVotes();
@@ -617,9 +640,10 @@ export default function BudgetMapApp() {
     }
     setReportTargetId(null);
     setReportText("");
+    await reloadReviewVotes();
     setToast("Report sent — thanks for helping keep the queue honest.");
     window.setTimeout(() => setToast(null), 4000);
-  }, [reportTargetId, reportText, session?.user?.id]);
+  }, [reportTargetId, reportText, session?.user?.id, reloadReviewVotes]);
 
   const fillLocationFromDevice = () => {
     if (!navigator.geolocation) {
@@ -1155,8 +1179,18 @@ export default function BudgetMapApp() {
           </p>
 
           {isSupabaseConfigured() && getBrowserSupabase() ? (
-            <div className="mb-3">
+            <div className="mb-3 space-y-2">
               <AuthPanel session={session} onSessionChange={() => void refreshSession()} compact />
+              {!session?.user ? (
+                <div
+                  role="note"
+                  className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
+                >
+                  <span className="font-extrabold">Signed out</span> — use{" "}
+                  <span className="font-semibold">Sign in</span> above to vote, downvote, or report. You can still read
+                  the full queue.
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -1226,8 +1260,10 @@ export default function BudgetMapApp() {
                       <div className="flex flex-wrap items-stretch gap-2">
                         <button
                           type="button"
+                          disabled={!session?.user}
+                          title={!session?.user ? "Sign in to vote" : undefined}
                           onClick={() => void handleVoteOnSubmission(row.id, "upvote")}
-                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold sm:basis-auto ${
+                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45 sm:basis-auto ${
                             myVotes[row.id] === "upvote"
                               ? "border-budget-primary bg-budget-surface text-budget-text"
                               : "border-budget-surface bg-budget-bg text-budget-text"
@@ -1238,8 +1274,10 @@ export default function BudgetMapApp() {
                         </button>
                         <button
                           type="button"
+                          disabled={!session?.user}
+                          title={!session?.user ? "Sign in to vote" : undefined}
                           onClick={() => void handleVoteOnSubmission(row.id, "downvote")}
-                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold sm:basis-auto ${
+                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45 sm:basis-auto ${
                             myVotes[row.id] === "downvote"
                               ? "border-budget-primary bg-budget-surface text-budget-text"
                               : "border-budget-surface bg-budget-bg text-budget-text"
@@ -1250,14 +1288,20 @@ export default function BudgetMapApp() {
                         </button>
                         <button
                           type="button"
+                          disabled={!session?.user}
+                          title={!session?.user ? "Sign in to report" : undefined}
                           onClick={() => {
+                            if (!session?.user) return;
                             setReportTargetId((id) => (id === row.id ? null : row.id));
                             setReportText("");
                           }}
-                          className="inline-flex min-h-[40px] flex-1 basis-full items-center justify-center gap-1 rounded-xl border-2 border-budget-surface bg-budget-white py-2 text-[12px] font-extrabold text-budget-text sm:basis-auto sm:px-3"
+                          className="inline-flex min-h-[40px] flex-1 basis-full items-center justify-center gap-1 rounded-xl border-2 border-budget-surface bg-budget-white py-2 text-[12px] font-extrabold text-budget-text disabled:cursor-not-allowed disabled:opacity-45 sm:basis-auto sm:px-3"
                         >
                           <Flag size={16} className="shrink-0 text-budget-muted" />
                           Report
+                          {(reportCounts[row.id] ?? 0) > 0 ? (
+                            <span className="text-budget-muted">· {reportCounts[row.id]}</span>
+                          ) : null}
                         </button>
                       </div>
                       {reportTargetId === row.id ? (

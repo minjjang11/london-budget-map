@@ -38,7 +38,12 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      pending_submission_report_counts: {
+        Args: { p_ids: string[] };
+        Returns: { submission_id: string; report_count: number }[];
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };
