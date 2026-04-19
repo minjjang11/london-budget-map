@@ -35,6 +35,7 @@ import {
   upsertSubmissionVote,
 } from "@/lib/places/submissionVotes";
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
+import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicate";
 import AuthPanel from "./AuthPanel";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 
@@ -222,6 +223,10 @@ export default function BudgetMapApp() {
   const [submitBusy, setSubmitBusy] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [submitGooglePlaceId, setSubmitGooglePlaceId] = useState<string | null>(null);
+  const [submitDuplicateInfo, setSubmitDuplicateInfo] = useState<{
+    kind: "approved" | "pending";
+    name: string;
+  } | null>(null);
 
   const [pendingRows, setPendingRows] = useState<PlaceSubmissionRow[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -322,6 +327,10 @@ export default function BudgetMapApp() {
   useEffect(() => {
     if (tab !== "submit") setSubmitSuccess(false);
   }, [tab]);
+
+  useEffect(() => {
+    setSubmitDuplicateInfo(null);
+  }, [submitGooglePlaceId]);
 
   useEffect(() => {
     void refreshSession();
@@ -431,7 +440,7 @@ export default function BudgetMapApp() {
     setSelectedId((prev) => (prev === id ? null : prev));
   }, []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (opts?: { bypassDuplicate?: boolean }) => {
     setSubmitSuccess(false);
     const validItems = submitItems.filter((i) => i.name.trim() && i.price > 0);
     const nextErr: { name?: string; menu?: string; geo?: string; address?: string } = {};
@@ -459,6 +468,26 @@ export default function BudgetMapApp() {
         window.setTimeout(() => setToast(null), 5000);
         return;
       }
+      if (opts?.bypassDuplicate) {
+        setSubmitDuplicateInfo(null);
+      }
+      const gid = submitGooglePlaceId?.trim();
+      if (gid && !opts?.bypassDuplicate) {
+        const dupRes = await checkGooglePlaceDuplicate(client, gid);
+        if (!dupRes.ok) {
+          setToast(`Couldn’t check for duplicates: ${dupRes.message}`);
+          window.setTimeout(() => setToast(null), 5000);
+          return;
+        }
+        if (dupRes.result.hasDuplicate && dupRes.result.kind) {
+          setSubmitDuplicateInfo({
+            kind: dupRes.result.kind,
+            name: dupRes.result.existingName?.trim() || "this venue",
+          });
+          return;
+        }
+      }
+
       const latNum = parseFloat(submitLat);
       const lngNum = parseFloat(submitLng);
       setSubmitBusy(true);
@@ -491,6 +520,7 @@ export default function BudgetMapApp() {
       setSubmitLat("");
       setSubmitLng("");
       setSubmitGooglePlaceId(null);
+      setSubmitDuplicateInfo(null);
       setSubmitErrors({});
       setSubmitSuccess(true);
       setPendingRefreshTick((n) => n + 1);
@@ -1492,6 +1522,37 @@ export default function BudgetMapApp() {
                 placeholder="e.g. queue's long but the roti slaps"
                 className="budget-input mb-5 text-sm"
               />
+
+              {submitDuplicateInfo ? (
+                <div
+                  role="status"
+                  className="mb-4 rounded-[14px] border border-amber-300 bg-amber-50 px-3.5 py-3 text-[12px] leading-snug text-amber-950"
+                >
+                  <p className="font-extrabold">Possible duplicate</p>
+                  <p className="mt-1.5">
+                    This Google place is already{" "}
+                    {submitDuplicateInfo.kind === "approved"
+                      ? "on the map as an approved spot"
+                      : "in the review queue"}{" "}
+                    {submitDuplicateInfo.name ? (
+                      <>
+                        (<span className="font-semibold">{submitDuplicateInfo.name}</span>).
+                      </>
+                    ) : (
+                      "."
+                    )}{" "}
+                    You can still send your tip if the menu or price is new.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={submitBusy}
+                    onClick={() => void handleSubmit({ bypassDuplicate: true })}
+                    className="mt-3 w-full cursor-pointer rounded-xl border-2 border-amber-700/40 bg-budget-white py-2.5 text-[12px] font-extrabold text-amber-950 transition hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    Submit anyway
+                  </button>
+                </div>
+              ) : null}
 
               <button
                 type="button"

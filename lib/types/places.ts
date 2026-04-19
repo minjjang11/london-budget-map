@@ -15,6 +15,8 @@ export type PlaceRow = {
   address: string | null;
   /** Short public blurb for map preview (column added in 002 migration). */
   description?: string | null;
+  /** Google Place ID for dedupe vs submissions (009 migration). */
+  google_place_id?: string | null;
   lat: number;
   lng: number;
   /** Lowest menu price in GBP for map pill when submissions JSON is empty. */
