@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { getBrowserAuthRedirectOrigin } from "@/lib/site/getBrowserAuthRedirectOrigin";
 
 type Props = {
   session: Session | null;
@@ -68,7 +69,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
           onClick={async () => {
             setBusy(true);
             setMsg(null);
-            const origin = typeof window !== "undefined" ? window.location.origin : "";
+            const origin = getBrowserAuthRedirectOrigin();
             const { error } = await supabase.auth.signInWithOtp({
               email: email.trim(),
               options: { emailRedirectTo: origin ? `${origin}/map` : undefined },
