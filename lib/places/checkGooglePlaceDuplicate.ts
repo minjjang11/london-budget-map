@@ -27,7 +27,7 @@ export async function checkGooglePlaceDuplicate(
     .from("place_submissions")
     .select("place_name")
     .eq("google_place_id", id)
-    .eq("status", "pending")
+    .in("status", ["pending", "needs_review"])
     .limit(1);
 
   if (pe) return { ok: false, message: pe.message };

@@ -30,10 +30,28 @@ export type PlaceRow = {
   updated_at?: string;
 };
 
+/** Insert payload for `places` (service role / trusted paths). */
+export type PlaceInsert = {
+  status: "approved";
+  name: string;
+  category: Category;
+  area: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  lowest_price_gbp: number | null;
+  description: string | null;
+  google_place_id: string | null;
+  submissions: unknown;
+  registered_at: string | null;
+  upvotes: number;
+  comments: unknown;
+};
+
 /** Row from public.place_submissions (see 003 migration). */
 export type PlaceSubmissionRow = {
   id: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "needs_review" | "approved" | "rejected";
   submitted_at: string;
   review_ends_at: string;
   submitted_by: string | null;

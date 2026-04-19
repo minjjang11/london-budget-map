@@ -1,4 +1,4 @@
-import type { PlaceRow, PlaceSubmissionInsert, PlaceSubmissionRow } from "./places";
+import type { PlaceInsert, PlaceRow, PlaceSubmissionInsert, PlaceSubmissionRow } from "./places";
 import type {
   SubmissionReportInsert,
   SubmissionReportRow,
@@ -14,14 +14,14 @@ export type Database = {
     Tables: {
       places: {
         Row: PlaceRow;
-        Insert: never;
+        Insert: PlaceInsert;
         Update: never;
         Relationships: [];
       };
       place_submissions: {
         Row: PlaceSubmissionRow;
         Insert: PlaceSubmissionInsert;
-        Update: never;
+        Update: Partial<Pick<PlaceSubmissionRow, "status">>;
         Relationships: [];
       };
       submission_votes: {
@@ -38,12 +38,7 @@ export type Database = {
       };
     };
     Views: Record<string, never>;
-    Functions: {
-      pending_submission_report_counts: {
-        Args: { p_ids: string[] };
-        Returns: { submission_id: string; report_count: number }[];
-      };
-    };
+    Functions: Record<string, never>;
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

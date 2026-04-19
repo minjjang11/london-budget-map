@@ -35,7 +35,6 @@ import {
   upsertSubmissionVote,
 } from "@/lib/places/submissionVotes";
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
-import { fetchPendingSubmissionReportCounts } from "@/lib/places/submissionReportCounts";
 import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicate";
 import AuthPanel from "./AuthPanel";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
@@ -235,12 +234,14 @@ export default function BudgetMapApp() {
   const [pendingRefreshTick, setPendingRefreshTick] = useState(0);
 
   const [session, setSession] = useState<Session | null>(null);
+  const [isModerator, setIsModerator] = useState(false);
+  const [approvedPlacesTick, setApprovedPlacesTick] = useState(0);
+  const [moderationBusyId, setModerationBusyId] = useState<string | null>(null);
   const [voteTallies, setVoteTallies] = useState<Record<string, { up: number; down: number }>>({});
   const [myVotes, setMyVotes] = useState<Record<string, SubmissionVoteType>>({});
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
   const [reportText, setReportText] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
-  const [reportCounts, setReportCounts] = useState<Record<string, number>>({});
 
   const refreshSession = useCallback(async () => {
     const c = getBrowserSupabase();
@@ -257,30 +258,17 @@ export default function BudgetMapApp() {
     if (!c || pendingRows.length === 0) return;
     const ids = pendingRows.map((r) => r.id);
     const uid = session?.user?.id ?? null;
-    const [voteRes, reportRes] = await Promise.all([
-      fetchSubmissionVoteData(c, ids, uid),
-      fetchPendingSubmissionReportCounts(c, ids),
-    ]);
-    if (voteRes.error) {
-      console.warn("[budget-map] vote load:", voteRes.error);
+    const { tallies, myVote, error } = await fetchSubmissionVoteData(c, ids, uid);
+    if (error) {
+      console.warn("[budget-map] vote load:", error);
       return;
     }
-    if (reportRes.error) {
-      console.warn("[budget-map] report counts:", reportRes.error);
-      setReportCounts({});
-    } else {
-      const rc: Record<string, number> = {};
-      reportRes.counts.forEach((n, k) => {
-        rc[k] = n;
-      });
-      setReportCounts(rc);
-    }
     const t: Record<string, { up: number; down: number }> = {};
-    voteRes.tallies.forEach((v, k) => {
+    tallies.forEach((v, k) => {
       t[k] = v;
     });
     const m: Record<string, SubmissionVoteType> = {};
-    voteRes.myVote.forEach((v, k) => {
+    myVote.forEach((v, k) => {
       m[k] = v;
     });
     setVoteTallies(t);
@@ -331,7 +319,7 @@ export default function BudgetMapApp() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [approvedPlacesTick]);
   useEffect(() => {
     saveSpots(spots);
   }, [spots]);
@@ -367,10 +355,50 @@ export default function BudgetMapApp() {
   }, [session?.user]);
 
   useEffect(() => {
+    if (!session?.user?.email) {
+      setIsModerator(false);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch("/api/moderation/me", { credentials: "include" });
+        const j = (await r.json()) as { moderator?: boolean };
+        if (!cancelled) setIsModerator(Boolean(j.moderator));
+      } catch {
+        if (!cancelled) setIsModerator(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.email]);
+
+  useEffect(() => {
+    if (tab !== "review" || !isModerator) return;
+    let cancelled = false;
+    void (async () => {
+      const r = await fetch("/api/moderation/evaluate-expired", { method: "POST", credentials: "include" });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      if (cancelled) return;
+      if (!r.ok) {
+        const msg = typeof j.error === "string" ? j.error : "Moderation job could not run.";
+        setToast(msg);
+        window.setTimeout(() => setToast(null), 5000);
+        return;
+      }
+      setPendingRefreshTick((n) => n + 1);
+      setApprovedPlacesTick((n) => n + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [tab, isModerator]);
+
+  useEffect(() => {
     if (tab !== "review") {
       setVoteTallies({});
       setMyVotes({});
-      setReportCounts({});
       return;
     }
     void reloadReviewVotes();
@@ -596,8 +624,8 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote on submissions.");
-        window.setTimeout(() => setToast(null), 3500);
+        setToast("Sign in to vote — use the email sign-in panel at the top of the Review tab.");
+        window.setTimeout(() => setToast(null), 4500);
         return;
       }
       const current = myVotes[submissionId];
@@ -626,8 +654,8 @@ export default function BudgetMapApp() {
     const c = getBrowserSupabase();
     const uid = session?.user?.id;
     if (!c || !uid) {
-      setToast("Sign in to report a submission.");
-      window.setTimeout(() => setToast(null), 3500);
+      setToast("Sign in to report — use the email sign-in panel at the top of the Review tab.");
+      window.setTimeout(() => setToast(null), 4500);
       return;
     }
     setReportBusy(true);
@@ -640,10 +668,22 @@ export default function BudgetMapApp() {
     }
     setReportTargetId(null);
     setReportText("");
-    await reloadReviewVotes();
     setToast("Report sent — thanks for helping keep the queue honest.");
     window.setTimeout(() => setToast(null), 4000);
-  }, [reportTargetId, reportText, session?.user?.id, reloadReviewVotes]);
+  }, [reportTargetId, reportText, session?.user?.id]);
+
+  const handleReportTap = useCallback(
+    (submissionId: string) => {
+      if (!session?.user) {
+        setToast("Sign in to report — use the email sign-in panel at the top of the Review tab.");
+        window.setTimeout(() => setToast(null), 4500);
+        return;
+      }
+      setReportTargetId((id) => (id === submissionId ? null : submissionId));
+      setReportText("");
+    },
+    [session?.user],
+  );
 
   const fillLocationFromDevice = () => {
     if (!navigator.geolocation) {
@@ -1174,8 +1214,10 @@ export default function BudgetMapApp() {
         <div className="budget-tab-panel px-3 pb-3">
           <h2 className="mb-1 text-lg font-extrabold text-budget-text">Review queue</h2>
           <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-            Tips waiting for moderation — they stay off the main map until approved. Browsing is public; voting and
-            reports need a quick sign-in.
+            Tips waiting for moderation — they stay off the main map until approved. Anyone can browse;{" "}
+            <strong className="font-semibold text-budget-text/80">Upvote</strong>,{" "}
+            <strong className="font-semibold text-budget-text/80">Downvote</strong>, and{" "}
+            <strong className="font-semibold text-budget-text/80">Report</strong> need sign-in.
           </p>
 
           {isSupabaseConfigured() && getBrowserSupabase() ? (
@@ -1186,9 +1228,9 @@ export default function BudgetMapApp() {
                   role="note"
                   className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
                 >
-                  <span className="font-extrabold">Signed out</span> — use{" "}
-                  <span className="font-semibold">Sign in</span> above to vote, downvote, or report. You can still read
-                  the full queue.
+                  <span className="font-extrabold">Signed out</span> — sign in above to use Upvote, Downvote, or Report.
+                  If you tap those on a card, we&apos;ll remind you here with a short message. You can still read the
+                  queue.
                 </div>
               ) : null}
             </div>
@@ -1257,51 +1299,45 @@ export default function BudgetMapApp() {
 
                   {isSupabaseConfigured() && getBrowserSupabase() ? (
                     <div className="mt-3 border-t border-budget-surface/60 pt-3">
-                      <div className="flex flex-wrap items-stretch gap-2">
+                      <p className="mb-2 text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
+                        Community signal
+                      </p>
+                      <div className="flex gap-2">
                         <button
                           type="button"
-                          disabled={!session?.user}
-                          title={!session?.user ? "Sign in to vote" : undefined}
                           onClick={() => void handleVoteOnSubmission(row.id, "upvote")}
-                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45 sm:basis-auto ${
+                          className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
                             myVotes[row.id] === "upvote"
                               ? "border-budget-primary bg-budget-surface text-budget-text"
                               : "border-budget-surface bg-budget-bg text-budget-text"
                           }`}
                         >
-                          <ThumbsUp size={16} className="shrink-0 text-budget-primary" />
-                          <span>{voteTallies[row.id]?.up ?? 0}</span>
+                          <ThumbsUp size={18} className="shrink-0 text-budget-primary" aria-hidden />
+                          <span className="min-w-0">Upvote</span>
+                          <span className="tabular-nums text-budget-primary">{voteTallies[row.id]?.up ?? 0}</span>
                         </button>
                         <button
                           type="button"
-                          disabled={!session?.user}
-                          title={!session?.user ? "Sign in to vote" : undefined}
                           onClick={() => void handleVoteOnSubmission(row.id, "downvote")}
-                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold disabled:cursor-not-allowed disabled:opacity-45 sm:basis-auto ${
+                          className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
                             myVotes[row.id] === "downvote"
                               ? "border-budget-primary bg-budget-surface text-budget-text"
                               : "border-budget-surface bg-budget-bg text-budget-text"
                           }`}
                         >
-                          <ThumbsDown size={16} className="shrink-0 text-budget-muted" />
-                          <span>{voteTallies[row.id]?.down ?? 0}</span>
+                          <ThumbsDown size={18} className="shrink-0 text-budget-muted" aria-hidden />
+                          <span className="min-w-0">Downvote</span>
+                          <span className="tabular-nums text-budget-muted">{voteTallies[row.id]?.down ?? 0}</span>
                         </button>
+                      </div>
+                      <div className="mt-2 flex justify-end">
                         <button
                           type="button"
-                          disabled={!session?.user}
-                          title={!session?.user ? "Sign in to report" : undefined}
-                          onClick={() => {
-                            if (!session?.user) return;
-                            setReportTargetId((id) => (id === row.id ? null : row.id));
-                            setReportText("");
-                          }}
-                          className="inline-flex min-h-[40px] flex-1 basis-full items-center justify-center gap-1 rounded-xl border-2 border-budget-surface bg-budget-white py-2 text-[12px] font-extrabold text-budget-text disabled:cursor-not-allowed disabled:opacity-45 sm:basis-auto sm:px-3"
+                          onClick={() => handleReportTap(row.id)}
+                          className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-budget-muted underline decoration-budget-faint underline-offset-2 hover:text-budget-text"
                         >
-                          <Flag size={16} className="shrink-0 text-budget-muted" />
+                          <Flag size={12} className="shrink-0 opacity-70" aria-hidden />
                           Report
-                          {(reportCounts[row.id] ?? 0) > 0 ? (
-                            <span className="text-budget-muted">· {reportCounts[row.id]}</span>
-                          ) : null}
                         </button>
                       </div>
                       {reportTargetId === row.id ? (

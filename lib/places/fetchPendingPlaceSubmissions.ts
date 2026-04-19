@@ -12,7 +12,7 @@ export async function fetchPendingPlaceSubmissions(
   const { data, error } = await client
     .from("place_submissions")
     .select("*")
-    .eq("status", "pending")
+    .in("status", ["pending", "needs_review"])
     .order("submitted_at", { ascending: false });
 
   if (error) return { ok: false, rows: [], message: error.message };
