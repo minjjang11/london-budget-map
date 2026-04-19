@@ -1,4 +1,10 @@
 import type { PlaceRow, PlaceSubmissionInsert, PlaceSubmissionRow } from "./places";
+import type {
+  SubmissionReportInsert,
+  SubmissionReportRow,
+  SubmissionVoteInsert,
+  SubmissionVoteRow,
+} from "./submissionEngagement";
 
 /**
  * Narrow Supabase typings for tables we touch.
@@ -15,6 +21,18 @@ export type Database = {
       place_submissions: {
         Row: PlaceSubmissionRow;
         Insert: PlaceSubmissionInsert;
+        Update: never;
+        Relationships: [];
+      };
+      submission_votes: {
+        Row: SubmissionVoteRow;
+        Insert: SubmissionVoteInsert;
+        Update: Partial<Pick<SubmissionVoteInsert, "vote_type">>;
+        Relationships: [];
+      };
+      submission_reports: {
+        Row: SubmissionReportRow;
+        Insert: SubmissionReportInsert;
         Update: never;
         Relationships: [];
       };

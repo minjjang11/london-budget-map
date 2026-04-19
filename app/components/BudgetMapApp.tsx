@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useMemo, useEffect, useCallback } from "react";
+import type { Session } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 import type { MapSpot } from "./MapView";
 import {
@@ -13,10 +14,12 @@ import {
   X,
   Navigation,
   ThumbsUp,
+  ThumbsDown,
   LocateFixed,
   Scale,
   ChevronRight,
   ClipboardList,
+  Flag,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -25,6 +28,14 @@ import { fetchApprovedPlaces } from "@/lib/places/fetchApprovedPlaces";
 import { insertPlaceSubmission } from "@/lib/places/insertPlaceSubmission";
 import { fetchPendingPlaceSubmissions } from "@/lib/places/fetchPendingPlaceSubmissions";
 import type { PlaceSubmissionRow } from "@/lib/types/places";
+import type { SubmissionVoteType } from "@/lib/types/submissionEngagement";
+import {
+  fetchSubmissionVoteData,
+  removeSubmissionVote,
+  upsertSubmissionVote,
+} from "@/lib/places/submissionVotes";
+import { insertSubmissionReport } from "@/lib/places/submissionReports";
+import AuthPanel from "./AuthPanel";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -212,6 +223,45 @@ export default function BudgetMapApp() {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [pendingRefreshTick, setPendingRefreshTick] = useState(0);
+
+  const [session, setSession] = useState<Session | null>(null);
+  const [voteTallies, setVoteTallies] = useState<Record<string, { up: number; down: number }>>({});
+  const [myVotes, setMyVotes] = useState<Record<string, SubmissionVoteType>>({});
+  const [reportTargetId, setReportTargetId] = useState<string | null>(null);
+  const [reportText, setReportText] = useState("");
+  const [reportBusy, setReportBusy] = useState(false);
+
+  const refreshSession = useCallback(async () => {
+    const c = getBrowserSupabase();
+    if (!c) {
+      setSession(null);
+      return;
+    }
+    const { data } = await c.auth.getSession();
+    setSession(data.session ?? null);
+  }, []);
+
+  const reloadReviewVotes = useCallback(async () => {
+    const c = getBrowserSupabase();
+    if (!c || pendingRows.length === 0) return;
+    const ids = pendingRows.map((r) => r.id);
+    const uid = session?.user?.id ?? null;
+    const { tallies, myVote, error } = await fetchSubmissionVoteData(c, ids, uid);
+    if (error) {
+      console.warn("[budget-map] vote load:", error);
+      return;
+    }
+    const t: Record<string, { up: number; down: number }> = {};
+    tallies.forEach((v, k) => {
+      t[k] = v;
+    });
+    const m: Record<string, SubmissionVoteType> = {};
+    myVote.forEach((v, k) => {
+      m[k] = v;
+    });
+    setVoteTallies(t);
+    setMyVotes(m);
+  }, [pendingRows, session?.user?.id]);
   const [locating, setLocating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -268,6 +318,27 @@ export default function BudgetMapApp() {
   useEffect(() => {
     if (tab !== "submit") setSubmitSuccess(false);
   }, [tab]);
+
+  useEffect(() => {
+    void refreshSession();
+    const c = getBrowserSupabase();
+    if (!c) return;
+    const {
+      data: { subscription },
+    } = c.auth.onAuthStateChange(() => {
+      void refreshSession();
+    });
+    return () => subscription.unsubscribe();
+  }, [refreshSession]);
+
+  useEffect(() => {
+    if (tab !== "review") {
+      setVoteTallies({});
+      setMyVotes({});
+      return;
+    }
+    void reloadReviewVotes();
+  }, [tab, reloadReviewVotes]);
 
   useEffect(() => {
     const client = getBrowserSupabase();
@@ -379,20 +450,29 @@ export default function BudgetMapApp() {
     const rep = validItems[0]!;
 
     if (client) {
+      if (!session?.user?.id) {
+        setToast("Sign in to submit tips to the shared queue.");
+        window.setTimeout(() => setToast(null), 5000);
+        return;
+      }
       const latNum = parseFloat(submitLat);
       const lngNum = parseFloat(submitLng);
       setSubmitBusy(true);
-      const { error } = await insertPlaceSubmission(client, {
-        place_name: submitName.trim(),
-        address: submitAddress.trim(),
-        lat: latNum,
-        lng: lngNum,
-        category: submitCat,
-        menu_item_name: rep.name.trim(),
-        price_gbp: rep.price,
-        description: submitReview.trim() || null,
-        area: submitArea,
-      });
+      const { error } = await insertPlaceSubmission(
+        client,
+        {
+          place_name: submitName.trim(),
+          address: submitAddress.trim(),
+          lat: latNum,
+          lng: lngNum,
+          category: submitCat,
+          menu_item_name: rep.name.trim(),
+          price_gbp: rep.price,
+          description: submitReview.trim() || null,
+          area: submitArea,
+        },
+        session.user.id,
+      );
       setSubmitBusy(false);
       if (error) {
         setToast(`Couldn’t save your tip: ${error}`);
@@ -450,6 +530,59 @@ export default function BudgetMapApp() {
     setToast("Spot added — on trial for 7 days for community review.");
     window.setTimeout(() => setToast(null), 4000);
   };
+
+  const handleVoteOnSubmission = useCallback(
+    async (submissionId: string, voteType: SubmissionVoteType) => {
+      const c = getBrowserSupabase();
+      const uid = session?.user?.id;
+      if (!c || !uid) {
+        setToast("Sign in to vote on submissions.");
+        window.setTimeout(() => setToast(null), 3500);
+        return;
+      }
+      const current = myVotes[submissionId];
+      if (current === voteType) {
+        const { error } = await removeSubmissionVote(c, submissionId, uid);
+        if (error) {
+          setToast(error);
+          window.setTimeout(() => setToast(null), 5000);
+          return;
+        }
+      } else {
+        const { error } = await upsertSubmissionVote(c, submissionId, uid, voteType);
+        if (error) {
+          setToast(error);
+          window.setTimeout(() => setToast(null), 5000);
+          return;
+        }
+      }
+      await reloadReviewVotes();
+    },
+    [session?.user?.id, myVotes, reloadReviewVotes],
+  );
+
+  const handleSendReport = useCallback(async () => {
+    if (!reportTargetId) return;
+    const c = getBrowserSupabase();
+    const uid = session?.user?.id;
+    if (!c || !uid) {
+      setToast("Sign in to report a submission.");
+      window.setTimeout(() => setToast(null), 3500);
+      return;
+    }
+    setReportBusy(true);
+    const { error } = await insertSubmissionReport(c, reportTargetId, uid, reportText.trim() || null);
+    setReportBusy(false);
+    if (error) {
+      setToast(error);
+      window.setTimeout(() => setToast(null), 5000);
+      return;
+    }
+    setReportTargetId(null);
+    setReportText("");
+    setToast("Report sent — thanks for helping keep the queue honest.");
+    window.setTimeout(() => setToast(null), 4000);
+  }, [reportTargetId, reportText, session?.user?.id]);
 
   const fillLocationFromDevice = () => {
     if (!navigator.geolocation) {
@@ -980,8 +1113,15 @@ export default function BudgetMapApp() {
         <div className="budget-tab-panel px-3 pb-3">
           <h2 className="mb-1 text-lg font-extrabold text-budget-text">Review queue</h2>
           <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-            Tips waiting for moderation — they stay off the main map until approved.
+            Tips waiting for moderation — they stay off the main map until approved. Browsing is public; voting and
+            reports need a quick sign-in.
           </p>
+
+          {isSupabaseConfigured() && getBrowserSupabase() ? (
+            <div className="mb-3">
+              <AuthPanel session={session} onSessionChange={() => void refreshSession()} compact />
+            </div>
+          ) : null}
 
           {!isSupabaseConfigured() || !getBrowserSupabase() ? (
             <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
@@ -1043,6 +1183,78 @@ export default function BudgetMapApp() {
                       </p>
                     </div>
                   </div>
+
+                  {isSupabaseConfigured() && getBrowserSupabase() ? (
+                    <div className="mt-3 border-t border-budget-surface/60 pt-3">
+                      <div className="flex flex-wrap items-stretch gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleVoteOnSubmission(row.id, "upvote")}
+                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold sm:basis-auto ${
+                            myVotes[row.id] === "upvote"
+                              ? "border-budget-primary bg-budget-surface text-budget-text"
+                              : "border-budget-surface bg-budget-bg text-budget-text"
+                          }`}
+                        >
+                          <ThumbsUp size={16} className="shrink-0 text-budget-primary" />
+                          <span>{voteTallies[row.id]?.up ?? 0}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleVoteOnSubmission(row.id, "downvote")}
+                          className={`inline-flex min-h-[40px] min-w-0 flex-1 basis-[calc(50%-0.25rem)] items-center justify-center gap-1 rounded-xl border-2 py-2 text-[12px] font-extrabold sm:basis-auto ${
+                            myVotes[row.id] === "downvote"
+                              ? "border-budget-primary bg-budget-surface text-budget-text"
+                              : "border-budget-surface bg-budget-bg text-budget-text"
+                          }`}
+                        >
+                          <ThumbsDown size={16} className="shrink-0 text-budget-muted" />
+                          <span>{voteTallies[row.id]?.down ?? 0}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReportTargetId((id) => (id === row.id ? null : row.id));
+                            setReportText("");
+                          }}
+                          className="inline-flex min-h-[40px] flex-1 basis-full items-center justify-center gap-1 rounded-xl border-2 border-budget-surface bg-budget-white py-2 text-[12px] font-extrabold text-budget-text sm:basis-auto sm:px-3"
+                        >
+                          <Flag size={16} className="shrink-0 text-budget-muted" />
+                          Report
+                        </button>
+                      </div>
+                      {reportTargetId === row.id ? (
+                        <div className="mt-2 space-y-2">
+                          <input
+                            value={reportText}
+                            onChange={(e) => setReportText(e.target.value)}
+                            placeholder="Optional note for moderators"
+                            className="budget-input-sm w-full text-[13px]"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={reportBusy}
+                              onClick={() => void handleSendReport()}
+                              className="flex-1 cursor-pointer rounded-xl border-0 bg-budget-primary py-2.5 text-[12px] font-extrabold text-white disabled:opacity-50"
+                            >
+                              {reportBusy ? "Sending…" : "Send report"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReportTargetId(null);
+                                setReportText("");
+                              }}
+                              className="cursor-pointer rounded-xl border-2 border-budget-surface bg-budget-bg px-3 py-2.5 text-[12px] font-extrabold text-budget-text"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </article>
               );
             })
@@ -1078,6 +1290,20 @@ export default function BudgetMapApp() {
               </div>
             )}
 
+            {isSupabaseConfigured() && (
+              <div className="mb-4">
+                <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
+              </div>
+            )}
+
+            {isSupabaseConfigured() && !session?.user ? (
+              <p className="mb-3 rounded-[14px] border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-center text-[12px] font-semibold text-amber-950">
+                Sign in with the magic link above to send your tip to the database-backed review queue.
+              </p>
+            ) : null}
+
+            {(!isSupabaseConfigured() || session?.user) && (
+              <>
             <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Venue name</label>
             <input
               value={submitName}
@@ -1255,6 +1481,8 @@ export default function BudgetMapApp() {
               >
                 {submitBusy ? "Sending…" : "Submit spot"}
               </button>
+              </>
+            )}
             </>
         </div>
       )}

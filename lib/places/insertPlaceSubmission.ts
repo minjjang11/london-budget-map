@@ -19,6 +19,7 @@ export type NewPlaceSubmissionInput = {
 export async function insertPlaceSubmission(
   client: SupabaseClient<Database>,
   input: NewPlaceSubmissionInput,
+  submittedByUserId: string,
 ): Promise<{ error: string | null }> {
   const submittedAt = new Date();
   const reviewEndsAt = new Date(submittedAt.getTime() + REVIEW_MS);
@@ -27,7 +28,7 @@ export async function insertPlaceSubmission(
     status: "pending",
     submitted_at: submittedAt.toISOString(),
     review_ends_at: reviewEndsAt.toISOString(),
-    submitted_by: null,
+    submitted_by: submittedByUserId,
     place_name: input.place_name,
     address: input.address,
     lat: input.lat,

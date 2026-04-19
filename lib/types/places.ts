@@ -46,12 +46,12 @@ export type PlaceSubmissionRow = {
   area: string | null;
 };
 
-/** Fields the app sends on insert (DB defaults id; RLS expects pending). */
+/** Fields the app sends on insert (DB defaults id; RLS expects pending + submitted_by = auth.uid()). */
 export type PlaceSubmissionInsert = {
   status: "pending";
   submitted_at: string;
   review_ends_at: string;
-  submitted_by: null;
+  submitted_by: string;
   place_name: string;
   address: string;
   lat: number;
