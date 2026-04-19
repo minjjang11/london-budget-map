@@ -19,7 +19,9 @@ import {
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchApprovedPlaces } from "@/lib/places/fetchApprovedPlaces";
+import { insertPlaceSubmission } from "@/lib/places/insertPlaceSubmission";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -160,13 +162,18 @@ export default function BudgetMapApp() {
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
+  const [submitAddress, setSubmitAddress] = useState("");
   const [submitArea, setSubmitArea] = useState("Soho");
   const [submitCat, setSubmitCat] = useState<Category>("restaurant");
   const [submitItems, setSubmitItems] = useState<SpotMenuItem[]>([{ name: "", price: 0 }]);
   const [submitReview, setSubmitReview] = useState("");
   const [submitLat, setSubmitLat] = useState("");
   const [submitLng, setSubmitLng] = useState("");
-  const [submitErrors, setSubmitErrors] = useState<{ name?: string; menu?: string; geo?: string }>({});
+  const [submitErrors, setSubmitErrors] = useState<{ name?: string; menu?: string; geo?: string; address?: string }>(
+    {},
+  );
+  const [submitBusy, setSubmitBusy] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [locating, setLocating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -219,6 +226,10 @@ export default function BudgetMapApp() {
   useEffect(() => {
     saveSavedIds(savedIds);
   }, [savedIds]);
+
+  useEffect(() => {
+    if (tab !== "submit") setSubmitSuccess(false);
+  }, [tab]);
 
   const filtered = useMemo(
     () =>
@@ -285,13 +296,59 @@ export default function BudgetMapApp() {
     setSelectedId((prev) => (prev === id ? null : prev));
   }, []);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    setSubmitSuccess(false);
     const validItems = submitItems.filter((i) => i.name.trim() && i.price > 0);
-    const nextErr: { name?: string; menu?: string } = {};
+    const nextErr: { name?: string; menu?: string; geo?: string; address?: string } = {};
     if (!submitName.trim()) nextErr.name = "Add a venue name.";
     if (validItems.length === 0) nextErr.menu = "Add at least one menu item with a price above £0.";
+
+    const client = getBrowserSupabase();
+    if (client) {
+      if (!submitAddress.trim()) nextErr.address = "Add a street address (for moderators).";
+      const latNum = parseFloat(submitLat);
+      const lngNum = parseFloat(submitLng);
+      if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+        nextErr.geo = "Set a pin — use my location or enter latitude and longitude.";
+      }
+    }
+
     setSubmitErrors(nextErr);
     if (Object.keys(nextErr).length) return;
+
+    const rep = validItems[0]!;
+
+    if (client) {
+      const latNum = parseFloat(submitLat);
+      const lngNum = parseFloat(submitLng);
+      setSubmitBusy(true);
+      const { error } = await insertPlaceSubmission(client, {
+        place_name: submitName.trim(),
+        address: submitAddress.trim(),
+        lat: latNum,
+        lng: lngNum,
+        category: submitCat,
+        menu_item_name: rep.name.trim(),
+        price_gbp: rep.price,
+        description: submitReview.trim() || null,
+        area: submitArea,
+      });
+      setSubmitBusy(false);
+      if (error) {
+        setToast(`Couldn’t save your tip: ${error}`);
+        window.setTimeout(() => setToast(null), 6000);
+        return;
+      }
+      setSubmitName("");
+      setSubmitAddress("");
+      setSubmitItems([{ name: "", price: 0 }]);
+      setSubmitReview("");
+      setSubmitLat("");
+      setSubmitLng("");
+      setSubmitErrors({});
+      setSubmitSuccess(true);
+      return;
+    }
 
     const lat = parseFloat(submitLat) || 51.51 + (Math.random() - 0.5) * 0.03;
     const lng = parseFloat(submitLng) || -0.09 + (Math.random() - 0.5) * 0.05;
@@ -304,7 +361,8 @@ export default function BudgetMapApp() {
       area: submitArea,
       lat,
       lng,
-      address: `${submitArea}, London`,
+      address: submitAddress.trim() || `${submitArea}, London`,
+      description: submitReview.trim() || undefined,
       registeredAt: nowIso,
       upvotes: 0,
       comments: [],
@@ -319,6 +377,7 @@ export default function BudgetMapApp() {
     });
     setSpots([...spots, newSpot]);
     setSubmitName("");
+    setSubmitAddress("");
     setSubmitItems([{ name: "", price: 0 }]);
     setSubmitReview("");
     setSubmitLat("");
@@ -861,9 +920,28 @@ export default function BudgetMapApp() {
           <>
             <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
             <p className="mb-4 text-xs text-budget-text/50">
-              Spill the beans on prices so the rest of us can survive term time. New spots stay{" "}
-              <strong>on trial for 7 days</strong> so others can sanity-check them.
+              {isSupabaseConfigured() ? (
+                <>
+                  Spill the beans on prices — tips go to a <strong>review queue</strong> and only hit the map after
+                  approval. You&apos;ll need a real pin and address so we can verify.
+                </>
+              ) : (
+                <>
+                  Spill the beans on prices so the rest of us can survive term time. New spots stay{" "}
+                  <strong>on trial for 7 days</strong> so others can sanity-check them (saved on this device).
+                </>
+              )}
             </p>
+
+            {submitSuccess && (
+              <div
+                role="status"
+                className="mb-4 rounded-[18px] border border-budget-primary/35 bg-[#e8f2ed] px-3.5 py-3 text-[13px] font-semibold leading-snug text-budget-text shadow-sm"
+              >
+                Thanks — your tip is queued for review (7-day window). It won&apos;t show on the map until a moderator
+                approves it.
+              </div>
+            )}
 
             <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Venue name</label>
             <input
@@ -918,7 +996,34 @@ export default function BudgetMapApp() {
                 ))}
               </div>
 
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Address</label>
+              <input
+                value={submitAddress}
+                onChange={(e) => {
+                  setSubmitAddress(e.target.value);
+                  if (submitErrors.address) setSubmitErrors((er) => ({ ...er, address: undefined }));
+                }}
+                placeholder="e.g. 12 Old Compton St, London W1D 4TB"
+                aria-invalid={!!submitErrors.address}
+                className={`mb-1 w-full rounded-[14px] border-2 bg-budget-white px-3.5 py-3 text-[14px] text-budget-text outline-none focus:ring-2 focus:ring-budget-primary/25 ${
+                  submitErrors.address ? "border-red-400" : "border-budget-surface"
+                }`}
+              />
+              {submitErrors.address && (
+                <p className="mb-3 text-[12px] font-semibold text-red-600">{submitErrors.address}</p>
+              )}
+              <p className="mb-3.5 text-[11px] leading-snug text-budget-muted">
+                {isSupabaseConfigured()
+                  ? "Required when online queue is enabled — moderators use this to verify the venue."
+                  : "Optional offline — defaults to area + London if left blank."}
+              </p>
+
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Menu & prices</label>
+              {isSupabaseConfigured() && (
+                <p className="mb-1.5 text-[11px] text-budget-muted">
+                  The <strong>first</strong> menu row is stored as the representative dish and headline price for review.
+                </p>
+              )}
               {submitErrors.menu && (
                 <p className="mb-2 text-[12px] font-semibold text-red-600">{submitErrors.menu}</p>
               )}
@@ -999,7 +1104,7 @@ export default function BudgetMapApp() {
                 />
               </div>
 
-              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Hot take (optional)</label>
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Description (optional)</label>
               <input
                 value={submitReview}
                 onChange={(e) => setSubmitReview(e.target.value)}
@@ -1009,10 +1114,11 @@ export default function BudgetMapApp() {
 
               <button
                 type="button"
-                onClick={handleSubmit}
-                className="w-full cursor-pointer rounded-2xl border-0 bg-budget-cta py-3.5 text-[15px] font-extrabold text-white shadow-budget-cta transition"
+                disabled={submitBusy}
+                onClick={() => void handleSubmit()}
+                className="w-full cursor-pointer rounded-2xl border-0 bg-budget-cta py-3.5 text-[15px] font-extrabold text-white shadow-budget-cta transition disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Submit spot
+                {submitBusy ? "Sending…" : "Submit spot"}
               </button>
             </>
         </div>

@@ -28,13 +28,37 @@ export type PlaceRow = {
   updated_at?: string;
 };
 
-/** Future: user-submitted rows awaiting moderation (not implemented in UI yet). */
+/** Row from public.place_submissions (see 003 migration). */
 export type PlaceSubmissionRow = {
   id: string;
   status: "pending" | "approved" | "rejected";
-  payload: Record<string, unknown>;
-  source_user_id: string | null;
-  created_at: string;
-  reviewed_at: string | null;
-  reviewed_by: string | null;
+  submitted_at: string;
+  review_ends_at: string;
+  submitted_by: string | null;
+  place_name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  category: Category;
+  menu_item_name: string;
+  price_gbp: number;
+  description: string | null;
+  area: string | null;
+};
+
+/** Fields the app sends on insert (DB defaults id; RLS expects pending). */
+export type PlaceSubmissionInsert = {
+  status: "pending";
+  submitted_at: string;
+  review_ends_at: string;
+  submitted_by: null;
+  place_name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  category: Category;
+  menu_item_name: string;
+  price_gbp: number;
+  description: string | null;
+  area: string | null;
 };

@@ -1,7 +1,7 @@
-import type { PlaceRow } from "./places";
+import type { PlaceRow, PlaceSubmissionInsert, PlaceSubmissionRow } from "./places";
 
 /**
- * Narrow Supabase typings for tables we touch. Add `place_submissions` when that table exists.
+ * Narrow Supabase typings for tables we touch.
  */
 export type Database = {
   public: {
@@ -9,6 +9,12 @@ export type Database = {
       places: {
         Row: PlaceRow;
         Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      place_submissions: {
+        Row: PlaceSubmissionRow;
+        Insert: PlaceSubmissionInsert;
         Update: never;
         Relationships: [];
       };
