@@ -685,6 +685,81 @@ export default function BudgetMapApp() {
     [session?.user],
   );
 
+  const runModerationEvaluate = useCallback(async () => {
+    setModerationBusyId("__eval__");
+    try {
+      const r = await fetch("/api/moderation/evaluate-expired", { method: "POST", credentials: "include" });
+      const j = (await r.json().catch(() => ({}))) as {
+        error?: string;
+        autoApproved?: number;
+        movedToNeedsReview?: number;
+        scanned?: number;
+      };
+      if (!r.ok) {
+        setToast(typeof j.error === "string" ? j.error : "Evaluation failed");
+        window.setTimeout(() => setToast(null), 5000);
+        return;
+      }
+      setToast(
+        (j.scanned ?? 0) > 0
+          ? `Rules checked (${j.scanned}): ${j.autoApproved ?? 0} auto-approved, ${j.movedToNeedsReview ?? 0} need moderator.`
+          : "No expired submissions were waiting for rules.",
+      );
+      window.setTimeout(() => setToast(null), 4500);
+      setPendingRefreshTick((n) => n + 1);
+      setApprovedPlacesTick((n) => n + 1);
+    } finally {
+      setModerationBusyId(null);
+    }
+  }, []);
+
+  const moderateApprove = useCallback(async (submissionId: string) => {
+    setModerationBusyId(submissionId);
+    try {
+      const r = await fetch("/api/moderation/approve", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) {
+        setToast(typeof j.error === "string" ? j.error : "Approve failed");
+        window.setTimeout(() => setToast(null), 5000);
+        return;
+      }
+      setToast("Approved — this tip is now on the map.");
+      window.setTimeout(() => setToast(null), 4000);
+      setPendingRefreshTick((n) => n + 1);
+      setApprovedPlacesTick((n) => n + 1);
+    } finally {
+      setModerationBusyId(null);
+    }
+  }, []);
+
+  const moderateReject = useCallback(async (submissionId: string) => {
+    setModerationBusyId(submissionId);
+    try {
+      const r = await fetch("/api/moderation/reject", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submissionId }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) {
+        setToast(typeof j.error === "string" ? j.error : "Reject failed");
+        window.setTimeout(() => setToast(null), 5000);
+        return;
+      }
+      setToast("Submission rejected and removed from the queue.");
+      window.setTimeout(() => setToast(null), 4000);
+      setPendingRefreshTick((n) => n + 1);
+    } finally {
+      setModerationBusyId(null);
+    }
+  }, []);
+
   const fillLocationFromDevice = () => {
     if (!navigator.geolocation) {
       setSubmitErrors((e) => ({ ...e, geo: "This browser doesn’t support location." }));
@@ -1233,6 +1308,23 @@ export default function BudgetMapApp() {
                   queue.
                 </div>
               ) : null}
+              {isModerator ? (
+                <div className="rounded-xl border border-slate-300/80 bg-slate-50 px-3 py-2.5 text-[12px] leading-snug text-slate-900">
+                  <p className="font-extrabold text-slate-800">Moderator</p>
+                  <p className="mt-1 text-[11px] text-slate-600">
+                    Expired tips are scored automatically when you open this tab (thresholds live in server config, not
+                    here). Re-run if you have just changed votes or reports.
+                  </p>
+                  <button
+                    type="button"
+                    disabled={moderationBusyId !== null}
+                    onClick={() => void runModerationEvaluate()}
+                    className="mt-2 w-full cursor-pointer rounded-xl border-2 border-slate-400/50 bg-white py-2 text-[11px] font-extrabold text-slate-800 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {moderationBusyId === "__eval__" ? "Running rules…" : "Re-run auto rules"}
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -1262,8 +1354,14 @@ export default function BudgetMapApp() {
                   className="mb-2.5 rounded-2xl border border-budget-surface bg-budget-white px-4 py-3.5 text-left shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
                 >
                   <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                    <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-amber-950">
-                      Under review
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] ${
+                        row.status === "needs_review"
+                          ? "bg-slate-200 text-slate-900"
+                          : "bg-amber-100 text-amber-950"
+                      }`}
+                    >
+                      {row.status === "needs_review" ? "Moderator review" : "Under review"}
                     </span>
                     <span className="text-[11px] font-bold text-budget-primary">
                       {formatReviewTimeRemaining(row.review_ends_at)}
@@ -1368,6 +1466,26 @@ export default function BudgetMapApp() {
                               Cancel
                             </button>
                           </div>
+                        </div>
+                      ) : null}
+                      {isModerator ? (
+                        <div className="mt-3 flex flex-wrap gap-2 border-t border-budget-surface/60 pt-3">
+                          <button
+                            type="button"
+                            disabled={moderationBusyId !== null}
+                            onClick={() => void moderateApprove(row.id)}
+                            className="min-h-[38px] flex-1 cursor-pointer rounded-xl border-0 bg-budget-primary py-2 text-[11px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Approve (map)
+                          </button>
+                          <button
+                            type="button"
+                            disabled={moderationBusyId !== null}
+                            onClick={() => void moderateReject(row.id)}
+                            className="min-h-[38px] flex-1 cursor-pointer rounded-xl border-2 border-red-300/80 bg-white py-2 text-[11px] font-extrabold text-red-900 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            Reject
+                          </button>
                         </div>
                       ) : null}
                     </div>
