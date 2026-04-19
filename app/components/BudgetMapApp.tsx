@@ -36,8 +36,11 @@ import {
 } from "@/lib/places/submissionVotes";
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
 import AuthPanel from "./AuthPanel";
+import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
+
+const HAS_GOOGLE_MAPS_KEY = Boolean((process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, ""));
 
 type Tab = "map" | "community" | "review" | "submit" | "saved" | "course";
 
@@ -218,6 +221,7 @@ export default function BudgetMapApp() {
   );
   const [submitBusy, setSubmitBusy] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitGooglePlaceId, setSubmitGooglePlaceId] = useState<string | null>(null);
 
   const [pendingRows, setPendingRows] = useState<PlaceSubmissionRow[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
@@ -470,6 +474,7 @@ export default function BudgetMapApp() {
           price_gbp: rep.price,
           description: submitReview.trim() || null,
           area: submitArea,
+          google_place_id: submitGooglePlaceId,
         },
         session.user.id,
       );
@@ -485,6 +490,7 @@ export default function BudgetMapApp() {
       setSubmitReview("");
       setSubmitLat("");
       setSubmitLng("");
+      setSubmitGooglePlaceId(null);
       setSubmitErrors({});
       setSubmitSuccess(true);
       setPendingRefreshTick((n) => n + 1);
@@ -523,6 +529,7 @@ export default function BudgetMapApp() {
     setSubmitReview("");
     setSubmitLat("");
     setSubmitLng("");
+    setSubmitGooglePlaceId(null);
     setSubmitErrors({});
     setTab("map");
     setSelectedId(newId);
@@ -1279,6 +1286,19 @@ export default function BudgetMapApp() {
                 </>
               )}
             </p>
+
+            {HAS_GOOGLE_MAPS_KEY ? (
+              <SubmitPlacesAutocomplete
+                onPick={(p) => {
+                  setSubmitName(p.name);
+                  setSubmitAddress(p.address);
+                  setSubmitLat(String(p.lat.toFixed(6)));
+                  setSubmitLng(String(p.lng.toFixed(6)));
+                  setSubmitGooglePlaceId(p.placeId);
+                  if (submitErrors.geo) setSubmitErrors((er) => ({ ...er, geo: undefined }));
+                }}
+              />
+            ) : null}
 
             {submitSuccess && (
               <div

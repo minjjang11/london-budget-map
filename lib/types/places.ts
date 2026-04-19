@@ -44,6 +44,7 @@ export type PlaceSubmissionRow = {
   price_gbp: number;
   description: string | null;
   area: string | null;
+  google_place_id?: string | null;
 };
 
 /** Fields the app sends on insert (DB defaults id; RLS expects pending + submitted_by = auth.uid()). */
@@ -61,4 +62,5 @@ export type PlaceSubmissionInsert = {
   price_gbp: number;
   description: string | null;
   area: string | null;
+  google_place_id?: string | null;
 };

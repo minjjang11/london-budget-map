@@ -14,6 +14,8 @@ export type NewPlaceSubmissionInput = {
   price_gbp: number;
   description: string | null;
   area: string | null;
+  /** Google Place ID when picked from Autocomplete; optional for duplicate checks later. */
+  google_place_id?: string | null;
 };
 
 export async function insertPlaceSubmission(
@@ -38,6 +40,7 @@ export async function insertPlaceSubmission(
     price_gbp: input.price_gbp,
     description: input.description,
     area: input.area,
+    google_place_id: input.google_place_id?.trim() || null,
   });
 
   if (error) return { error: error.message };
