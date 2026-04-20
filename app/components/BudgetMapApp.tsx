@@ -74,11 +74,6 @@ const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
   { id: "cafe", emoji: "☕", label: "Coffee" },
 ];
 
-const AREAS = [
-  "All", "Soho", "Shoreditch", "Camden", "Brixton",
-  "Euston", "Borough", "Bethnal Green", "Hackney",
-];
-
 /** No demo venues — spots come only from user submissions. */
 const INITIAL_SPOTS: Spot[] = [];
 
@@ -253,7 +248,6 @@ export default function BudgetMapApp() {
 
   const [submitName, setSubmitName] = useState("");
   const [submitAddress, setSubmitAddress] = useState("");
-  const [submitArea, setSubmitArea] = useState("Soho");
   const [submitCat, setSubmitCat] = useState<Category>("restaurant");
   const [submitItems, setSubmitItems] = useState<SpotMenuItem[]>([{ name: "", price: 0 }]);
   const [submitReview, setSubmitReview] = useState("");
@@ -318,7 +312,6 @@ export default function BudgetMapApp() {
     setVoteTallies(t);
     setMyVotes(m);
   }, [pendingRows, session?.user?.id]);
-  const [locating, setLocating] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const [communitySort, setCommunitySort] = useState<CommunitySort>("price");
@@ -635,10 +628,12 @@ export default function BudgetMapApp() {
     const client = getBrowserSupabase();
     if (client) {
       if (!submitAddress.trim()) nextErr.address = "Add a street address (for moderators).";
-      const latNum = parseFloat(submitLat);
-      const lngNum = parseFloat(submitLng);
-      if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
-        nextErr.geo = "Set a pin — use my location or enter latitude and longitude.";
+      if (HAS_GOOGLE_MAPS_KEY) {
+        const latNum = parseFloat(submitLat);
+        const lngNum = parseFloat(submitLng);
+        if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) {
+          nextErr.geo = "Pick the venue from the search box above so we get map coordinates.";
+        }
       }
     }
 
@@ -675,19 +670,27 @@ export default function BudgetMapApp() {
 
       const latNum = parseFloat(submitLat);
       const lngNum = parseFloat(submitLng);
+      const latFinal =
+        Number.isFinite(latNum) && Number.isFinite(lngNum)
+          ? latNum
+          : 51.51 + (Math.random() - 0.5) * 0.03;
+      const lngFinal =
+        Number.isFinite(latNum) && Number.isFinite(lngNum)
+          ? lngNum
+          : -0.09 + (Math.random() - 0.5) * 0.05;
       setSubmitBusy(true);
       const { error } = await insertPlaceSubmission(
         client,
         {
           place_name: submitName.trim(),
           address: submitAddress.trim(),
-          lat: latNum,
-          lng: lngNum,
+          lat: latFinal,
+          lng: lngFinal,
           category: submitCat,
           menu_item_name: rep.name.trim(),
           price_gbp: rep.price,
           description: submitReview.trim() || null,
-          area: submitArea,
+          area: null,
           google_place_id: submitGooglePlaceId,
         },
         session.user.id,
@@ -720,10 +723,10 @@ export default function BudgetMapApp() {
       id: newId,
       name: submitName.trim(),
       category: submitCat,
-      area: submitArea,
+      area: "London",
       lat,
       lng,
-      address: submitAddress.trim() || `${submitArea}, London`,
+      address: submitAddress.trim() || "London",
       description: submitReview.trim() || undefined,
       registeredAt: nowIso,
       upvotes: 0,
@@ -1027,27 +1030,6 @@ export default function BudgetMapApp() {
     }
   }, []);
 
-  const fillLocationFromDevice = () => {
-    if (!navigator.geolocation) {
-      setSubmitErrors((e) => ({ ...e, geo: "This browser doesn’t support location." }));
-      return;
-    }
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setSubmitLat(String(pos.coords.latitude.toFixed(5)));
-        setSubmitLng(String(pos.coords.longitude.toFixed(5)));
-        setLocating(false);
-        setSubmitErrors({});
-      },
-      () => {
-        setLocating(false);
-        setSubmitErrors((e) => ({ ...e, geo: "Couldn’t read location — allow permission or enter lat/lng." }));
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
-    );
-  };
-
   const flyToMyLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -1164,7 +1146,7 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <header className="absolute left-3 right-3 top-3 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-[calc(12px+env(safe-area-inset-top,0px))] shadow-budget-header">
+      <header className="absolute left-3 right-3 top-4 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-[calc(14px+env(safe-area-inset-top,0px))] shadow-budget-header">
         <h1 className="mb-2 text-[19px] font-extrabold leading-tight tracking-[-0.035em] text-budget-text">
           <Link href="/home" className="hover:text-budget-primary/90">
             Budget Map
@@ -1176,7 +1158,7 @@ export default function BudgetMapApp() {
       {toast && tab === "map" && (
         <div
           role="status"
-          className="pointer-events-none absolute left-3 right-3 top-[calc(172px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="pointer-events-none absolute left-3 right-3 top-[calc(184px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
         >
           {toast}
         </div>
@@ -1184,7 +1166,7 @@ export default function BudgetMapApp() {
 
       {tab === "map" && mounted && allSpots.length > 0 && (
         <div
-          className="absolute right-3 top-[calc(178px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="absolute right-3 top-[calc(190px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
           aria-live="polite"
         >
           {mapSpots.length} spot{mapSpots.length === 1 ? "" : "s"}
@@ -1192,7 +1174,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "map" && mounted && allSpots.length === 0 && (
-        <div className="absolute left-3 right-3 top-[calc(216px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
+        <div className="absolute left-3 right-3 top-[calc(228px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
           Open <strong>Submit</strong> to add a cheap eat, or connect Supabase to show verified spots from the database.
         </div>
@@ -1204,7 +1186,7 @@ export default function BudgetMapApp() {
           onClick={flyToMyLocation}
           aria-label="Centre map on my location"
           title="My location"
-          className="absolute bottom-[calc(112px+env(safe-area-inset-bottom,0px))] right-4 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
+          className="absolute bottom-[calc(120px+env(safe-area-inset-bottom,0px))] right-4 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
         >
           <LocateFixed size={22} strokeWidth={2.25} aria-hidden />
         </button>
@@ -1223,7 +1205,7 @@ export default function BudgetMapApp() {
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className={`absolute bottom-[calc(100px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
+                className={`absolute bottom-[calc(108px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
                     ? "max-h-[62vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     : "max-h-[min(48vh,420px)] overflow-hidden pb-4"
@@ -1958,14 +1940,14 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "submit" && (
-        <div className="budget-tab-panel p-4">
+        <div className="budget-tab-panel px-4 pb-28 pt-8">
           <>
             <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
             <p className="mb-4 text-xs text-budget-text/50">
               {isSupabaseConfigured() ? (
                 <>
                   Spill the beans on prices — tips go to a <strong>review queue</strong> and only hit the map after
-                  approval. You&apos;ll need a real pin and address so we can verify.
+                  approval. Use a real address (and venue search when available) so moderators can verify.
                 </>
               ) : (
                 <>
@@ -1986,6 +1968,9 @@ export default function BudgetMapApp() {
                   if (submitErrors.geo) setSubmitErrors((er) => ({ ...er, geo: undefined }));
                 }}
               />
+            ) : null}
+            {HAS_GOOGLE_MAPS_KEY && submitErrors.geo ? (
+              <p className="mb-3 text-[12px] font-semibold text-red-600">{submitErrors.geo}</p>
             ) : null}
 
             {submitSuccess && (
@@ -2047,24 +2032,6 @@ export default function BudgetMapApp() {
                 ))}
               </div>
 
-              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Area</label>
-              <div className="mb-3.5 flex flex-wrap gap-1.5">
-                {AREAS.filter((a) => a !== "All").map((area) => (
-                  <button
-                    key={area}
-                    type="button"
-                    onClick={() => setSubmitArea(area)}
-                    className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
-                      submitArea === area
-                        ? "bg-budget-primary text-white"
-                        : "bg-budget-surface text-budget-text"
-                    }`}
-                  >
-                    {area}
-                  </button>
-                ))}
-              </div>
-
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Address</label>
               <input
                 value={submitAddress}
@@ -2084,7 +2051,7 @@ export default function BudgetMapApp() {
               <p className="mb-3.5 text-[11px] leading-snug text-budget-muted">
                 {isSupabaseConfigured()
                   ? "Required when online queue is enabled — moderators use this to verify the venue."
-                  : "Optional offline — defaults to area + London if left blank."}
+                  : "Optional offline — defaults to London if left blank."}
               </p>
 
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Menu & prices</label>
@@ -2136,42 +2103,6 @@ export default function BudgetMapApp() {
               >
                 + Add item
               </button>
-
-              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                <label className="text-xs font-semibold text-budget-muted">Pin (optional)</label>
-                <button
-                  type="button"
-                  onClick={fillLocationFromDevice}
-                  disabled={locating}
-                  className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-budget-surface bg-budget-bg px-2.5 py-1 text-[11px] font-bold text-budget-text disabled:opacity-50"
-                >
-                  <LocateFixed size={12} className="text-budget-primary" />
-                  {locating ? "Locating…" : "Use my location"}
-                </button>
-              </div>
-              {submitErrors.geo && (
-                <p className="mb-2 text-[12px] font-semibold text-red-600">{submitErrors.geo}</p>
-              )}
-              <div className="mb-3.5 flex gap-2">
-                <input
-                  value={submitLat}
-                  onChange={(e) => {
-                    setSubmitLat(e.target.value);
-                    if (submitErrors.geo) setSubmitErrors((er) => ({ ...er, geo: undefined }));
-                  }}
-                  placeholder="lat"
-                  className="budget-input-sm min-w-0 flex-1 text-[13px]"
-                />
-                <input
-                  value={submitLng}
-                  onChange={(e) => {
-                    setSubmitLng(e.target.value);
-                    if (submitErrors.geo) setSubmitErrors((er) => ({ ...er, geo: undefined }));
-                  }}
-                  placeholder="lng"
-                  className="budget-input-sm min-w-0 flex-1 text-[13px]"
-                />
-              </div>
 
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Description (optional)</label>
               <input
@@ -2335,7 +2266,7 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <nav className="budget-bottom-nav absolute bottom-3 left-3 right-3 z-[60] flex items-stretch justify-between rounded-[22px] border border-budget-surface/90 bg-budget-white px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-budget-nav">
+      <nav className="budget-bottom-nav absolute bottom-4 left-3 right-3 z-[60] flex items-stretch justify-between rounded-[22px] border border-budget-surface/90 bg-budget-white px-1 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] pt-2.5 shadow-budget-nav">
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
