@@ -49,8 +49,8 @@
 
   .budget-tab-panel {
     @apply absolute left-0 right-0 z-20 overflow-y-auto bg-budget-bg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
-    top: calc(152px + env(safe-area-inset-top, 0px));
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    top: calc(164px + env(safe-area-inset-top, 0px));
+    bottom: calc(92px + env(safe-area-inset-bottom, 0px));
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
@@ -151,6 +151,12 @@
 
 .map-fill .leaflet-container {
   border-radius: 0;
+}
+
+/** Keep attribution above floating bottom nav (Leaflet has no zoom stack when zoomControl is off). */
+.map-fill .leaflet-bottom.leaflet-left {
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+  left: max(0.5rem, env(safe-area-inset-left, 0px));
 }
 
 @keyframes slideUp {

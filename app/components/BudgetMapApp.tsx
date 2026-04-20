@@ -67,7 +67,8 @@ type RankingWindow = "weekly" | "alltime";
 type PlaceSheetTab = "info" | "buzz";
 
 const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
-  { id: "all", emoji: "📍", label: "All" },
+  /** No map-pin glyph — “All” is text-led only. */
+  { id: "all", emoji: "", label: "All" },
   { id: "restaurant", emoji: "🍽️", label: "Restaurant" },
   { id: "pub", emoji: "🍺", label: "Beer" },
   { id: "cafe", emoji: "☕", label: "Coffee" },
@@ -246,7 +247,6 @@ export default function BudgetMapApp() {
   );
   const [tab, setTab] = useState<Tab>("map");
   const [activeCat, setActiveCat] = useState<Category | "all">("all");
-  const [activeArea, setActiveArea] = useState("All");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -506,10 +506,9 @@ export default function BudgetMapApp() {
     () =>
       allSpots.filter((s) => {
         if (activeCat !== "all" && s.category !== activeCat) return false;
-        if (activeArea !== "All" && s.area !== activeArea) return false;
         return true;
       }),
-    [allSpots, activeCat, activeArea],
+    [allSpots, activeCat],
   );
 
   /** Rankings tab: approved remote places only (same cat/area filters as the map list). */
@@ -517,10 +516,9 @@ export default function BudgetMapApp() {
     () =>
       remoteApprovedSpots.filter((s) => {
         if (activeCat !== "all" && s.category !== activeCat) return false;
-        if (activeArea !== "All" && s.area !== activeArea) return false;
         return true;
       }),
-    [remoteApprovedSpots, activeCat, activeArea],
+    [remoteApprovedSpots, activeCat],
   );
 
   const ranked = useMemo(() => {
@@ -1141,9 +1139,15 @@ export default function BudgetMapApp() {
             : "bg-budget-surface/95 font-semibold text-budget-text"
         }`}
       >
-        <span className={`text-[15px] leading-none ${active ? "" : "opacity-45"}`} aria-hidden>
-          {emoji}
-        </span>
+        {emoji ? (
+          <span className={`text-[15px] leading-none ${active ? "" : "opacity-45"}`} aria-hidden>
+            {emoji}
+          </span>
+        ) : (
+          <span className="text-[11px] font-extrabold leading-none text-budget-primary/50" aria-hidden>
+            ·
+          </span>
+        )}
         <span className="max-w-full truncate text-[10px] leading-tight tracking-tight">{label}</span>
       </button>
     );
@@ -1160,7 +1164,7 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <header className="absolute left-2.5 right-2.5 top-2 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-[calc(10px+env(safe-area-inset-top,0px))] shadow-budget-header">
+      <header className="absolute left-3 right-3 top-3 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-[calc(12px+env(safe-area-inset-top,0px))] shadow-budget-header">
         <h1 className="mb-2 text-[19px] font-extrabold leading-tight tracking-[-0.035em] text-budget-text">
           <Link href="/home" className="hover:text-budget-primary/90">
             Budget Map
@@ -1172,7 +1176,7 @@ export default function BudgetMapApp() {
       {toast && tab === "map" && (
         <div
           role="status"
-          className="pointer-events-none absolute left-3 right-3 top-[calc(156px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="pointer-events-none absolute left-3 right-3 top-[calc(172px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
         >
           {toast}
         </div>
@@ -1180,7 +1184,7 @@ export default function BudgetMapApp() {
 
       {tab === "map" && mounted && allSpots.length > 0 && (
         <div
-          className="absolute right-3 top-[calc(162px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="absolute right-3 top-[calc(178px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
           aria-live="polite"
         >
           {mapSpots.length} spot{mapSpots.length === 1 ? "" : "s"}
@@ -1188,7 +1192,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "map" && mounted && allSpots.length === 0 && (
-        <div className="absolute left-3 right-3 top-[calc(200px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
+        <div className="absolute left-3 right-3 top-[calc(216px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
           Open <strong>Submit</strong> to add a cheap eat, or connect Supabase to show verified spots from the database.
         </div>
@@ -1200,7 +1204,7 @@ export default function BudgetMapApp() {
           onClick={flyToMyLocation}
           aria-label="Centre map on my location"
           title="My location"
-          className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-3 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
+          className="absolute bottom-[calc(112px+env(safe-area-inset-bottom,0px))] right-4 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
         >
           <LocateFixed size={22} strokeWidth={2.25} aria-hidden />
         </button>
@@ -1219,7 +1223,7 @@ export default function BudgetMapApp() {
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className={`absolute bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
+                className={`absolute bottom-[calc(100px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
                     ? "max-h-[62vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     : "max-h-[min(48vh,420px)] overflow-hidden pb-4"
@@ -1892,35 +1896,15 @@ export default function BudgetMapApp() {
                   );
                 })}
               </div>
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Area</p>
-              <div className="mb-4 flex flex-wrap gap-1.5">
-                {AREAS.map((area) => {
-                  const active = activeArea === area;
-                  return (
-                    <button
-                      key={area}
-                      type="button"
-                      onClick={() => setActiveArea(area)}
-                      className={`cursor-pointer rounded-full border-0 px-3 py-1.5 text-xs ${
-                        active
-                          ? "bg-budget-primary font-bold text-white"
-                          : "bg-budget-surface font-medium text-budget-text"
-                      }`}
-                    >
-                      {area}
-                    </button>
-                  );
-                })}
-              </div>
               <p className="mb-3 text-sm text-budget-muted">Tap a row to open it on the map (same flow as the map tab).</p>
               {remoteApprovedSpots.length === 0 ? (
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
                   No approved spots from the server yet — rankings appear after moderation promotes tips to the map.
                 </div>
               ) : communityApprovedFiltered.length === 0 ? (
-                <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
-                  No spots match this category and area. Try <strong>All</strong> filters.
-                </div>
+            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
+              No spots match this category. Try <strong>All</strong> or another category on the map tab.
+            </div>
               ) : rankingWindow === "weekly" && ranked.length === 0 ? (
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
                   Nothing new on the map in the last {RANKING_RULES.weeklyRegistrationDays} days for these filters.{" "}
@@ -2351,7 +2335,7 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <nav className="budget-bottom-nav absolute bottom-0 left-0 right-0 z-[60] flex items-stretch justify-between rounded-t-[22px] border-t border-budget-surface bg-budget-white px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-budget-nav">
+      <nav className="budget-bottom-nav absolute bottom-3 left-3 right-3 z-[60] flex items-stretch justify-between rounded-[22px] border border-budget-surface/90 bg-budget-white px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-budget-nav">
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },

@@ -193,7 +193,7 @@ function MapViewLeaflet({
       attributionControl: true,
     });
 
-    L.control.zoom({ position: "bottomright" }).addTo(map);
+    /** No default zoom stack — avoids overlap with app bottom nav + FAB (pinch / double-tap still zooms). */
     addBasemap(map);
 
     mapRef.current = map;
@@ -268,22 +268,19 @@ function MapViewGoogle({
   });
 
   const mapOptions = useMemo((): google.maps.MapOptions => {
-    const zoomPos =
-      typeof google !== "undefined"
-        ? google.maps.ControlPosition.RIGHT_BOTTOM
-        : (9 as google.maps.ControlPosition);
     return {
-      disableDefaultUI: false,
-      zoomControl: true,
-      zoomControlOptions: { position: zoomPos },
+      disableDefaultUI: true,
+      zoomControl: false,
       mapTypeControl: false,
       streetViewControl: false,
       fullscreenControl: false,
+      rotateControl: false,
+      scaleControl: false,
       clickableIcons: false,
       gestureHandling: "greedy",
       styles: GOOGLE_MINIMAL_POI_STYLES,
     };
-  }, [isLoaded]);
+  }, []);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
