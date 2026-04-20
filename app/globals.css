@@ -42,10 +42,16 @@
     @apply -mx-1 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
   }
 
+  /** Map header category strip: single row, no horizontal scroll (used instead of `.budget-chip-row` on map). */
+  .budget-map-cat-grid {
+    @apply grid w-full grid-cols-4 gap-1.5;
+  }
+
   .budget-tab-panel {
     @apply absolute left-0 right-0 z-20 overflow-y-auto bg-budget-bg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
-    top: 118px;
+    top: calc(152px + env(safe-area-inset-top, 0px));
     bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
   .budget-input {

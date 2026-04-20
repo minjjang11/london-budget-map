@@ -7,7 +7,7 @@ import dynamic from "next/dynamic";
 import type { MapSpot } from "./MapView";
 import {
   Map,
-  MessagesSquare,
+  Users,
   Plus,
   Bookmark,
   Route,
@@ -18,7 +18,6 @@ import {
   LocateFixed,
   Scale,
   ChevronRight,
-  ClipboardList,
   Flag,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
@@ -56,7 +55,10 @@ const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
 const HAS_GOOGLE_MAPS_KEY = Boolean((process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, ""));
 
-type Tab = "map" | "community" | "review" | "submit" | "saved" | "course";
+type Tab = "map" | "community" | "submit" | "saved" | "course";
+
+/** Unified Community tab: queue vs ranking windows (replaces separate Review + Rankings nav). */
+type CommunitySeg = "review" | "weekly" | "alltime";
 
 type CommunitySort = "price" | "buzz" | "snitches";
 
@@ -321,6 +323,7 @@ export default function BudgetMapApp() {
 
   const [communitySort, setCommunitySort] = useState<CommunitySort>("price");
   const [rankingWindow, setRankingWindow] = useState<RankingWindow>("alltime");
+  const [communitySeg, setCommunitySeg] = useState<CommunitySeg>("review");
   const [placeSheetTab, setPlaceSheetTab] = useState<PlaceSheetTab>("info");
   const [commentDraft, setCommentDraft] = useState("");
   /** After marker tap: compact preview first; "Full details" opens existing sheet body. */
@@ -448,7 +451,7 @@ export default function BudgetMapApp() {
   }, [session?.user?.email]);
 
   useEffect(() => {
-    if (tab !== "review" || !isModerator) return;
+    if (tab !== "community" || communitySeg !== "review" || !isModerator) return;
     let cancelled = false;
     void (async () => {
       const r = await fetch("/api/moderation/evaluate-expired", { method: "POST", credentials: "include" });
@@ -466,20 +469,20 @@ export default function BudgetMapApp() {
     return () => {
       cancelled = true;
     };
-  }, [tab, isModerator]);
+  }, [tab, communitySeg, isModerator]);
 
   useEffect(() => {
-    if (tab !== "review") {
+    if (tab !== "community" || communitySeg !== "review") {
       setVoteTallies({});
       setMyVotes({});
       return;
     }
     void reloadReviewVotes();
-  }, [tab, reloadReviewVotes]);
+  }, [tab, communitySeg, reloadReviewVotes]);
 
   useEffect(() => {
     const client = getBrowserSupabase();
-    if (!client || tab !== "review") return;
+    if (!client || tab !== "community" || communitySeg !== "review") return;
     let cancelled = false;
     setPendingLoading(true);
     setPendingError(null);
@@ -497,7 +500,7 @@ export default function BudgetMapApp() {
     return () => {
       cancelled = true;
     };
-  }, [tab, pendingRefreshTick]);
+  }, [tab, communitySeg, pendingRefreshTick]);
 
   const filtered = useMemo(
     () =>
@@ -573,7 +576,7 @@ export default function BudgetMapApp() {
   const toggleSave = async (id: string) => {
     if (remoteIds.has(id)) {
       if (!session?.user?.id) {
-        setToast("Sign in to save verified places — use the Review tab magic link.");
+        setToast("Sign in to save verified places — use the Community tab magic link.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -757,7 +760,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — use the email sign-in panel at the top of the Review tab.");
+        setToast("Sign in to vote — use the email sign-in panel at the top of Community → Under Review.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -787,7 +790,7 @@ export default function BudgetMapApp() {
     const c = getBrowserSupabase();
     const uid = session?.user?.id;
     if (!c || !uid) {
-      setToast("Sign in to report — use the email sign-in panel at the top of the Review tab.");
+      setToast("Sign in to report — use the email sign-in panel at the top of Community → Under Review.");
       window.setTimeout(() => setToast(null), 4500);
       return;
     }
@@ -808,7 +811,7 @@ export default function BudgetMapApp() {
   const handleReportTap = useCallback(
     (submissionId: string) => {
       if (!session?.user) {
-        setToast("Sign in to report — use the email sign-in panel at the top of the Review tab.");
+        setToast("Sign in to report — use the email sign-in panel at the top of Community → Under Review.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -848,7 +851,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — open the Review tab and use the same magic-link sign-in.");
+        setToast("Sign in to vote — open Community → Under Review and use the same magic-link sign-in.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -887,7 +890,7 @@ export default function BudgetMapApp() {
   const togglePlaceReviewDraftTag = useCallback(
     (slug: string) => {
       if (!session?.user) {
-        setToast("Sign in to add tags — use the Review tab magic link.");
+        setToast("Sign in to add tags — use the Community tab magic link.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -1132,14 +1135,16 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        className={`inline-flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full px-4 py-2.5 text-[13px] transition-colors ${
-          active ? "bg-budget-primary font-bold text-white" : "bg-budget-surface font-medium text-budget-text"
+        className={`flex min-h-[44px] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-[13px] border border-transparent px-1 py-1.5 text-center transition-colors ${
+          active
+            ? "bg-budget-primary font-extrabold text-white shadow-[0_4px_12px_rgb(0_168_120_/0.25)]"
+            : "bg-budget-surface/95 font-semibold text-budget-text"
         }`}
       >
-        <span className={`text-sm ${active ? "" : "opacity-40"}`} aria-hidden>
+        <span className={`text-[15px] leading-none ${active ? "" : "opacity-45"}`} aria-hidden>
           {emoji}
         </span>
-        {label}
+        <span className="max-w-full truncate text-[10px] leading-tight tracking-tight">{label}</span>
       </button>
     );
   };
@@ -1155,29 +1160,19 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <header className="absolute left-2.5 right-2.5 top-2.5 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3.5 pb-3.5 pt-4 shadow-budget-header">
-        <h1 className="mb-3 text-[22px] font-extrabold tracking-[-0.04em] text-budget-text">
+      <header className="absolute left-2.5 right-2.5 top-2 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-[calc(10px+env(safe-area-inset-top,0px))] shadow-budget-header">
+        <h1 className="mb-2 text-[19px] font-extrabold leading-tight tracking-[-0.035em] text-budget-text">
           <Link href="/home" className="hover:text-budget-primary/90">
             Budget Map
           </Link>
         </h1>
-        <div className="budget-chip-row">{CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}</div>
-        <div className="mt-2.5 flex items-center justify-end gap-2 border-t border-budget-surface/60 pt-2.5">
-          <button
-            type="button"
-            onClick={flyToMyLocation}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-budget-surface bg-budget-bg px-3 py-1.5 text-[11px] font-bold text-budget-text"
-          >
-            <LocateFixed size={14} className="text-budget-primary" />
-            My location
-          </button>
-        </div>
+        <div className="budget-map-cat-grid">{CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}</div>
       </header>
 
       {toast && tab === "map" && (
         <div
           role="status"
-          className="pointer-events-none absolute left-3 right-3 top-[calc(118px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="pointer-events-none absolute left-3 right-3 top-[calc(156px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
         >
           {toast}
         </div>
@@ -1185,7 +1180,7 @@ export default function BudgetMapApp() {
 
       {tab === "map" && mounted && allSpots.length > 0 && (
         <div
-          className="absolute right-3 top-[calc(124px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="absolute right-3 top-[calc(162px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
           aria-live="polite"
         >
           {mapSpots.length} spot{mapSpots.length === 1 ? "" : "s"}
@@ -1193,10 +1188,22 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "map" && mounted && allSpots.length === 0 && (
-        <div className="absolute left-3 right-3 top-[calc(168px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
+        <div className="absolute left-3 right-3 top-[calc(200px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
           Open <strong>Submit</strong> to add a cheap eat, or connect Supabase to show verified spots from the database.
         </div>
+      )}
+
+      {tab === "map" && mounted && (
+        <button
+          type="button"
+          onClick={flyToMyLocation}
+          aria-label="Centre map on my location"
+          title="My location"
+          className="absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] right-3 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
+        >
+          <LocateFixed size={22} strokeWidth={2.25} aria-hidden />
+        </button>
       )}
 
       {/* Map overlays — clean full-bleed map per ref */}
@@ -1212,7 +1219,7 @@ export default function BudgetMapApp() {
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className={`absolute bottom-[calc(72px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
+                className={`absolute bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
                     ? "max-h-[62vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     : "max-h-[min(48vh,420px)] overflow-hidden pb-4"
@@ -1256,7 +1263,7 @@ export default function BudgetMapApp() {
                       {remoteIds.has(selected.id) ? (
                         <p className="mt-2 text-[11px] font-semibold text-budget-muted">
                           👍 {selected.upvotes ?? 0} · 👎 {selected.downvotes ?? 0}
-                          {!session?.user ? " · Sign in (Review tab) to vote" : null}
+                          {!session?.user ? " · Sign in (Community → Under Review) to vote" : null}
                         </p>
                       ) : null}
                       <div className="mt-4 flex flex-col gap-2">
@@ -1502,7 +1509,7 @@ export default function BudgetMapApp() {
                           </div>
                         ) : (
                           <p className="text-[11px] text-budget-muted">
-                            Tags are read-only until you sign in — same magic link as the Review tab.
+                            Tags are read-only until you sign in — same magic link as Community → Under Review.
                           </p>
                         )}
                         <p className="text-[11px] text-budget-subtle">Verified listing from the database.</p>
@@ -1597,7 +1604,7 @@ export default function BudgetMapApp() {
                   </div>
                   {remoteIds.has(selected.id) && !session?.user ? (
                     <p className="mt-2 text-center text-[11px] text-budget-muted">
-                      Verified spots save to your account after sign-in (Review tab).
+                      Verified spots save to your account after sign-in (Community → Under Review).
                     </p>
                   ) : null}
                 </div>
@@ -1611,195 +1618,99 @@ export default function BudgetMapApp() {
 
       {tab === "community" && (
         <div className="budget-tab-panel px-3 pb-3">
-          <h2 className="mb-1 text-lg font-extrabold text-budget-text">Rankings</h2>
-          <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-            Verified map spots only (not device-only tips). Weekly uses spots that first appeared in the last{" "}
-            {RANKING_RULES.weeklyRegistrationDays} days; scores use cumulative 👍/👎 until per-week vote history
-            exists.
+          <h2 className="mb-0.5 text-lg font-extrabold text-budget-text">Community</h2>
+          <p className="mb-3 text-[11px] leading-snug text-budget-muted">
+            Queue, votes, and verified rankings — pick a section below.
           </p>
-          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Window</p>
-          <div className="mb-3 flex flex-wrap gap-1.5">
-            {(
-              [
-                { id: "weekly" as const, label: "Weekly" },
-                { id: "alltime" as const, label: "All-time" },
-              ] as const
-            ).map(({ id, label }) => {
-              const active = rankingWindow === id;
+
+          <div
+            className="mb-4 flex rounded-[14px] bg-budget-surface/90 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
+            role="tablist"
+            aria-label="Community sections"
+          >
+            {(["review", "weekly", "alltime"] as const).map((seg) => {
+              const active = communitySeg === seg;
+              const label = seg === "review" ? "Under Review" : seg === "weekly" ? "Weekly" : "All-time";
               return (
                 <button
-                  key={id}
+                  key={seg}
                   type="button"
-                  onClick={() => setRankingWindow(id)}
-                  className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
-                    active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Sort</p>
-          <div className="mb-4 flex flex-wrap gap-1.5">
-            {(
-              [
-                { id: "price" as const, label: "Cheapest" },
-                { id: "buzz" as const, label: "Net score" },
-                { id: "snitches" as const, label: "Most tips" },
-              ] as const
-            ).map(({ id, label }) => {
-              const active = communitySort === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setCommunitySort(id)}
-                  className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
-                    active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Area</p>
-          <div className="mb-4 flex flex-wrap gap-1.5">
-            {AREAS.map((area) => {
-              const active = activeArea === area;
-              return (
-                <button
-                  key={area}
-                  type="button"
-                  onClick={() => setActiveArea(area)}
-                  className={`cursor-pointer rounded-full border-0 px-3 py-1.5 text-xs ${
-                    active
-                      ? "bg-budget-primary font-bold text-white"
-                      : "bg-budget-surface font-medium text-budget-text"
-                  }`}
-                >
-                  {area}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mb-3 text-sm text-budget-muted">Tap a row to open it on the map (same flow as the map tab).</p>
-          {remoteApprovedSpots.length === 0 ? (
-            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
-              No approved spots from the server yet — rankings appear after moderation promotes tips to the map.
-            </div>
-          ) : communityApprovedFiltered.length === 0 ? (
-            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
-              No spots match this category and area. Try <strong>All</strong> filters.
-            </div>
-          ) : rankingWindow === "weekly" && ranked.length === 0 ? (
-            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
-              Nothing new on the map in the last {RANKING_RULES.weeklyRegistrationDays} days for these filters.{" "}
-              <button
-                type="button"
-                onClick={() => setRankingWindow("alltime")}
-                className="font-extrabold text-budget-primary underline decoration-budget-primary/40 underline-offset-2"
-              >
-                Switch to All-time
-              </button>
-            </div>
-          ) : (
-            ranked.map((spot, i) => {
-              const catLabel = CATS.find((c) => c.id === spot.category)?.label ?? "Spot";
-              return (
-                <button
-                  key={spot.id}
-                  type="button"
+                  role="tab"
+                  aria-selected={active}
                   onClick={() => {
-                    setTab("map");
-                    setSelectedId(spot.id);
-                    setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
+                    setCommunitySeg(seg);
+                    if (seg === "weekly") setRankingWindow("weekly");
+                    if (seg === "alltime") setRankingWindow("alltime");
                   }}
-                  className="budget-list-btn shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
+                  className={`min-h-[40px] min-w-0 flex-1 cursor-pointer rounded-[11px] px-1 py-2 text-center text-[10px] font-extrabold leading-tight transition sm:text-[11px] ${
+                    active ? "bg-budget-white text-budget-text shadow-sm" : "text-budget-muted"
+                  }`}
                 >
-                  <span className="text-sm font-extrabold text-budget-primary">#{i + 1}</span>
-                  <span className="text-xl">{catEmoji(spot.category)}</span>
-                  <div className="min-w-0 flex-1 text-left">
-                    <div className="font-bold text-budget-text">{spot.name}</div>
-                    <div className="text-[11px] font-semibold text-budget-subtle">
-                      {catLabel} · {rankingAddressLine(spot)}
-                    </div>
-                    <div className="mt-0.5 text-[10px] font-medium text-budget-faint">{rankingSocialLine(spot)}</div>
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5 self-center">
-                    <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
-                    <span className="text-[9px] font-extrabold uppercase tracking-wide text-budget-muted">
-                      {rankingWindow === "weekly" ? "Weekly" : "All-time"}
-                    </span>
-                  </div>
+                  {label}
                 </button>
               );
-            })
-          )}
-        </div>
-      )}
+            })}
+          </div>
 
-      {tab === "review" && (
-        <div className="budget-tab-panel px-3 pb-3">
-          <h2 className="mb-1 text-lg font-extrabold text-budget-text">Review queue</h2>
-          <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-            Tips waiting for moderation — they stay off the main map until approved. Anyone can browse;{" "}
-            <strong className="font-semibold text-budget-text/80">Upvote</strong>,{" "}
-            <strong className="font-semibold text-budget-text/80">Downvote</strong>, and{" "}
-            <strong className="font-semibold text-budget-text/80">Report</strong> need sign-in.
-          </p>
+          {communitySeg === "review" ? (
+            <>
+              <p className="mb-3 text-[12px] leading-snug text-budget-muted">
+                Tips waiting for moderation — they stay off the main map until approved. Anyone can browse;{" "}
+                <strong className="font-semibold text-budget-text/80">Upvote</strong>,{" "}
+                <strong className="font-semibold text-budget-text/80">Downvote</strong>, and{" "}
+                <strong className="font-semibold text-budget-text/80">Report</strong> need sign-in.
+              </p>
 
-          {isSupabaseConfigured() && getBrowserSupabase() ? (
-            <div className="mb-3 space-y-2">
-              <AuthPanel session={session} onSessionChange={() => void refreshSession()} compact />
-              {!session?.user ? (
-                <div
-                  role="note"
-                  className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
-                >
-                  <span className="font-extrabold">Signed out</span> — sign in above to use Upvote, Downvote, or Report.
-                  If you tap those on a card, we&apos;ll remind you here with a short message. You can still read the
-                  queue.
+              {isSupabaseConfigured() && getBrowserSupabase() ? (
+                <div className="mb-3 space-y-2">
+                  <AuthPanel session={session} onSessionChange={() => void refreshSession()} compact />
+                  {!session?.user ? (
+                    <div
+                      role="note"
+                      className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
+                    >
+                      <span className="font-extrabold">Signed out</span> — sign in above to use Upvote, Downvote, or
+                      Report. If you tap those on a card, we&apos;ll remind you here with a short message. You can still
+                      read the queue.
+                    </div>
+                  ) : null}
+                  {isModerator ? (
+                    <div className="rounded-xl border border-slate-300/80 bg-slate-50 px-3 py-2.5 text-[12px] leading-snug text-slate-900">
+                      <p className="font-extrabold text-slate-800">Moderator</p>
+                      <p className="mt-1 text-[11px] text-slate-600">
+                        Expired tips are scored automatically when you open Under Review (thresholds live in server
+                        config, not here). Re-run if you have just changed votes or reports.
+                      </p>
+                      <button
+                        type="button"
+                        disabled={moderationBusyId !== null}
+                        onClick={() => void runModerationEvaluate()}
+                        className="mt-2 w-full cursor-pointer rounded-xl border-2 border-slate-400/50 bg-white py-2 text-[11px] font-extrabold text-slate-800 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {moderationBusyId === "__eval__" ? "Running rules…" : "Re-run auto rules"}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
-              {isModerator ? (
-                <div className="rounded-xl border border-slate-300/80 bg-slate-50 px-3 py-2.5 text-[12px] leading-snug text-slate-900">
-                  <p className="font-extrabold text-slate-800">Moderator</p>
-                  <p className="mt-1 text-[11px] text-slate-600">
-                    Expired tips are scored automatically when you open this tab (thresholds live in server config, not
-                    here). Re-run if you have just changed votes or reports.
-                  </p>
-                  <button
-                    type="button"
-                    disabled={moderationBusyId !== null}
-                    onClick={() => void runModerationEvaluate()}
-                    className="mt-2 w-full cursor-pointer rounded-xl border-2 border-slate-400/50 bg-white py-2 text-[11px] font-extrabold text-slate-800 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {moderationBusyId === "__eval__" ? "Running rules…" : "Re-run auto rules"}
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
 
-          {!isSupabaseConfigured() || !getBrowserSupabase() ? (
-            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
-              Connect Supabase and run the latest migrations (including the policy that allows reading pending rows) to
-              see the shared queue here.
-            </div>
-          ) : pendingLoading ? (
-            <p className="py-12 text-center text-sm text-budget-muted">Loading queue…</p>
-          ) : pendingError ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-900">
-              {pendingError}
-            </div>
-          ) : pendingRows.length === 0 ? (
-            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-10 text-center text-[13px] text-budget-muted">
-              Nothing in the queue yet. Open <strong>Submit</strong> to add a cheap eat.
-            </div>
-          ) : (
-            pendingRows.map((row) => {
+              {!isSupabaseConfigured() || !getBrowserSupabase() ? (
+                <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
+                  Connect Supabase and run the latest migrations (including the policy that allows reading pending rows)
+                  to see the shared queue here.
+                </div>
+              ) : pendingLoading ? (
+                <p className="py-12 text-center text-sm text-budget-muted">Loading queue…</p>
+              ) : pendingError ? (
+                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-900">
+                  {pendingError}
+                </div>
+              ) : pendingRows.length === 0 ? (
+                <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-10 text-center text-[13px] text-budget-muted">
+                  Nothing in the queue yet. Open <strong>Submit</strong> to add a cheap eat.
+                </div>
+              ) : (
+                pendingRows.map((row) => {
               const catLabel = CATS.find((c) => c.id === row.category)?.label ?? "Spot";
               const priceNum = Number(row.price_gbp);
               const desc = row.description?.trim();
@@ -1947,7 +1858,117 @@ export default function BudgetMapApp() {
                   ) : null}
                 </article>
               );
-            })
+                })
+              )}
+            </>
+          ) : (
+            <>
+              <p className="mb-3 text-[12px] leading-snug text-budget-muted">
+                Verified map spots only (not device-only tips). Weekly uses spots that first appeared in the last{" "}
+                {RANKING_RULES.weeklyRegistrationDays} days; scores use cumulative 👍/👎 until per-week vote history
+                exists.
+              </p>
+              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Sort</p>
+              <div className="mb-4 flex flex-wrap gap-1.5">
+                {(
+                  [
+                    { id: "price" as const, label: "Cheapest" },
+                    { id: "buzz" as const, label: "Net score" },
+                    { id: "snitches" as const, label: "Most tips" },
+                  ] as const
+                ).map(({ id, label }) => {
+                  const active = communitySort === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setCommunitySort(id)}
+                      className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
+                        active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Area</p>
+              <div className="mb-4 flex flex-wrap gap-1.5">
+                {AREAS.map((area) => {
+                  const active = activeArea === area;
+                  return (
+                    <button
+                      key={area}
+                      type="button"
+                      onClick={() => setActiveArea(area)}
+                      className={`cursor-pointer rounded-full border-0 px-3 py-1.5 text-xs ${
+                        active
+                          ? "bg-budget-primary font-bold text-white"
+                          : "bg-budget-surface font-medium text-budget-text"
+                      }`}
+                    >
+                      {area}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mb-3 text-sm text-budget-muted">Tap a row to open it on the map (same flow as the map tab).</p>
+              {remoteApprovedSpots.length === 0 ? (
+                <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
+                  No approved spots from the server yet — rankings appear after moderation promotes tips to the map.
+                </div>
+              ) : communityApprovedFiltered.length === 0 ? (
+                <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
+                  No spots match this category and area. Try <strong>All</strong> filters.
+                </div>
+              ) : rankingWindow === "weekly" && ranked.length === 0 ? (
+                <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
+                  Nothing new on the map in the last {RANKING_RULES.weeklyRegistrationDays} days for these filters.{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCommunitySeg("alltime");
+                      setRankingWindow("alltime");
+                    }}
+                    className="font-extrabold text-budget-primary underline decoration-budget-primary/40 underline-offset-2"
+                  >
+                    Switch to All-time
+                  </button>
+                </div>
+              ) : (
+                ranked.map((spot, i) => {
+                  const catLabel = CATS.find((c) => c.id === spot.category)?.label ?? "Spot";
+                  return (
+                    <button
+                      key={spot.id}
+                      type="button"
+                      onClick={() => {
+                        setTab("map");
+                        setSelectedId(spot.id);
+                        setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
+                      }}
+                      className="budget-list-btn shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
+                    >
+                      <span className="text-sm font-extrabold text-budget-primary">#{i + 1}</span>
+                      <span className="text-xl">{catEmoji(spot.category)}</span>
+                      <div className="min-w-0 flex-1 text-left">
+                        <div className="font-bold text-budget-text">{spot.name}</div>
+                        <div className="text-[11px] font-semibold text-budget-subtle">
+                          {catLabel} · {rankingAddressLine(spot)}
+                        </div>
+                        <div className="mt-0.5 text-[10px] font-medium text-budget-faint">{rankingSocialLine(spot)}</div>
+                      </div>
+                      <div className="flex flex-col items-end gap-0.5 self-center">
+                        <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
+                        <span className="text-[9px] font-extrabold uppercase tracking-wide text-budget-muted">
+                          {rankingWindow === "weekly" ? "Weekly" : "All-time"}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </>
           )}
         </div>
       )}
@@ -2229,7 +2250,7 @@ export default function BudgetMapApp() {
               className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
             >
               <span className="font-extrabold">Signed out</span> — device-only saves appear here.{" "}
-              <span className="font-semibold">Sign in</span> via the Review tab to sync verified map spots to your
+              <span className="font-semibold">Sign in</span> via Community → Under Review to sync verified map spots to your
               account.
             </div>
           ) : null}
@@ -2330,12 +2351,11 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <nav className="budget-bottom-nav absolute bottom-0 left-0 right-0 z-[60] flex items-stretch justify-between rounded-t-[22px] border-t border-budget-surface bg-budget-white px-1.5 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] pt-2.5 shadow-budget-nav">
+      <nav className="budget-bottom-nav absolute bottom-0 left-0 right-0 z-[60] flex items-stretch justify-between rounded-t-[22px] border-t border-budget-surface bg-budget-white px-1 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] pt-2 shadow-budget-nav">
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
-            { id: "community" as Tab, label: "Rankings", Icon: MessagesSquare },
-            { id: "review" as Tab, label: "Review", Icon: ClipboardList },
+            { id: "community" as Tab, label: "Community", Icon: Users },
             { id: "submit" as Tab, label: "Submit", Icon: Plus },
             { id: "saved" as Tab, label: "Saved", Icon: Bookmark },
             { id: "course" as Tab, label: "Course", Icon: Route },
@@ -2350,12 +2370,14 @@ export default function BudgetMapApp() {
                 setTab(id);
                 if (id !== "map") setSelectedId(null);
               }}
-              className={`flex flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 bg-transparent px-0.5 py-1 ${
+              className={`flex min-h-[48px] min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 bg-transparent px-0.5 py-1 ${
                 active ? "text-budget-primary" : "text-budget-faint"
               }`}
             >
               <Icon size={22} strokeWidth={active ? 2.2 : 1.65} />
-              <span className={`text-[10px] tracking-wide ${active ? "font-bold" : "font-medium"}`}>{label}</span>
+              <span className={`max-w-full truncate px-0.5 text-[10px] tracking-wide ${active ? "font-bold" : "font-medium"}`}>
+                {label}
+              </span>
             </button>
           );
         })}
