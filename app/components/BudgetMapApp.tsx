@@ -81,22 +81,6 @@ const LS_SAVED = "budget-map-saved-v2";
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
-function reviewStatusTheme(status: "approved" | "under_review") {
-  return status === "approved"
-    ? {
-        label: "Review Approved",
-        textClass: "text-green-700",
-        borderClass: "border-green-200",
-        bgClass: "bg-green-50",
-      }
-    : {
-        label: "Under Review",
-        textClass: "text-slate-500",
-        borderClass: "border-slate-200",
-        bgClass: "bg-slate-50",
-      };
-}
-
 function normalizeSpot(raw: Spot): Spot {
   const first = raw.submissions?.[0];
   const fallbackReg =
@@ -112,6 +96,31 @@ function normalizeSpot(raw: Spot): Spot {
     comments: Array.isArray(raw.comments) ? raw.comments : [],
     description: raw.description?.trim() || undefined,
   };
+}
+
+function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
+  return normalizeSpot({
+    id: `pending-${row.id}`,
+    name: row.place_name,
+    category: row.category,
+    area: row.area?.trim() || "London",
+    lat: row.lat,
+    lng: row.lng,
+    address: row.address?.trim() || "London",
+    description: row.description?.trim() || undefined,
+    registeredAt: row.submitted_at,
+    upvotes: 0,
+    downvotes: 0,
+    comments: [],
+    submissions: [
+      {
+        id: row.id,
+        items: [{ name: row.menu_item_name, price: row.price_gbp }],
+        review: row.description?.trim() || undefined,
+        date: row.submitted_at,
+      },
+    ],
+  });
 }
 
 /** Short text for compact marker preview: DB description, else first review, else default. */
@@ -368,10 +377,12 @@ export default function BudgetMapApp() {
   const remoteIdsRef = useRef(remoteIds);
   remoteIdsRef.current = remoteIds;
 
+  const pendingQueueSpots = useMemo(() => pendingRows.map(pendingRowToSpot), [pendingRows]);
+
   const allSpots = useMemo(() => {
     const locals = spots.filter((s) => !remoteIds.has(s.id));
-    return [...remoteApprovedSpots, ...locals];
-  }, [remoteApprovedSpots, spots, remoteIds]);
+    return [...remoteApprovedSpots, ...pendingQueueSpots, ...locals];
+  }, [remoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
 
   useEffect(() => {
     setMounted(true);
@@ -504,10 +515,16 @@ export default function BudgetMapApp() {
 
   useEffect(() => {
     const client = getBrowserSupabase();
-    if (!client || tab !== "community" || communitySeg !== "review") return;
+    if (!client || !isSupabaseConfigured()) {
+      setPendingRows([]);
+      setPendingLoading(false);
+      return;
+    }
     let cancelled = false;
-    setPendingLoading(true);
-    setPendingError(null);
+    if (tab === "community" && communitySeg === "review") {
+      setPendingLoading(true);
+      setPendingError(null);
+    }
     void (async () => {
       const res = await fetchPendingPlaceSubmissions(client);
       if (cancelled) return;
@@ -742,6 +759,11 @@ export default function BudgetMapApp() {
       setSubmitErrors({});
       setSubmitSuccess(true);
       setPendingRefreshTick((n) => n + 1);
+      setTab("map");
+      setSelectedId(null);
+      setFlyTo({ center: [latFinal, lngFinal], zoom: 16 });
+      setToast("Spot submitted — it now appears on the map as under review.");
+      window.setTimeout(() => setToast(null), 4000);
       return;
     }
 
@@ -1135,7 +1157,7 @@ export default function BudgetMapApp() {
       ? courseResult.reduce((s, x) => s + lowestPrice(x), 0)
       : 0;
 
-  /** Fixed 4-slot map filter: equal width, no scroll, compact segmented bar. */
+  /** Fixed 4-slot map filter: same visual style, but always fits without horizontal scroll. */
   const chipCat = (id: Category | "all", label: string, emoji: string) => {
     const active = activeCat === id;
     return (
@@ -1146,18 +1168,18 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        className={`flex min-h-[42px] min-w-0 max-w-full flex-1 basis-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-[10px] border-0 px-0.5 py-1 text-center transition-colors ${
+        className={`flex min-h-[38px] min-w-0 max-w-full flex-1 basis-0 cursor-pointer items-center justify-center gap-1 rounded-full border-0 px-2 py-2 text-center transition-colors ${
           active
             ? "bg-budget-primary font-extrabold text-white shadow-[0_2px_8px_rgb(0_168_120_/0.2)]"
-            : "bg-transparent font-semibold text-budget-text"
+            : "bg-budget-white/70 font-semibold text-budget-text/55"
         }`}
       >
         {emoji ? (
-          <span className={`text-[11px] leading-none ${active ? "" : "opacity-50"}`} aria-hidden>
+          <span className={`shrink-0 text-[11px] leading-none ${active ? "" : "opacity-50"}`} aria-hidden>
             {emoji}
           </span>
         ) : null}
-        <span className="w-full hyphens-auto break-words px-0.5 text-[9px] font-extrabold leading-[1.15] tracking-tight">
+        <span className="truncate text-[10px] font-extrabold leading-none tracking-tight">
           {label}
         </span>
       </button>
@@ -1165,8 +1187,6 @@ export default function BudgetMapApp() {
   };
 
   const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
-  const selectedReviewStatus = selected ? (remoteIds.has(selected.id) ? "approved" : "under_review") : null;
-  const selectedReviewTheme = selectedReviewStatus ? reviewStatusTheme(selectedReviewStatus) : null;
 
   return (
     <div className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full">
@@ -1205,15 +1225,6 @@ export default function BudgetMapApp() {
           className="pointer-events-none absolute left-3 right-3 top-[calc(184px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
         >
           {toast}
-        </div>
-      )}
-
-      {tab === "map" && mounted && allSpots.length > 0 && (
-        <div
-          className="absolute right-3 top-[calc(190px+env(safe-area-inset-top,0px))] z-40 rounded-full border border-budget-surface/90 bg-budget-white/95 px-3 py-1.5 text-[11px] font-extrabold tracking-wide text-budget-text shadow-budget-float backdrop-blur-sm"
-          aria-live="polite"
-        >
-          {mapSpots.length} spot{mapSpots.length === 1 ? "" : "s"}
         </div>
       )}
 
@@ -1265,19 +1276,10 @@ export default function BudgetMapApp() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
-                            {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
-                            {selected.area.toUpperCase()}
-                          </p>
-                          {selectedReviewTheme ? (
-                            <span
-                              className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-extrabold tracking-[0.03em] ${selectedReviewTheme.borderClass} ${selectedReviewTheme.bgClass} ${selectedReviewTheme.textClass}`}
-                            >
-                              {selectedReviewTheme.label}
-                            </span>
-                          ) : null}
-                        </div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
+                          {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
+                          {selected.area.toUpperCase()}
+                        </p>
                         <button
                           type="button"
                           onClick={() => setSelectedId(null)}
@@ -1352,19 +1354,10 @@ export default function BudgetMapApp() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
-                            {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
-                            {selected.area.toUpperCase()}
-                          </p>
-                          {selectedReviewTheme ? (
-                            <span
-                              className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-extrabold tracking-[0.03em] ${selectedReviewTheme.borderClass} ${selectedReviewTheme.bgClass} ${selectedReviewTheme.textClass}`}
-                            >
-                              {selectedReviewTheme.label}
-                            </span>
-                          ) : null}
-                        </div>
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
+                          {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
+                          {selected.area.toUpperCase()}
+                        </p>
                         <h2 className="mt-1.5 text-[1.35rem] font-extrabold leading-[1.15] tracking-[-0.035em] text-budget-text">
                           {selected.name}
                         </h2>
