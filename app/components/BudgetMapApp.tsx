@@ -67,7 +67,7 @@ type RankingWindow = "weekly" | "alltime";
 type PlaceSheetTab = "info" | "buzz";
 
 const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
-  { id: "all", emoji: "", label: "All" },
+  { id: "all", emoji: "📍", label: "All" },
   { id: "restaurant", emoji: "🍽️", label: "Restaurant" },
   { id: "pub", emoji: "🍺", label: "Beer" },
   { id: "cafe", emoji: "☕", label: "Coffee" },
@@ -1160,6 +1160,8 @@ export default function BudgetMapApp() {
   /** Fixed 4-slot map filter: same visual style, but always fits without horizontal scroll. */
   const chipCat = (id: Category | "all", label: string, emoji: string) => {
     const active = activeCat === id;
+    const grow =
+      id === "restaurant" ? 1.35 : id === "all" ? 0.8 : id === "pub" ? 0.88 : 0.97;
     return (
       <button
         key={String(id)}
@@ -1168,11 +1170,12 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        className={`flex min-h-[38px] min-w-0 max-w-full flex-1 basis-0 cursor-pointer items-center justify-center gap-1 rounded-full border-0 px-2 py-2 text-center transition-colors ${
+        className={`flex min-h-[38px] min-w-0 max-w-full basis-0 cursor-pointer items-center justify-center gap-1 rounded-full border-0 px-2 py-2 text-center transition-colors ${
           active
             ? "bg-budget-primary font-extrabold text-white shadow-[0_2px_8px_rgb(0_168_120_/0.2)]"
             : "bg-budget-white/70 font-semibold text-budget-text/55"
         }`}
+        style={{ flexGrow: grow }}
       >
         {emoji ? (
           <span className={`shrink-0 text-[11px] leading-none ${active ? "" : "opacity-50"}`} aria-hidden>

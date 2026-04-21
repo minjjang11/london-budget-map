@@ -18,7 +18,7 @@
   --color-budget-muted: rgb(13 31 26 / 0.55);
   --color-budget-subtle: rgb(13 31 26 / 0.45);
   --color-budget-faint: rgb(13 31 26 / 0.32);
-  --font-sans: var(--font-app), ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Pretendard", "Pretendard Variable", ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --shadow-budget-float: 0 8px 32px rgb(13 31 26 / 0.08);
   --shadow-budget-header: 0 6px 28px rgb(13 31 26 / 0.08);
   --shadow-budget-sheet: 0 12px 40px rgb(13 31 26 / 0.15);
@@ -53,10 +53,10 @@
     max-width: 100%;
     min-width: 0;
     box-sizing: border-box;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 12px;
-    background: rgb(224 247 242 / 0.95);
+    gap: 6px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
   }
 
   .budget-tab-panel {
