@@ -662,7 +662,7 @@ export default function BudgetMapApp() {
   };
 
   const handleSelect = useCallback((id: string) => {
-    setSelectedId((prev) => (prev === id ? null : prev));
+    setSelectedId((prev) => (prev === id ? null : id));
   }, []);
 
   const handleSubmit = async (opts?: { bypassDuplicate?: boolean }) => {
@@ -1170,10 +1170,10 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        className={`flex min-h-[38px] min-w-0 max-w-full basis-0 cursor-pointer items-center justify-center gap-1 rounded-full border-0 px-2 py-2 text-center transition-colors ${
+        className={`flex min-h-[38px] min-w-0 max-w-full basis-0 cursor-pointer items-center justify-center gap-1 rounded-full border px-2 py-2 text-center transition-colors ${
           active
-            ? "bg-budget-primary font-extrabold text-white shadow-[0_2px_8px_rgb(0_168_120_/0.2)]"
-            : "bg-budget-white/70 font-semibold text-budget-text/55"
+            ? "border-budget-primary/30 bg-budget-primary font-extrabold text-white shadow-[0_2px_8px_rgb(0_168_120_/0.2)]"
+            : "border-budget-surface/90 bg-budget-white/70 font-semibold text-budget-text/55"
         }`}
         style={{ flexGrow: grow }}
       >
