@@ -67,7 +67,7 @@ type RankingWindow = "weekly" | "alltime";
 type PlaceSheetTab = "info" | "buzz";
 
 const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
-  { id: "all", emoji: "📍", label: "All" },
+  { id: "all", emoji: "", label: "All" },
   { id: "restaurant", emoji: "🍽️", label: "Restaurant" },
   { id: "pub", emoji: "🍺", label: "Beer" },
   { id: "cafe", emoji: "☕", label: "Coffee" },
@@ -1118,6 +1118,7 @@ export default function BudgetMapApp() {
       ? courseResult.reduce((s, x) => s + lowestPrice(x), 0)
       : 0;
 
+  /** Fixed 4-slot map filter: equal width, no scroll, compact segmented bar. */
   const chipCat = (id: Category | "all", label: string, emoji: string) => {
     const active = activeCat === id;
     return (
@@ -1128,24 +1129,20 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        style={{
-          padding: "9px 14px",
-          borderRadius: "30px",
-          fontSize: "14px",
-          fontWeight: "500",
-          backgroundColor: active ? "#00A878" : "#E0F7F2",
-          color: active ? "#FFFFFF" : "#4C4C4C",
-          border: "none",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: "6px",
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-          cursor: "pointer",
-        }}
+        className={`flex min-h-[42px] min-w-0 max-w-full flex-1 basis-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-[10px] border-0 px-0.5 py-1 text-center transition-colors ${
+          active
+            ? "bg-budget-primary font-extrabold text-white shadow-[0_2px_8px_rgb(0_168_120_/0.2)]"
+            : "bg-transparent font-semibold text-budget-text"
+        }`}
       >
-        <span style={{ fontSize: "14px" }}>{emoji}</span>
-        <span>{label}</span>
+        {emoji ? (
+          <span className={`text-[11px] leading-none ${active ? "" : "opacity-50"}`} aria-hidden>
+            {emoji}
+          </span>
+        ) : null}
+        <span className="w-full hyphens-auto break-words px-0.5 text-[9px] font-extrabold leading-[1.15] tracking-tight">
+          {label}
+        </span>
       </button>
     );
   };
@@ -1178,7 +1175,9 @@ export default function BudgetMapApp() {
             Budget Map
           </Link>
         </h1>
-        <div className="budget-map-cat-grid">{CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}</div>
+        <div className="budget-map-cat-grid min-w-0 w-full shrink-0">
+          {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
+        </div>
       </header>
 
       {toast && tab === "map" && (
