@@ -49,7 +49,8 @@
 
   .budget-tab-panel {
     @apply absolute left-0 right-0 z-20 overflow-y-auto bg-budget-bg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
-    top: calc(172px + env(safe-area-inset-top, 0px));
+    /* Align with map header: outer safe offset uses max(); avoid stacking safe-area twice on header + panel. */
+    top: calc(118px + max(1.25rem, env(safe-area-inset-top, 0.75rem)));
     bottom: calc(100px + env(safe-area-inset-bottom, 0px));
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }

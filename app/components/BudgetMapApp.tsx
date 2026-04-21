@@ -57,7 +57,7 @@ const HAS_GOOGLE_MAPS_KEY = Boolean((process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 type Tab = "map" | "community" | "submit" | "saved" | "course";
 
-/** Unified Community tab: queue vs ranking windows (replaces separate Review + Rankings nav). */
+/** Unified Review tab (nav id `community`): queue vs ranking windows. */
 type CommunitySeg = "review" | "weekly" | "alltime";
 
 type CommunitySort = "price" | "buzz" | "snitches";
@@ -250,7 +250,8 @@ export default function BudgetMapApp() {
   const [submitAddress, setSubmitAddress] = useState("");
   const [submitCat, setSubmitCat] = useState<Category>("restaurant");
   const [submitItems, setSubmitItems] = useState<SpotMenuItem[]>([{ name: "", price: 0 }]);
-  const [submitReview, setSubmitReview] = useState("");
+  /** Fixed-vocabulary tags for submission description (same slugs as place review tags). */
+  const [submitDescTags, setSubmitDescTags] = useState<string[]>([]);
   const [submitLat, setSubmitLat] = useState("");
   const [submitLng, setSubmitLng] = useState("");
   const [submitErrors, setSubmitErrors] = useState<{ name?: string; menu?: string; geo?: string; address?: string }>(
@@ -326,6 +327,19 @@ export default function BudgetMapApp() {
   >({});
   const [myPlaceReviewDraft, setMyPlaceReviewDraft] = useState<string[]>([]);
   const [placeReviewTagsBusy, setPlaceReviewTagsBusy] = useState(false);
+
+  const submitDescriptionText = useMemo(
+    () => submitDescTags.map((s) => labelForPlaceReviewSlug(s)).join(" · "),
+    [submitDescTags],
+  );
+
+  const toggleSubmitDescTag = useCallback((slug: string) => {
+    setSubmitDescTags((prev) => {
+      if (prev.includes(slug)) return prev.filter((x) => x !== slug);
+      if (prev.length >= MAX_PLACE_REVIEW_TAGS_PER_USER) return prev;
+      return [...prev, slug];
+    });
+  }, []);
 
   const [courseBudget, setCourseBudget] = useState(25);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
@@ -567,7 +581,7 @@ export default function BudgetMapApp() {
   const toggleSave = async (id: string) => {
     if (remoteIds.has(id)) {
       if (!session?.user?.id) {
-        setToast("Sign in to save verified places — use the Community tab magic link.");
+        setToast("Sign in to save verified places — use the Review tab magic link.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -689,7 +703,7 @@ export default function BudgetMapApp() {
           category: submitCat,
           menu_item_name: rep.name.trim(),
           price_gbp: rep.price,
-          description: submitReview.trim() || null,
+          description: submitDescriptionText.trim() || null,
           area: null,
           google_place_id: submitGooglePlaceId,
         },
@@ -704,7 +718,7 @@ export default function BudgetMapApp() {
       setSubmitName("");
       setSubmitAddress("");
       setSubmitItems([{ name: "", price: 0 }]);
-      setSubmitReview("");
+      setSubmitDescTags([]);
       setSubmitLat("");
       setSubmitLng("");
       setSubmitGooglePlaceId(null);
@@ -727,7 +741,7 @@ export default function BudgetMapApp() {
       lat,
       lng,
       address: submitAddress.trim() || "London",
-      description: submitReview.trim() || undefined,
+      description: submitDescriptionText.trim() || undefined,
       registeredAt: nowIso,
       upvotes: 0,
       comments: [],
@@ -735,7 +749,7 @@ export default function BudgetMapApp() {
         {
           id: `sub_${Date.now()}`,
           items: validItems,
-          review: submitReview.trim() || undefined,
+          review: submitDescriptionText.trim() || undefined,
           date: nowIso.split("T")[0]!,
         },
       ],
@@ -744,7 +758,7 @@ export default function BudgetMapApp() {
     setSubmitName("");
     setSubmitAddress("");
     setSubmitItems([{ name: "", price: 0 }]);
-    setSubmitReview("");
+    setSubmitDescTags([]);
     setSubmitLat("");
     setSubmitLng("");
     setSubmitGooglePlaceId(null);
@@ -761,7 +775,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — use the email sign-in panel at the top of Community → Under Review.");
+        setToast("Sign in to vote — use the email sign-in panel at the top of Review → Under Review.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -791,7 +805,7 @@ export default function BudgetMapApp() {
     const c = getBrowserSupabase();
     const uid = session?.user?.id;
     if (!c || !uid) {
-      setToast("Sign in to report — use the email sign-in panel at the top of Community → Under Review.");
+      setToast("Sign in to report — use the email sign-in panel at the top of Review → Under Review.");
       window.setTimeout(() => setToast(null), 4500);
       return;
     }
@@ -812,7 +826,7 @@ export default function BudgetMapApp() {
   const handleReportTap = useCallback(
     (submissionId: string) => {
       if (!session?.user) {
-        setToast("Sign in to report — use the email sign-in panel at the top of Community → Under Review.");
+        setToast("Sign in to report — use the email sign-in panel at the top of Review → Under Review.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -852,7 +866,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — open Community → Under Review and use the same magic-link sign-in.");
+        setToast("Sign in to vote — open Review → Under Review and use the same magic-link sign-in.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -891,7 +905,7 @@ export default function BudgetMapApp() {
   const togglePlaceReviewDraftTag = useCallback(
     (slug: string) => {
       if (!session?.user) {
-        setToast("Sign in to add tags — use the Community tab magic link.");
+        setToast("Sign in to add tags — use the Review tab magic link.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -1146,7 +1160,7 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <header className="absolute left-3 right-3 top-4 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-[calc(14px+env(safe-area-inset-top,0px))] shadow-budget-header">
+      <header className="absolute left-3 right-3 top-[max(1.25rem,env(safe-area-inset-top,0.75rem))] z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-3 shadow-budget-header">
         <h1 className="mb-2 text-[19px] font-extrabold leading-tight tracking-[-0.035em] text-budget-text">
           <Link href="/home" className="hover:text-budget-primary/90">
             Budget Map
@@ -1249,7 +1263,7 @@ export default function BudgetMapApp() {
                       {remoteIds.has(selected.id) ? (
                         <p className="mt-2 text-[11px] font-semibold text-budget-muted">
                           👍 {selected.upvotes ?? 0} · 👎 {selected.downvotes ?? 0}
-                          {!session?.user ? " · Sign in (Community → Under Review) to vote" : null}
+                          {!session?.user ? " · Sign in (Review → Under Review) to vote" : null}
                         </p>
                       ) : null}
                       <div className="mt-4 flex flex-col gap-2">
@@ -1495,7 +1509,7 @@ export default function BudgetMapApp() {
                           </div>
                         ) : (
                           <p className="text-[11px] text-budget-muted">
-                            Tags are read-only until you sign in — same magic link as Community → Under Review.
+                            Tags are read-only until you sign in — same magic link as Review → Under Review.
                           </p>
                         )}
                         <p className="text-[11px] text-budget-subtle">Verified listing from the database.</p>
@@ -1590,7 +1604,7 @@ export default function BudgetMapApp() {
                   </div>
                   {remoteIds.has(selected.id) && !session?.user ? (
                     <p className="mt-2 text-center text-[11px] text-budget-muted">
-                      Verified spots save to your account after sign-in (Community → Under Review).
+                      Verified spots save to your account after sign-in (Review → Under Review).
                     </p>
                   ) : null}
                 </div>
@@ -1604,7 +1618,7 @@ export default function BudgetMapApp() {
 
       {tab === "community" && (
         <div className="budget-tab-panel px-3 pb-3">
-          <h2 className="mb-0.5 text-lg font-extrabold text-budget-text">Community</h2>
+          <h2 className="mb-0.5 text-lg font-extrabold text-budget-text">Review</h2>
           <p className="mb-3 text-[11px] leading-snug text-budget-muted">
             Queue, votes, and verified rankings — pick a section below.
           </p>
@@ -1612,7 +1626,7 @@ export default function BudgetMapApp() {
           <div
             className="mb-4 flex rounded-[14px] bg-budget-surface/90 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
             role="tablist"
-            aria-label="Community sections"
+            aria-label="Review sections"
           >
             {(["review", "weekly", "alltime"] as const).map((seg) => {
               const active = communitySeg === seg;
@@ -1940,7 +1954,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "submit" && (
-        <div className="budget-tab-panel px-4 pb-28 pt-8">
+        <div className="budget-tab-panel px-4 pb-28 pt-4">
           <>
             <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
             <p className="mb-4 text-xs text-budget-text/50">
@@ -2104,13 +2118,45 @@ export default function BudgetMapApp() {
                 + Add item
               </button>
 
-              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Description (optional)</label>
-              <input
-                value={submitReview}
-                onChange={(e) => setSubmitReview(e.target.value)}
-                placeholder="e.g. queue's long but the roti slaps"
-                className="budget-input mb-5 text-sm"
-              />
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">
+                Quick vibe (optional, up to {MAX_PLACE_REVIEW_TAGS_PER_USER} words)
+              </label>
+              <p className="mb-2 text-[11px] leading-snug text-budget-muted">
+                Tap to add or remove — same word list as map tags after approval.
+              </p>
+              {submitDescTags.length > 0 ? (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {submitDescTags.map((slug) => (
+                    <span
+                      key={slug}
+                      className="inline-flex items-center rounded-full bg-budget-primary/15 px-2.5 py-1 text-[11px] font-extrabold text-budget-text"
+                    >
+                      {labelForPlaceReviewSlug(slug)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mb-2 text-[11px] text-budget-muted">None selected yet.</p>
+              )}
+              <div className="mb-5 flex max-h-[22vh] flex-wrap gap-1.5 overflow-y-auto">
+                {PLACE_REVIEW_TAG_SLUGS.map((slug) => {
+                  const on = submitDescTags.includes(slug);
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      onClick={() => toggleSubmitDescTag(slug)}
+                      className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition ${
+                        on
+                          ? "border-budget-primary bg-budget-primary/10 text-budget-text"
+                          : "border-budget-surface/80 bg-budget-bg text-budget-text hover:border-budget-primary/40"
+                      }`}
+                    >
+                      {labelForPlaceReviewSlug(slug)}
+                    </button>
+                  );
+                })}
+              </div>
 
               {submitDuplicateInfo ? (
                 <div
@@ -2165,7 +2211,7 @@ export default function BudgetMapApp() {
               className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
             >
               <span className="font-extrabold">Signed out</span> — device-only saves appear here.{" "}
-              <span className="font-semibold">Sign in</span> via Community → Under Review to sync verified map spots to your
+              <span className="font-semibold">Sign in</span> via Review → Under Review to sync verified map spots to your
               account.
             </div>
           ) : null}
@@ -2270,7 +2316,7 @@ export default function BudgetMapApp() {
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
-            { id: "community" as Tab, label: "Community", Icon: Users },
+            { id: "community" as Tab, label: "Review", Icon: Users },
             { id: "submit" as Tab, label: "Submit", Icon: Plus },
             { id: "saved" as Tab, label: "Saved", Icon: Bookmark },
             { id: "course" as Tab, label: "Course", Icon: Route },
