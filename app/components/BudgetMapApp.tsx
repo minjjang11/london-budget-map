@@ -67,8 +67,7 @@ type RankingWindow = "weekly" | "alltime";
 type PlaceSheetTab = "info" | "buzz";
 
 const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
-  /** No map-pin glyph — “All” is text-led only. */
-  { id: "all", emoji: "", label: "All" },
+  { id: "all", emoji: "📍", label: "All" },
   { id: "restaurant", emoji: "🍽️", label: "Restaurant" },
   { id: "pub", emoji: "🍺", label: "Beer" },
   { id: "cafe", emoji: "☕", label: "Coffee" },
@@ -1129,22 +1128,24 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        className={`flex min-h-[44px] w-full min-w-0 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-[13px] border border-transparent px-1 py-1.5 text-center transition-colors ${
-          active
-            ? "bg-budget-primary font-extrabold text-white shadow-[0_4px_12px_rgb(0_168_120_/0.25)]"
-            : "bg-budget-surface/95 font-semibold text-budget-text"
-        }`}
+        style={{
+          padding: "9px 14px",
+          borderRadius: "30px",
+          fontSize: "14px",
+          fontWeight: "500",
+          backgroundColor: active ? "#00A878" : "#E0F7F2",
+          color: active ? "#FFFFFF" : "#4C4C4C",
+          border: "none",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+          whiteSpace: "nowrap",
+          flexShrink: 0,
+          cursor: "pointer",
+        }}
       >
-        {emoji ? (
-          <span className={`text-[15px] leading-none ${active ? "" : "opacity-45"}`} aria-hidden>
-            {emoji}
-          </span>
-        ) : (
-          <span className="text-[11px] font-extrabold leading-none text-budget-primary/50" aria-hidden>
-            ·
-          </span>
-        )}
-        <span className="max-w-full truncate text-[10px] leading-tight tracking-tight">{label}</span>
+        <span style={{ fontSize: "14px" }}>{emoji}</span>
+        <span>{label}</span>
       </button>
     );
   };
@@ -1161,11 +1162,14 @@ export default function BudgetMapApp() {
       )}
 
       <header
-        className="absolute left-3 right-3 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-3 shadow-budget-header"
+        className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-3 shadow-budget-header"
         style={{ top: "max(22px, env(safe-area-inset-top))" }}
       >
-        <h1 className="mb-2 text-[19px] font-extrabold leading-tight tracking-[-0.035em] text-budget-text">
-          <Link href="/home" className="hover:text-budget-primary/90">
+        <h1
+          className="mb-2 leading-tight tracking-[-0.035em]"
+          style={{ fontSize: "19px", fontWeight: 700, color: "#0D1F1A" }}
+        >
+          <Link href="/home" className="hover:text-budget-primary/90" style={{ color: "inherit" }}>
             Budget Map
           </Link>
         </h1>

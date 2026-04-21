@@ -42,9 +42,19 @@
     @apply -mx-1 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
   }
 
-  /** Map header category strip: single row, no horizontal scroll (used instead of `.budget-chip-row` on map). */
+  /** Map header category strip: horizontal scroll row (BudgetMapApp header). */
   .budget-map-cat-grid {
-    @apply grid w-full grid-cols-4 gap-1.5;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 2px;
+  }
+
+  .budget-map-cat-grid::-webkit-scrollbar {
+    display: none;
   }
 
   .budget-tab-panel {
