@@ -1162,7 +1162,7 @@ export default function BudgetMapApp() {
 
       <header
         className="absolute left-3 right-3 z-50 rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-3 shadow-budget-header"
-        style={{ top: "max(45px, env(safe-area-inset-top))" }}
+        style={{ top: "max(22px, env(safe-area-inset-top))" }}
       >
         <h1 className="mb-2 text-[19px] font-extrabold leading-tight tracking-[-0.035em] text-budget-text">
           <Link href="/home" className="hover:text-budget-primary/90">
