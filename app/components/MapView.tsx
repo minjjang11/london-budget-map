@@ -18,6 +18,7 @@ export type MapSpot = {
   lng: number;
   lowestPrice: number;
   priceLabel: string;
+  reviewStatus: "approved" | "under_review";
 };
 
 const EMOJI: Record<string, string> = {
@@ -26,40 +27,67 @@ const EMOJI: Record<string, string> = {
   cafe: "☕",
 };
 
-const PRIMARY = "#00a878";
+const MARKER_STATUS = {
+  approved: {
+    border: "#7EDB93",
+    text: "#166534",
+    background: "#FFFFFF",
+    chip: "#F0FDF4",
+    shadow: "rgba(34,197,94,0.2)",
+  },
+  under_review: {
+    border: "#B6BDC8",
+    text: "#475467",
+    background: "#FFFFFF",
+    chip: "#F8FAFC",
+    shadow: "rgba(148,163,184,0.22)",
+  },
+} as const;
 
-/** Selected = solid brand green pill; unselected = soft white pill (reference UI). */
+/** Review-approved = green outline; under-review = grey outline. */
 function makeLeafletIcon(spot: MapSpot, isSelected: boolean) {
   const emoji = EMOJI[spot.category];
+  const status = MARKER_STATUS[spot.reviewStatus];
   const scale = isSelected ? "scale(1.08)" : "scale(1)";
-  const pillStyle = isSelected
-    ? `background:${PRIMARY};border:2px solid #00c896;color:#fff;box-shadow:0 6px 18px rgba(0,168,120,0.45);`
-    : `background:rgba(255,255,255,0.94);border:1px solid rgba(0,168,120,0.38);color:#0D1F1A;box-shadow:0 2px 10px rgba(13,31,26,0.08);opacity:0.9;`;
-  const labelColor = isSelected ? "#ffffff" : "#0D1F1A";
+  const shadow = isSelected
+    ? `0 10px 24px ${status.shadow}, 0 4px 12px rgba(15,23,42,0.18)`
+    : `0 5px 14px rgba(15,23,42,0.1), 0 2px 6px ${status.shadow}`;
 
   const html = `
     <div style="
-      display:flex;flex-direction:column;align-items:center;
+      display:flex;align-items:center;justify-content:center;
       cursor:pointer;
       transform: ${scale};
-      transition: transform 0.2s ease, opacity 0.2s ease;
+      transition: transform 0.2s ease;
     ">
       <div style="
-        ${pillStyle}
+        display:flex;
+        align-items:center;
+        gap: 6px;
+        background: ${status.background};
+        border: 2px solid ${status.border};
         border-radius: 999px;
-        padding: 4px 10px 4px 8px;
+        padding: 5px 10px;
         white-space: nowrap;
         text-align: center;
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
+        box-shadow: ${shadow};
       ">
-        <span style="font-size:13px;line-height:1;">${emoji}</span>
         <span style="
+          width:18px;
+          height:18px;
+          border-radius:999px;
+          background:${status.chip};
+          display:grid;
+          place-items:center;
           font-size:11px;
+          line-height:1;
+        ">${emoji}</span>
+        <span style="
+          font-size:13px;
           font-weight: 800;
           letter-spacing: -0.02em;
-          color: ${labelColor};
+          color: ${status.text};
+          line-height:1;
         ">${spot.priceLabel}</span>
       </div>
     </div>
@@ -67,8 +95,8 @@ function makeLeafletIcon(spot: MapSpot, isSelected: boolean) {
   return L.divIcon({
     html,
     className: "spot-marker",
-    iconSize: [84, 34],
-    iconAnchor: [42, 17],
+    iconSize: [88, 28],
+    iconAnchor: [44, 14],
   });
 }
 
@@ -131,6 +159,7 @@ function SpotPill({
   onSelect: () => void;
 }) {
   const emoji = EMOJI[spot.category];
+  const status = MARKER_STATUS[spot.reviewStatus];
 
   return (
     <button
@@ -146,16 +175,25 @@ function SpotPill({
       }}
     >
       <div
-        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-shadow ${
-          selected
-            ? "bg-[#00a878] text-white shadow-[0_6px_18px_rgba(0,168,120,0.45)] ring-2 ring-[#00a878]/30"
-            : "border border-[#00a878]/38 bg-white/95 text-[#0D1F1A] opacity-90 shadow-[0_2px_10px_rgba(13,31,26,0.08)]"
-        }`}
-        style={{ padding: "4px 10px 4px 8px" }}
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 transition-shadow"
+        style={{
+          padding: "5px 10px",
+          border: `2px solid ${status.border}`,
+          background: status.background,
+          boxShadow: selected
+            ? `0 10px 24px ${status.shadow}, 0 4px 12px rgba(15,23,42,0.18)`
+            : `0 5px 14px rgba(15,23,42,0.1), 0 2px 6px ${status.shadow}`,
+        }}
       >
-        <span className="text-[13px] leading-none">{emoji}</span>
         <span
-          className={`text-[11px] font-extrabold tracking-tight ${selected ? "text-white" : "text-[#0D1F1A]"}`}
+          className="grid h-[18px] w-[18px] place-items-center rounded-full text-[11px] leading-none"
+          style={{ background: status.chip }}
+        >
+          {emoji}
+        </span>
+        <span
+          className="text-[13px] font-extrabold tracking-tight"
+          style={{ color: status.text }}
         >
           {spot.priceLabel}
         </span>

@@ -81,6 +81,22 @@ const LS_SAVED = "budget-map-saved-v2";
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
+function reviewStatusTheme(status: "approved" | "under_review") {
+  return status === "approved"
+    ? {
+        label: "Review Approved",
+        textClass: "text-green-700",
+        borderClass: "border-green-200",
+        bgClass: "bg-green-50",
+      }
+    : {
+        label: "Under Review",
+        textClass: "text-slate-500",
+        borderClass: "border-slate-200",
+        bgClass: "bg-slate-50",
+      };
+}
+
 function normalizeSpot(raw: Spot): Spot {
   const first = raw.submissions?.[0];
   const fallbackReg =
@@ -564,9 +580,10 @@ export default function BudgetMapApp() {
           lng: s.lng,
           lowestPrice: low,
           priceLabel: formatMapPriceLabel(low),
+          reviewStatus: remoteIds.has(s.id) ? "approved" : "under_review",
         };
       }),
-    [filtered],
+    [filtered, remoteIds],
   );
 
   const selected = allSpots.find((s) => s.id === selectedId) || null;
@@ -1148,6 +1165,8 @@ export default function BudgetMapApp() {
   };
 
   const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
+  const selectedReviewStatus = selected ? (remoteIds.has(selected.id) ? "approved" : "under_review") : null;
+  const selectedReviewTheme = selectedReviewStatus ? reviewStatusTheme(selectedReviewStatus) : null;
 
   return (
     <div className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full">
@@ -1246,10 +1265,19 @@ export default function BudgetMapApp() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
-                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
-                          {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
-                          {selected.area.toUpperCase()}
-                        </p>
+                        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
+                            {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
+                            {selected.area.toUpperCase()}
+                          </p>
+                          {selectedReviewTheme ? (
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-extrabold tracking-[0.03em] ${selectedReviewTheme.borderClass} ${selectedReviewTheme.bgClass} ${selectedReviewTheme.textClass}`}
+                            >
+                              {selectedReviewTheme.label}
+                            </span>
+                          ) : null}
+                        </div>
                         <button
                           type="button"
                           onClick={() => setSelectedId(null)}
@@ -1324,10 +1352,19 @@ export default function BudgetMapApp() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
-                          {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
-                          {selected.area.toUpperCase()}
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
+                            {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
+                            {selected.area.toUpperCase()}
+                          </p>
+                          {selectedReviewTheme ? (
+                            <span
+                              className={`inline-flex rounded-full border px-2 py-1 text-[10px] font-extrabold tracking-[0.03em] ${selectedReviewTheme.borderClass} ${selectedReviewTheme.bgClass} ${selectedReviewTheme.textClass}`}
+                            >
+                              {selectedReviewTheme.label}
+                            </span>
+                          ) : null}
+                        </div>
                         <h2 className="mt-1.5 text-[1.35rem] font-extrabold leading-[1.15] tracking-[-0.035em] text-budget-text">
                           {selected.name}
                         </h2>
