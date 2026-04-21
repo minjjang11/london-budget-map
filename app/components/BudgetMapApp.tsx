@@ -1162,8 +1162,13 @@ export default function BudgetMapApp() {
       )}
 
       <header
-        className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white px-3 pb-2.5 pt-3 shadow-budget-header"
-        style={{ top: "max(22px, env(safe-area-inset-top))" }}
+        className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-budget-header"
+        style={{
+          top: "max(29px, env(safe-area-inset-top))",
+          paddingLeft: "15.6px",
+          paddingRight: "15.6px",
+          paddingBottom: "13px",
+        }}
       >
         <h1
           className="mb-2 leading-tight tracking-[-0.035em]"
@@ -2319,7 +2324,26 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      <nav className="budget-bottom-nav absolute bottom-4 left-3 right-3 z-[60] flex items-stretch justify-between rounded-[22px] border border-budget-surface/90 bg-budget-white px-1 pb-[calc(0.625rem+env(safe-area-inset-bottom,0px))] pt-2.5 shadow-budget-nav">
+      <nav
+        style={{
+          background: "white",
+          borderRadius: "68px",
+          height: "61px",
+          width: "calc(100% - 22px)",
+          margin: "0 auto",
+          position: "absolute",
+          bottom: "max(11px, env(safe-area-inset-bottom))",
+          left: "11px",
+          right: "11px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-around",
+          padding: "0 8px",
+          boxShadow: "0 4px 20px rgba(13, 31, 26, 0.08)",
+          border: "none",
+          zIndex: 60,
+        }}
+      >
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
@@ -2330,6 +2354,7 @@ export default function BudgetMapApp() {
           ] as const
         ).map(({ id, label, Icon }) => {
           const active = tab === id;
+          const tabColor = active ? "#00A878" : "#636167";
           return (
             <button
               key={id}
@@ -2338,14 +2363,19 @@ export default function BudgetMapApp() {
                 setTab(id);
                 if (id !== "map") setSelectedId(null);
               }}
-              className={`flex min-h-[48px] min-w-0 flex-1 cursor-pointer flex-col items-center justify-center gap-0.5 border-0 bg-transparent px-0.5 py-1 ${
-                active ? "text-budget-primary" : "text-budget-faint"
-              }`}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "2.1px",
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: "0 8px",
+              }}
             >
-              <Icon size={22} strokeWidth={active ? 2.2 : 1.65} />
-              <span className={`max-w-full truncate px-0.5 text-[10px] tracking-wide ${active ? "font-bold" : "font-medium"}`}>
-                {label}
-              </span>
+              <Icon size={22} strokeWidth={active ? 2.2 : 1.65} color={tabColor} />
+              <span style={{ fontSize: "13px", fontWeight: 500, color: tabColor }}>{label}</span>
             </button>
           );
         })}
