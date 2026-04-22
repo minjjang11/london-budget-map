@@ -76,6 +76,7 @@ const INITIAL_SPOTS: Spot[] = [];
 const LS_KEY = "budget-map-spots-v2";
 const LS_SAVED = "budget-map-saved-v2";
 const LS_PENDING_PHOTOS = "budget-map-pending-photos-v1";
+const LOCAL_SUBMITTED_SPOT_ID_PREFIX = "spot_";
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -155,7 +156,12 @@ function loadSpots(): Spot[] {
       localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
       return INITIAL_SPOTS;
     }
-    return (parsed as Spot[]).map(normalizeSpot);
+    const normalized = (parsed as Spot[]).map(normalizeSpot);
+    const filtered = normalized.filter((spot) => spot.id.startsWith(LOCAL_SUBMITTED_SPOT_ID_PREFIX));
+    if (filtered.length !== normalized.length) {
+      localStorage.setItem(LS_KEY, JSON.stringify(filtered));
+    }
+    return filtered;
   } catch {
     localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
     return INITIAL_SPOTS;
@@ -275,6 +281,18 @@ function formatSubmittedDisplay(iso: string): string {
   if (!Number.isFinite(t)) return iso;
   return new Date(iso).toLocaleDateString("en-GB", {
     weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatSubmissionDate(value: string): string {
+  const t = new Date(value).getTime();
+  if (!Number.isFinite(t)) {
+    return value.includes("T") ? value.split("T")[0]! : value;
+  }
+  return new Date(value).toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -1318,34 +1336,36 @@ export default function BudgetMapApp() {
 
   return (
     <div className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full">
-      {/* Full-bleed map layer */}
-      {tab === "map" && mounted && (
+      {/* Keep the same map instance mounted so returning to Map preserves the last viewport and selection. */}
+      {mounted && (
         <div className="absolute inset-0 z-0">
           <MapView spots={mapSpots} selectedId={selectedId} onSelect={handleSelect} flyTo={flyTo} />
         </div>
       )}
 
-      <header
-        className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-budget-header"
-        style={{
-          top: "max(29px, env(safe-area-inset-top))",
-          paddingLeft: "15.6px",
-          paddingRight: "15.6px",
-          paddingBottom: "13px",
-        }}
-      >
-        <h1
-          className="mb-2 leading-tight tracking-[-0.035em]"
-          style={{ fontSize: "19px", fontWeight: 700, color: "#0D1F1A" }}
+      {tab === "map" && (
+        <header
+          className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-budget-header"
+          style={{
+            top: "max(29px, env(safe-area-inset-top))",
+            paddingLeft: "15.6px",
+            paddingRight: "15.6px",
+            paddingBottom: "13px",
+          }}
         >
-          <Link href="/home" className="hover:text-budget-primary/90" style={{ color: "inherit" }}>
-            Budget Map
-          </Link>
-        </h1>
-        <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
-          {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
-        </div>
-      </header>
+          <h1
+            className="mb-2 leading-tight tracking-[-0.035em]"
+            style={{ fontSize: "19px", fontWeight: 700, color: "#0D1F1A" }}
+          >
+            <Link href="/home" className="hover:text-budget-primary/90" style={{ color: "inherit" }}>
+              Budget Map
+            </Link>
+          </h1>
+          <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
+            {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
+          </div>
+        </header>
+      )}
 
       {toast && tab === "map" && (
         <div
@@ -1532,7 +1552,7 @@ export default function BudgetMapApp() {
                         className="rounded-2xl bg-[#e8f2ed] px-3.5 py-3.5 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
                       >
                         <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">
-                          Report · {sub.date}
+                          Report · {formatSubmissionDate(sub.date)}
                         </div>
                         {sub.photo ? (
                           <img
@@ -2473,7 +2493,6 @@ export default function BudgetMapApp() {
               type="button"
               onClick={() => {
                 setTab(id);
-                if (id !== "map") setSelectedId(null);
               }}
               style={{
                 display: "flex",
