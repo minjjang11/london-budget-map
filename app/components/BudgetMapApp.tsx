@@ -556,6 +556,9 @@ export default function BudgetMapApp() {
 
   const currentMapBudgetMax = MAP_BUDGET_LIMITS[activeCat];
   const currentMapBudget = mapBudgets[activeCat];
+  const currentMapBudgetMin = 2;
+  const currentMapBudgetPercent =
+    ((currentMapBudget - currentMapBudgetMin) / Math.max(0.5, currentMapBudgetMax - currentMapBudgetMin)) * 100;
 
   useEffect(() => {
     setMapBudgets((prev) => {
@@ -1725,38 +1728,35 @@ export default function BudgetMapApp() {
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
           <div className="mt-3 rounded-[18px] border border-budget-surface/80 bg-budget-bg px-3 py-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
-                  {activeCat === "all"
-                    ? "Map budget"
-                    : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
-                </p>
-                <p className="mt-0.5 text-[11px] leading-snug text-budget-muted">
-                  {activeCat === "all"
-                    ? "Scroll your max and only show spots at or under that price."
-                    : "Each category keeps its own max budget, so swap tabs and set them separately."}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-budget-primary px-2.5 py-1 text-[12px] font-extrabold text-white">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
+              {activeCat === "all"
+                ? "Map budget"
+                : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
+            </p>
+            <div className="relative mt-3 px-1 pb-1 pt-5">
+              <span
+                className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-2 py-[3px] text-[10px] font-extrabold leading-none text-budget-primary shadow-sm"
+                style={{ left: `calc(${currentMapBudgetPercent}% * 0.96 + 2%)` }}
+              >
                 {formatBudgetCap(currentMapBudget)}
               </span>
+              <input
+                type="range"
+                min={currentMapBudgetMin}
+                max={currentMapBudgetMax}
+                step={0.5}
+                value={currentMapBudget}
+                onChange={(e) =>
+                  setMapBudgets((prev) => ({
+                    ...prev,
+                    [activeCat]: parseFloat(e.target.value),
+                  }))
+                }
+                className="budget-range w-full"
+                style={{ ["--range-progress" as string]: `${currentMapBudgetPercent}%` }}
+                aria-label="Maximum budget on map"
+              />
             </div>
-            <input
-              type="range"
-              min={2}
-              max={currentMapBudgetMax}
-              step={0.5}
-              value={currentMapBudget}
-              onChange={(e) =>
-                setMapBudgets((prev) => ({
-                  ...prev,
-                  [activeCat]: parseFloat(e.target.value),
-                }))
-              }
-              className="mt-2 w-full accent-budget-primary"
-              aria-label="Maximum budget on map"
-            />
           </div>
         </header>
       )}

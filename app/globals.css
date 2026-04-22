@@ -171,6 +171,59 @@
   left: max(0.5rem, env(safe-area-inset-left, 0px));
 }
 
+.budget-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 22px;
+  background: transparent;
+}
+
+.budget-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(
+      to right,
+      var(--color-primary) 0%,
+      var(--color-primary) var(--range-progress, 50%),
+      rgb(13 31 26 / 0.16) var(--range-progress, 50%),
+      rgb(13 31 26 / 0.16) 100%
+    );
+}
+
+.budget-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  border-radius: 999px;
+  border: 2px solid var(--color-white);
+  background: var(--color-white);
+  box-shadow: 0 1px 4px rgb(13 31 26 / 0.18);
+}
+
+.budget-range::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgb(13 31 26 / 0.16);
+}
+
+.budget-range::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-primary);
+}
+
+.budget-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid var(--color-white);
+  background: var(--color-white);
+  box-shadow: 0 1px 4px rgb(13 31 26 / 0.18);
+}
+
 @keyframes slideUp {
   from {
     transform: translateY(100%);
