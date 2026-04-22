@@ -9,6 +9,7 @@ import type { Category } from "./spot";
 export type PlaceRow = {
   id: string;
   status: "pending" | "approved" | "rejected";
+  submitted_by?: string | null;
   name: string;
   category: Category;
   area: string;
@@ -34,6 +35,7 @@ export type PlaceRow = {
 /** Insert payload for `places` (service role / trusted paths). */
 export type PlaceInsert = {
   status: "approved";
+  submitted_by: string | null;
   name: string;
   category: Category;
   area: string;

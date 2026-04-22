@@ -20,6 +20,7 @@ export function submissionRowToPlaceInsert(sub: PlaceSubmissionRow): PlaceInsert
 
   return {
     status: "approved",
+    submitted_by: sub.submitted_by ?? null,
     name: sub.place_name.trim(),
     category: sub.category,
     area: sub.area?.trim() || "London",

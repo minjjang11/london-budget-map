@@ -28,7 +28,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { fetchApprovedPlaces } from "@/lib/places/fetchApprovedPlaces";
 import { insertPlaceSubmission } from "@/lib/places/insertPlaceSubmission";
 import { fetchPendingPlaceSubmissions } from "@/lib/places/fetchPendingPlaceSubmissions";
-import type { PlaceSubmissionRow } from "@/lib/types/places";
+import type { PlaceRow, PlaceSubmissionRow } from "@/lib/types/places";
 import type { SubmissionVoteType } from "@/lib/types/submissionEngagement";
 import {
   fetchSubmissionVoteData,
@@ -38,6 +38,12 @@ import {
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
 import { fetchPlaceVoteData, removePlaceVote, upsertPlaceVote } from "@/lib/places/placeVotes";
 import { deleteSavedPlace, fetchMySavedPlaceIds, insertSavedPlace } from "@/lib/places/savedPlaces";
+import {
+  deletePlaceContribution,
+  fetchMyPlaceContributions,
+  fetchPlaceContributions,
+  insertPlaceContribution,
+} from "@/lib/places/placeContributions";
 import {
   fetchMyPlaceReviewTags,
   fetchPlaceReviewTagCountsByPlace,
@@ -50,6 +56,7 @@ import {
 } from "@/lib/places/placeReviewTags";
 import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicate";
 import { rankingNetScore, registeredWithinTrailingDays, RANKING_RULES } from "@/lib/ranking/rankingScores";
+import type { PlaceContributionRow } from "@/lib/types/placeContributions";
 import AuthPanel from "./AuthPanel";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 
@@ -112,6 +119,10 @@ function normalizeSpot(raw: Spot): Spot {
 
 function isHiddenSpotName(name: string | undefined): boolean {
   return HIDDEN_SPOT_NAMES.has((name ?? "").trim().toLowerCase());
+}
+
+function normalizeDupText(value: string | null | undefined): string {
+  return (value ?? "").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
@@ -390,6 +401,16 @@ export default function BudgetMapApp() {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [pendingRefreshTick, setPendingRefreshTick] = useState(0);
+  const [placeContributionRows, setPlaceContributionRows] = useState<PlaceContributionRow[]>([]);
+  const [myContributionRows, setMyContributionRows] = useState<PlaceContributionRow[]>([]);
+  const [mySubmissionRows, setMySubmissionRows] = useState<PlaceSubmissionRow[]>([]);
+  const [myApprovedPlaceRows, setMyApprovedPlaceRows] = useState<PlaceRow[]>([]);
+  const [contributionItem, setContributionItem] = useState("");
+  const [contributionPrice, setContributionPrice] = useState("");
+  const [contributionComment, setContributionComment] = useState("");
+  const [contributionPhoto, setContributionPhoto] = useState("");
+  const [contributionBusy, setContributionBusy] = useState(false);
+  const [contributionDeleteBusyId, setContributionDeleteBusyId] = useState<string | null>(null);
 
   const [session, setSession] = useState<Session | null>(null);
   const [isModerator, setIsModerator] = useState(false);
@@ -490,11 +511,48 @@ export default function BudgetMapApp() {
     [pendingRows, pendingSubmissionPhotos],
   );
 
+  const mergedRemoteApprovedSpots = useMemo(() => {
+    const byPlace = new globalThis.Map<string, PlaceContributionRow[]>();
+    placeContributionRows.forEach((row) => {
+      const arr = byPlace.get(row.place_id) ?? [];
+      arr.push(row);
+      byPlace.set(row.place_id, arr);
+    });
+
+    return remoteApprovedSpots.map((spot) => {
+      const contributions = byPlace.get(spot.id) ?? [];
+      if (contributions.length === 0) return spot;
+      return {
+        ...spot,
+        submissions: [
+          ...spot.submissions,
+          ...contributions.map((row) => ({
+            id: `contrib_${row.id}`,
+            items: [{ name: row.menu_item_name, price: Number(row.price_gbp) }],
+            review: row.comment?.trim() || undefined,
+            photo: row.photo?.trim() || undefined,
+            date: row.created_at,
+          })),
+        ],
+        comments: [
+          ...(spot.comments ?? []),
+          ...contributions
+            .filter((row) => row.comment?.trim())
+            .map((row) => ({
+              id: `pc_${row.id}`,
+              text: row.comment!.trim(),
+              date: row.created_at,
+            })),
+        ],
+      };
+    });
+  }, [remoteApprovedSpots, placeContributionRows]);
+
   const allSpots = useMemo(() => {
-    const approved = remoteApprovedSpots.filter((s) => !isHiddenSpotName(s.name));
+    const approved = mergedRemoteApprovedSpots.filter((s) => !isHiddenSpotName(s.name));
     const locals = spots.filter((s) => !remoteIds.has(s.id) && !isHiddenSpotName(s.name));
     return [...approved, ...pendingQueueSpots, ...locals];
-  }, [remoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
+  }, [mergedRemoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
 
   const currentMapBudgetMax = MAP_BUDGET_LIMITS[activeCat];
   const currentMapBudget = mapBudgets[activeCat];
@@ -533,6 +591,31 @@ export default function BudgetMapApp() {
       cancelled = true;
     };
   }, [approvedPlacesTick]);
+
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    if (!client || remoteApprovedSpots.length === 0) {
+      setPlaceContributionRows([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { rows, error } = await fetchPlaceContributions(
+        client,
+        remoteApprovedSpots.map((spot) => spot.id),
+      );
+      if (cancelled) return;
+      if (error) {
+        console.warn("[budget-map] place contributions:", error);
+        setPlaceContributionRows([]);
+        return;
+      }
+      setPlaceContributionRows(rows);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [remoteApprovedSpots]);
   useEffect(() => {
     saveSpots(spots);
   }, [spots]);
@@ -564,6 +647,55 @@ export default function BudgetMapApp() {
       cancelled = true;
     };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    if (!client || !session?.user?.id) {
+      setMyContributionRows([]);
+      setMySubmissionRows([]);
+      setMyApprovedPlaceRows([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const [{ rows: contributionRows, error: contributionError }, submissionsRes, approvedPlacesRes] = await Promise.all([
+        fetchMyPlaceContributions(client, session.user.id),
+        client
+          .from("place_submissions")
+          .select("*")
+          .eq("submitted_by", session.user.id)
+          .order("submitted_at", { ascending: false }),
+        client
+          .from("places")
+          .select("*")
+          .eq("submitted_by", session.user.id)
+          .eq("status", "approved")
+          .order("registered_at", { ascending: false }),
+      ]);
+      if (cancelled) return;
+      if (contributionError) {
+        console.warn("[budget-map] my contributions:", contributionError);
+        setMyContributionRows([]);
+      } else {
+        setMyContributionRows(contributionRows);
+      }
+      if (submissionsRes.error) {
+        console.warn("[budget-map] my submissions:", submissionsRes.error.message);
+        setMySubmissionRows([]);
+      } else {
+        setMySubmissionRows((submissionsRes.data ?? []) as PlaceSubmissionRow[]);
+      }
+      if (approvedPlacesRes.error) {
+        console.warn("[budget-map] my approved places:", approvedPlacesRes.error.message);
+        setMyApprovedPlaceRows([]);
+      } else {
+        setMyApprovedPlaceRows((approvedPlacesRes.data ?? []) as PlaceRow[]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, pendingRefreshTick]);
 
   useEffect(() => {
     if (tab !== "submit") setSubmitSuccess(false);
@@ -683,12 +815,12 @@ export default function BudgetMapApp() {
   /** Rankings tab: approved remote places only (same cat/area filters as the map list). */
   const communityApprovedFiltered = useMemo(
     () =>
-      remoteApprovedSpots.filter((s) => {
+      mergedRemoteApprovedSpots.filter((s) => {
         if (isHiddenSpotName(s.name)) return false;
         if (activeCat !== "all" && s.category !== activeCat) return false;
         return true;
       }),
-    [remoteApprovedSpots, activeCat],
+    [mergedRemoteApprovedSpots, activeCat],
   );
 
   const ranked = useMemo(() => {
@@ -730,6 +862,10 @@ export default function BudgetMapApp() {
     () => pendingRows.find((row) => `pending-${row.id}` === selectedId) ?? null,
     [pendingRows, selectedId],
   );
+  const selectedContributionRows = useMemo(
+    () => placeContributionRows.filter((row) => row.place_id === selectedId),
+    [placeContributionRows, selectedId],
+  );
   const selectedIsPending = Boolean(selectedPendingRow);
   const selectedPendingVote = selectedPendingRow ? myVotes[selectedPendingRow.id] : undefined;
   const selectedPendingTallies = selectedPendingRow
@@ -739,6 +875,10 @@ export default function BudgetMapApp() {
   useEffect(() => {
     setCommentDraft("");
     setPlaceDetailExpanded(false);
+    setContributionItem("");
+    setContributionPrice("");
+    setContributionComment("");
+    setContributionPhoto("");
   }, [selectedId]);
 
   const toggleSave = async (id: string) => {
@@ -832,6 +972,19 @@ export default function BudgetMapApp() {
       }
       if (opts?.bypassDuplicate) {
         setSubmitDuplicateInfo(null);
+      }
+      const duplicateByText = allSpots.find((spot) => {
+        const sameName = normalizeDupText(spot.name) === normalizeDupText(submitName);
+        if (!sameName) return false;
+        if (!submitAddress.trim()) return true;
+        return normalizeDupText(spot.address) === normalizeDupText(submitAddress);
+      });
+      if (duplicateByText && !opts?.bypassDuplicate) {
+        setSubmitDuplicateInfo({
+          kind: remoteIds.has(duplicateByText.id) ? "approved" : "pending",
+          name: duplicateByText.name,
+        });
+        return;
       }
       const gid = submitGooglePlaceId?.trim();
       if (gid && !opts?.bypassDuplicate) {
@@ -948,6 +1101,112 @@ export default function BudgetMapApp() {
     setToast("Spot added — on trial for 7 days for community review.");
     window.setTimeout(() => setToast(null), 4000);
   };
+
+  const handleAddPlaceContribution = useCallback(async () => {
+    const client = getBrowserSupabase();
+    const uid = session?.user?.id;
+    if (!client || !uid || !selected || !remoteIds.has(selected.id)) {
+      setToast("Sign in to add a menu, photo, or comment to this spot.");
+      window.setTimeout(() => setToast(null), 4500);
+      return;
+    }
+    const price = parseFloat(contributionPrice);
+    if (!contributionItem.trim() || !Number.isFinite(price) || price <= 0) {
+      setToast("Add a menu item and a valid price first.");
+      window.setTimeout(() => setToast(null), 4000);
+      return;
+    }
+    const limit = SUBMIT_PRICE_LIMITS[selected.category];
+    if (price > limit) {
+      setToast(`${selected.name} is a ${selected.category} spot, so keep it at or under ${formatBudgetCap(limit)}.`);
+      window.setTimeout(() => setToast(null), 4500);
+      return;
+    }
+    setContributionBusy(true);
+    const { row, error } = await insertPlaceContribution(client, {
+      place_id: selected.id,
+      user_id: uid,
+      menu_item_name: contributionItem.trim(),
+      price_gbp: price,
+      comment: contributionComment.trim() || null,
+      photo: contributionPhoto || null,
+    });
+    setContributionBusy(false);
+    if (error || !row) {
+      setToast(error ?? "Could not add your update.");
+      window.setTimeout(() => setToast(null), 5000);
+      return;
+    }
+    setPlaceContributionRows((prev) => [row, ...prev]);
+    setMyContributionRows((prev) => [row, ...prev]);
+    setContributionItem("");
+    setContributionPrice("");
+    setContributionComment("");
+    setContributionPhoto("");
+    setToast("Added to this place. Nice one.");
+    window.setTimeout(() => setToast(null), 3500);
+  }, [
+    contributionComment,
+    contributionItem,
+    contributionPhoto,
+    contributionPrice,
+    remoteIds,
+    selected,
+    session?.user?.id,
+  ]);
+
+  const handleDeleteContribution = useCallback(async (contributionId: string) => {
+    const client = getBrowserSupabase();
+    if (!client) return;
+    setContributionDeleteBusyId(contributionId);
+    const { error } = await deletePlaceContribution(client, contributionId);
+    setContributionDeleteBusyId(null);
+    if (error) {
+      setToast(error);
+      window.setTimeout(() => setToast(null), 5000);
+      return;
+    }
+    setPlaceContributionRows((prev) => prev.filter((row) => row.id !== contributionId));
+    setMyContributionRows((prev) => prev.filter((row) => row.id !== contributionId));
+  }, []);
+
+  const handleDeleteOwnSubmission = useCallback(async (submissionId: string) => {
+    const client = getBrowserSupabase();
+    const uid = session?.user?.id;
+    if (!client || !uid) return;
+    const { error } = await client.from("place_submissions").delete().eq("id", submissionId).eq("submitted_by", uid);
+    if (error) {
+      setToast(error.message);
+      window.setTimeout(() => setToast(null), 5000);
+      return;
+    }
+    setMySubmissionRows((prev) => prev.filter((row) => row.id !== submissionId));
+    setPendingRows((prev) => prev.filter((row) => row.id !== submissionId));
+    setToast("Removed your queued place.");
+    window.setTimeout(() => setToast(null), 3500);
+  }, [session?.user?.id]);
+
+  const handleDeleteOwnApprovedPlace = useCallback(async (placeId: string) => {
+    const client = getBrowserSupabase();
+    const uid = session?.user?.id;
+    if (!client || !uid) return;
+    const { error } = await client.from("places").delete().eq("id", placeId).eq("submitted_by", uid);
+    if (error) {
+      setToast(error.message);
+      window.setTimeout(() => setToast(null), 5000);
+      return;
+    }
+    setMyApprovedPlaceRows((prev) => prev.filter((row) => row.id !== placeId));
+    setRemoteApprovedSpots((prev) => prev.filter((spot) => spot.id !== placeId));
+    setSavedRemoteIds((prev) => {
+      const next = new Set(prev);
+      next.delete(placeId);
+      return next;
+    });
+    if (selectedId === placeId) setSelectedId(null);
+    setToast("Removed your registered place.");
+    window.setTimeout(() => setToast(null), 3500);
+  }, [selectedId, session?.user?.id]);
 
   const handleVoteOnSubmission = useCallback(
     async (submissionId: string, voteType: SubmissionVoteType) => {
@@ -1424,6 +1683,14 @@ export default function BudgetMapApp() {
   );
 
   const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
+  const myCommentedContributions = myContributionRows.filter((row) => row.comment?.trim());
+  const placeNameById = useMemo(
+    () =>
+      Object.fromEntries(
+        mergedRemoteApprovedSpots.map((spot) => [spot.id, spot.name]),
+      ) as Record<string, string>,
+    [mergedRemoteApprovedSpots],
+  );
 
   return (
     <div className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full">
@@ -1850,6 +2117,95 @@ export default function BudgetMapApp() {
                             : "Stored on this device until shared voting is shipped."}
                       </p>
                     </div>
+                    {remoteIds.has(selected.id) ? (
+                      <div className="rounded-2xl border border-budget-surface/80 bg-budget-white px-3 py-3 shadow-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
+                            Add your menu
+                          </p>
+                          <span className="text-[11px] font-semibold text-budget-muted">
+                            Cap {formatBudgetCap(SUBMIT_PRICE_LIMITS[selected.category])}
+                          </span>
+                        </div>
+                        {!session?.user ? (
+                          <p className="mt-2 text-[12px] leading-snug text-budget-muted">
+                            Sign in to add another menu price, photo, or comment for this place.
+                          </p>
+                        ) : (
+                          <>
+                            <div className="mt-3 space-y-2">
+                              <input
+                                value={contributionItem}
+                                onChange={(e) => setContributionItem(e.target.value)}
+                                placeholder="Menu item"
+                                className="budget-input-sm w-full text-[13px]"
+                              />
+                              <input
+                                type="number"
+                                min="0"
+                                max={String(SUBMIT_PRICE_LIMITS[selected.category])}
+                                step="0.01"
+                                value={contributionPrice}
+                                onChange={(e) => setContributionPrice(e.target.value)}
+                                placeholder={`Price up to ${formatBudgetCap(SUBMIT_PRICE_LIMITS[selected.category])}`}
+                                className="budget-input-sm w-full text-[13px]"
+                              />
+                              <input
+                                value={contributionComment}
+                                onChange={(e) => setContributionComment(e.target.value)}
+                                placeholder="Quick comment (optional)"
+                                className="budget-input-sm w-full text-[13px]"
+                              />
+                              {contributionPhoto ? (
+                                <div className="rounded-[18px] border border-budget-surface bg-budget-bg p-2">
+                                  <img
+                                    src={contributionPhoto}
+                                    alt="Contribution preview"
+                                    className="h-[140px] w-full rounded-[14px] object-cover"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setContributionPhoto("")}
+                                    className="mt-2 w-full cursor-pointer rounded-xl border border-budget-surface bg-budget-white py-2 text-[12px] font-extrabold text-budget-text"
+                                  >
+                                    Remove photo
+                                  </button>
+                                </div>
+                              ) : (
+                                <label className="flex cursor-pointer items-center justify-center rounded-[16px] border border-dashed border-budget-surface bg-budget-bg px-4 py-3 text-[12px] font-semibold text-budget-muted">
+                                  Add a photo
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={async (e) => {
+                                      const file = e.target.files?.[0];
+                                      if (!file) return;
+                                      try {
+                                        setContributionPhoto(await readImageAsDataUrl(file));
+                                      } catch {
+                                        setToast("Couldn’t read that image. Try another photo.");
+                                        window.setTimeout(() => setToast(null), 4000);
+                                      } finally {
+                                        e.currentTarget.value = "";
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              disabled={contributionBusy}
+                              onClick={() => void handleAddPlaceContribution()}
+                              className="mt-3 w-full cursor-pointer rounded-xl border-0 bg-budget-primary py-2.5 text-[12px] font-extrabold text-white disabled:opacity-50"
+                            >
+                              {contributionBusy ? "Adding…" : "Add to this place"}
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
 
                 <div className="mt-5">
@@ -1938,7 +2294,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(242px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(224px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
               {isSupabaseConfigured() && getBrowserSupabase() ? (
@@ -2234,7 +2590,7 @@ export default function BudgetMapApp() {
         panelHero("Submit", Plus, "bg-budget-cta", "Snitch form")}
 
       {tab === "submit" && (
-        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(148px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(136px + env(safe-area-inset-top, 0px))" }}>
           <>
             {HAS_GOOGLE_MAPS_KEY ? (
               <SubmitPlacesAutocomplete
@@ -2491,9 +2847,9 @@ export default function BudgetMapApp() {
                   role="status"
                   className="mb-4 rounded-[14px] border border-amber-300 bg-amber-50 px-3.5 py-3 text-[12px] leading-snug text-amber-950"
                 >
-                  <p className="font-extrabold">Possible duplicate</p>
+                  <p className="font-extrabold">Already registered</p>
                   <p className="mt-1.5">
-                    This Google place is already{" "}
+                    This place is already{" "}
                     {submitDuplicateInfo.kind === "approved"
                       ? "on the map as an approved spot"
                       : "in the newly-registered queue"}{" "}
@@ -2504,16 +2860,9 @@ export default function BudgetMapApp() {
                     ) : (
                       "."
                     )}{" "}
-                    You can still send your tip if the menu or price is new.
+                    Add a new menu price, photo, or comment from that place&apos;s details card instead of submitting it
+                    again.
                   </p>
-                  <button
-                    type="button"
-                    disabled={submitBusy}
-                    onClick={() => void handleSubmit({ bypassDuplicate: true })}
-                    className="mt-3 w-full cursor-pointer rounded-xl border-2 border-amber-700/40 bg-budget-white py-2.5 text-[12px] font-extrabold text-amber-950 transition hover:bg-amber-100 disabled:opacity-50"
-                  >
-                    Submit anyway
-                  </button>
                 </div>
               ) : null}
 
@@ -2535,7 +2884,7 @@ export default function BudgetMapApp() {
         panelHero("Profile", User, "bg-[#0D1F1A]", "Saved stash")}
 
       {tab === "profile" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(148px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(136px + env(safe-area-inset-top, 0px))" }}>
           {isSupabaseConfigured() && getBrowserSupabase() ? (
             <div className="mb-4">
               <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
@@ -2551,6 +2900,107 @@ export default function BudgetMapApp() {
               account.
             </div>
           ) : null}
+          <div className="mb-5">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">Your spots</h3>
+              <span className="text-[12px] font-semibold text-budget-muted">
+                {myApprovedPlaceRows.length + mySubmissionRows.filter((row) => row.status !== "approved").length}
+              </span>
+            </div>
+            {myApprovedPlaceRows.length === 0 && mySubmissionRows.filter((row) => row.status !== "approved").length === 0 ? (
+              <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-5 text-[13px] text-budget-muted">
+                No registered places from this account yet.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {myApprovedPlaceRows.map((row) => (
+                  <div key={row.id} className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTab("map");
+                          setSelectedId(row.id);
+                          setFlyTo({ center: [row.lat, row.lng], zoom: 16 });
+                        }}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">Approved</p>
+                        <p className="mt-1 text-[16px] font-extrabold text-budget-text">{row.name}</p>
+                        <p className="mt-1 text-[12px] text-budget-muted">{row.address ?? row.area}</p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteOwnApprovedPlace(row.id)}
+                        className="cursor-pointer rounded-xl border border-red-200 bg-white px-3 py-2 text-[11px] font-extrabold text-red-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {mySubmissionRows
+                  .filter((row) => row.status !== "approved")
+                  .map((row) => (
+                    <div key={row.id} className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
+                            {row.status === "needs_review" ? "Needs review" : "Pending"}
+                          </p>
+                          <p className="mt-1 text-[16px] font-extrabold text-budget-text">{row.place_name}</p>
+                          <p className="mt-1 text-[12px] text-budget-muted">{row.address}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteOwnSubmission(row.id)}
+                          className="cursor-pointer rounded-xl border border-red-200 bg-white px-3 py-2 text-[11px] font-extrabold text-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+          <div className="mb-5">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">Your comments</h3>
+              <span className="text-[12px] font-semibold text-budget-muted">{myCommentedContributions.length}</span>
+            </div>
+            {myCommentedContributions.length === 0 ? (
+              <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-5 text-[13px] text-budget-muted">
+                No comments from this account yet.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {myCommentedContributions.map((row) => (
+                  <div key={row.id} className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
+                          {placeNameById[row.place_id] ?? "Approved place"}
+                        </p>
+                        <p className="mt-1 text-[13px] leading-snug text-budget-text">{row.comment}</p>
+                        <p className="mt-2 text-[11px] text-budget-muted">
+                          {row.menu_item_name} · {formatBudgetCap(Number(row.price_gbp))}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={contributionDeleteBusyId === row.id}
+                        onClick={() => void handleDeleteContribution(row.id)}
+                        className="cursor-pointer rounded-xl border border-red-200 bg-white px-3 py-2 text-[11px] font-extrabold text-red-700 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="mb-2 flex items-center justify-between">
             <h3 className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">Saved</h3>
             <span className="text-[12px] font-semibold text-budget-muted">{savedSpots.length}</span>
@@ -2589,7 +3039,7 @@ export default function BudgetMapApp() {
         panelHero("Course", Route, "bg-[#165A47]", "Budget crawl")}
 
       {tab === "course" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(148px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(136px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
             <ul className="mb-4 list-disc space-y-1 pl-4 text-[12px] text-budget-subtle">

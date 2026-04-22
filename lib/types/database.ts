@@ -1,4 +1,5 @@
 import type { PlaceInsert, PlaceRow, PlaceSubmissionInsert, PlaceSubmissionRow } from "./places";
+import type { PlaceContributionInsert, PlaceContributionRow } from "./placeContributions";
 import type { PlaceReviewTagInsert, PlaceReviewTagRow } from "./placeReviewTag";
 import type { SavedPlaceInsert, SavedPlaceRow } from "./savedPlaces";
 import type { PlaceVoteInsert, PlaceVoteRow } from "./placeEngagement";
@@ -36,6 +37,12 @@ export type Database = {
       place_review_tags: {
         Row: PlaceReviewTagRow;
         Insert: PlaceReviewTagInsert;
+        Update: never;
+        Relationships: [];
+      };
+      place_contributions: {
+        Row: PlaceContributionRow;
+        Insert: PlaceContributionInsert;
         Update: never;
         Relationships: [];
       };
