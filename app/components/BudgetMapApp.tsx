@@ -1751,16 +1751,27 @@ export default function BudgetMapApp() {
                   : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
               </p>
               <span className="inline-flex items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] leading-none text-budget-muted">
-                {formatBudgetCap(currentMapBudget)}
+                {!mapBudgetOpen ? formatBudgetCap(currentMapBudget) : null}
                 <ChevronDown
                   size={11}
-                  className={`transition-transform ${mapBudgetOpen ? "rotate-180" : ""}`}
+                  className={`transition-transform duration-300 ease-out ${mapBudgetOpen ? "rotate-180" : ""}`}
                   aria-hidden
                 />
               </span>
             </button>
-            {mapBudgetOpen ? (
-              <div id="map-budget-slider" className="relative mt-0.5 px-0.5 pb-0 pt-3">
+            <div
+              id="map-budget-slider"
+              aria-hidden={!mapBudgetOpen}
+              className={`grid overflow-hidden transition-all duration-300 ease-out ${
+                mapBudgetOpen ? "mt-0.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
+              }`}
+            >
+              <div className="min-h-0">
+                <div
+                  className={`relative px-0.5 pb-0 transition-all duration-300 ease-out ${
+                    mapBudgetOpen ? "translate-y-0 pt-3" : "-translate-y-1 pt-0"
+                  }`}
+                >
                 <span
                   className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[8px] font-extrabold leading-none text-budget-primary shadow-sm"
                   style={{ left: `calc(${currentMapBudgetPercent}% * 0.96 + 2%)` }}
@@ -1784,7 +1795,8 @@ export default function BudgetMapApp() {
                   aria-label="Maximum budget on map"
                 />
               </div>
-            ) : null}
+              </div>
+            </div>
           </div>
         </header>
       )}
