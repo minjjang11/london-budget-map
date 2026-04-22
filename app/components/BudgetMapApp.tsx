@@ -64,8 +64,6 @@ type CommunitySort = "price" | "buzz" | "snitches";
 
 type RankingWindow = "weekly" | "alltime";
 
-type PlaceSheetTab = "info" | "buzz";
-
 const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
   { id: "all", emoji: "📍", label: "All" },
   { id: "restaurant", emoji: "🍽️", label: "Restaurant" },
@@ -395,7 +393,6 @@ export default function BudgetMapApp() {
   const [communitySort, setCommunitySort] = useState<CommunitySort>("price");
   const [rankingWindow, setRankingWindow] = useState<RankingWindow>("alltime");
   const [communitySeg, setCommunitySeg] = useState<CommunitySeg>("review");
-  const [placeSheetTab, setPlaceSheetTab] = useState<PlaceSheetTab>("info");
   const [commentDraft, setCommentDraft] = useState("");
   /** After marker tap: compact preview first; "Full details" opens existing sheet body. */
   const [placeDetailExpanded, setPlaceDetailExpanded] = useState(false);
@@ -677,7 +674,6 @@ export default function BudgetMapApp() {
   const selected = allSpots.find((s) => s.id === selectedId) || null;
 
   useEffect(() => {
-    setPlaceSheetTab("info");
     setCommentDraft("");
     setPlaceDetailExpanded(false);
   }, [selectedId]);
@@ -1185,6 +1181,15 @@ export default function BudgetMapApp() {
     );
   };
 
+  const bumpDownvote = (spotId: string) => {
+    if (remoteIds.has(spotId)) return;
+    setSpots((prev) =>
+      prev.map((s) =>
+        s.id === spotId ? { ...s, downvotes: (s.downvotes ?? 0) + 1 } : s,
+      ),
+    );
+  };
+
   const addComment = (spotId: string, text: string) => {
     if (remoteIds.has(spotId)) {
       setToast("Verified spots: comments will need login soon.");
@@ -1260,7 +1265,10 @@ export default function BudgetMapApp() {
             {emoji}
           </span>
         ) : null}
-        <span className="truncate text-[10px] font-extrabold leading-none tracking-tight">
+        <span
+          className="truncate leading-none"
+          style={{ fontSize: "13px", fontWeight: 500 }}
+        >
           {label}
         </span>
       </button>
@@ -1476,23 +1484,7 @@ export default function BudgetMapApp() {
                   </div>
                 )}
 
-                <div className="mt-4 flex gap-1 rounded-[14px] bg-budget-surface/90 p-1">
-                  {(["info", "buzz"] as const).map((t) => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setPlaceSheetTab(t)}
-                      className={`flex-1 cursor-pointer rounded-[11px] py-2.5 text-center text-[12px] font-extrabold transition ${
-                        placeSheetTab === t ? "bg-budget-white text-budget-text shadow-sm" : "text-budget-muted"
-                      }`}
-                    >
-                      {t === "info" ? "Details" : "Buzz"}
-                    </button>
-                  ))}
-                </div>
-
-                {placeSheetTab === "info" && (
-                  <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-3">
                     {selected.submissions.map((sub) => (
                       <div
                         key={sub.id}
@@ -1528,177 +1520,66 @@ export default function BudgetMapApp() {
                         )}
                       </div>
                     ))}
-                  </div>
-                )}
-
-                {placeSheetTab === "buzz" && (
-                  <div className="mt-4 space-y-3">
-                    {remoteIds.has(selected.id) ? (
-                      <>
-                        <p className="text-[11px] font-semibold text-budget-muted">
-                          Community votes (signed in). Counts feed Rankings.
-                        </p>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => void handleVoteOnPlace(selected.id, "upvote")}
-                            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
-                              placeMyVotes[selected.id] === "upvote"
-                                ? "border-budget-primary bg-budget-surface text-budget-text"
-                                : "border-budget-surface bg-budget-bg text-budget-text"
-                            }`}
-                          >
-                            <ThumbsUp size={18} className="text-budget-primary" />
-                            Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void handleVoteOnPlace(selected.id, "downvote")}
-                            className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
-                              placeMyVotes[selected.id] === "downvote"
-                                ? "border-budget-primary bg-budget-surface text-budget-text"
-                                : "border-budget-surface bg-budget-bg text-budget-text"
-                            }`}
-                          >
-                            <ThumbsDown size={18} className="text-budget-muted" />
-                            Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
-                          </button>
-                        </div>
-                        {!session?.user ? (
-                          <p className="text-[11px] text-amber-900/90">
-                            Sign in via the <strong>Review</strong> tab (same account) to vote and pick tags.
-                          </p>
-                        ) : null}
-                        <div className="rounded-2xl border border-budget-surface/80 bg-budget-bg/40 px-3 py-3">
-                          <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
-                            Top tags
-                          </p>
-                          {(() => {
-                            const rec = placeReviewTagCountsByPlace[selected.id] ?? {};
-                            const entries = Object.entries(rec).sort(
-                              (a, b) =>
-                                b[1] - a[1] ||
-                                labelForPlaceReviewSlug(a[0]).localeCompare(labelForPlaceReviewSlug(b[0])),
-                            );
-                            if (entries.length === 0) {
-                              return (
-                                <p className="mt-2 text-[12px] text-budget-muted">No tags yet — be the first.</p>
-                              );
-                            }
-                            return (
-                              <div className="mt-2 flex flex-wrap gap-1.5">
-                                {entries.slice(0, 16).map(([slug, n]) => (
-                                  <span
-                                    key={slug}
-                                    className="inline-flex items-center gap-1 rounded-full bg-budget-surface px-2.5 py-1 text-[11px] font-extrabold text-budget-text"
-                                  >
-                                    {labelForPlaceReviewSlug(slug)}
-                                    <span className="tabular-nums text-budget-muted">×{n}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            );
-                          })()}
-                        </div>
-                        {session?.user ? (
-                          <div className="rounded-2xl border border-budget-surface/80 bg-budget-white px-3 py-3 shadow-sm">
-                            <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
-                              Your tags
-                            </p>
-                            <p className="mt-1 text-[11px] text-budget-muted">
-                              Pick up to {MAX_PLACE_REVIEW_TAGS_PER_USER} — tap again to remove, then save.
-                            </p>
-                            <div className="mt-2 flex max-h-[22vh] flex-wrap gap-1.5 overflow-y-auto">
-                              {PLACE_REVIEW_TAG_SLUGS.map((slug) => {
-                                const on = myPlaceReviewDraft.includes(slug);
-                                return (
-                                  <button
-                                    key={slug}
-                                    type="button"
-                                    onClick={() => togglePlaceReviewDraftTag(slug)}
-                                    className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition ${
-                                      on
-                                        ? "border-budget-primary bg-budget-primary/10 text-budget-text"
-                                        : "border-budget-surface/80 bg-budget-bg text-budget-text hover:border-budget-primary/40"
-                                    }`}
-                                  >
-                                    {labelForPlaceReviewSlug(slug)}
-                                  </button>
-                                );
-                              })}
-                            </div>
+                    <div className="rounded-2xl border border-budget-surface/80 bg-budget-white px-3 py-3 shadow-sm">
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
+                        Community votes
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        {remoteIds.has(selected.id) ? (
+                          <>
                             <button
                               type="button"
-                              disabled={placeReviewTagsBusy}
-                              onClick={() => void savePlaceReviewTags()}
-                              className="mt-3 w-full cursor-pointer rounded-2xl border-0 bg-budget-primary py-2.5 text-[12px] font-extrabold text-white disabled:cursor-wait disabled:opacity-60"
+                              onClick={() => void handleVoteOnPlace(selected.id, "upvote")}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
+                                placeMyVotes[selected.id] === "upvote"
+                                  ? "border-budget-primary bg-budget-surface text-budget-text"
+                                  : "border-budget-surface bg-budget-bg text-budget-text"
+                              }`}
                             >
-                              {placeReviewTagsBusy ? "Saving…" : "Save your tags"}
+                              <ThumbsUp size={18} className="text-budget-primary" />
+                              Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
                             </button>
-                          </div>
+                            <button
+                              type="button"
+                              onClick={() => void handleVoteOnPlace(selected.id, "downvote")}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
+                                placeMyVotes[selected.id] === "downvote"
+                                  ? "border-budget-primary bg-budget-surface text-budget-text"
+                                  : "border-budget-surface bg-budget-bg text-budget-text"
+                              }`}
+                            >
+                              <ThumbsDown size={18} className="text-budget-muted" />
+                              Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
+                            </button>
+                          </>
                         ) : (
-                          <p className="text-[11px] text-budget-muted">
-                            Tags are read-only until you sign in — same magic link as Review → Under Review.
-                          </p>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => bumpUpvote(selected.id)}
+                              className="inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
+                            >
+                              <ThumbsUp size={18} className="text-budget-primary" />
+                              Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => bumpDownvote(selected.id)}
+                              className="inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
+                            >
+                              <ThumbsDown size={18} className="text-budget-muted" />
+                              Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
+                            </button>
+                          </>
                         )}
-                        <p className="text-[11px] text-budget-subtle">Verified listing from the database.</p>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => bumpUpvote(selected.id)}
-                            className="inline-flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
-                          >
-                            <ThumbsUp size={18} className="text-budget-primary" />
-                            Rate it ({selected.upvotes ?? 0})
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-budget-subtle">
-                          Stored on this device until we ship a shared backend.
-                        </p>
-                      </>
-                    )}
-                    {!remoteIds.has(selected.id) ? (
-                      <>
-                        <div className="max-h-[28vh] space-y-2 overflow-y-auto rounded-2xl border border-budget-surface/80 bg-[#e8f2ed] p-2">
-                          {(selected.comments ?? []).length === 0 ? (
-                            <p className="px-2 py-4 text-center text-[12px] text-budget-muted">No comments yet.</p>
-                          ) : (
-                            (selected.comments ?? []).map((cm) => (
-                              <div
-                                key={cm.id}
-                                className="rounded-xl border border-white/60 bg-white px-3 py-2.5 text-[13px] text-budget-text shadow-sm"
-                              >
-                                <div className="text-[10px] font-extrabold uppercase tracking-wide text-budget-subtle">
-                                  {cm.date}
-                                </div>
-                                <div className="mt-1">{cm.text}</div>
-                              </div>
-                            ))
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            value={commentDraft}
-                            onChange={(e) => setCommentDraft(e.target.value)}
-                            placeholder="Add a quick note…"
-                            className="budget-input-sm min-w-0 flex-1 text-[13px]"
-                            maxLength={280}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => addComment(selected.id, commentDraft)}
-                            className="shrink-0 cursor-pointer rounded-2xl border-0 bg-budget-primary px-4 py-2.5 text-[12px] font-extrabold text-white"
-                          >
-                            Post
-                          </button>
-                        </div>
-                      </>
-                    ) : null}
+                      </div>
+                      <p className="mt-2 text-[11px] text-budget-subtle">
+                        {remoteIds.has(selected.id)
+                          ? "Sign in via Review to vote on verified listings."
+                          : "Stored on this device until shared voting is shipped."}
+                      </p>
+                    </div>
                   </div>
-                )}
 
                 <div className="mt-5">
                   <div className="flex gap-3">
