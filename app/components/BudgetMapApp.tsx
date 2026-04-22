@@ -1299,6 +1299,21 @@ export default function BudgetMapApp() {
     );
   };
 
+  const voteIcon = (kind: "up" | "down", active: boolean) => {
+    const Icon = kind === "up" ? ThumbsUp : ThumbsDown;
+    const activeBg = kind === "up" ? "bg-budget-primary" : "bg-[#636167]";
+    const inactiveColor = kind === "up" ? "text-budget-primary" : "text-budget-muted";
+    return (
+      <span
+        className={`inline-flex size-7 items-center justify-center rounded-full transition-colors ${
+          active ? `${activeBg} text-white` : `bg-transparent ${inactiveColor}`
+        }`}
+      >
+        <Icon size={16} fill={active ? "currentColor" : "none"} />
+      </span>
+    );
+  };
+
   const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
 
   return (
@@ -1558,14 +1573,11 @@ export default function BudgetMapApp() {
                               onClick={() => void handleVoteOnSubmission(selectedPendingRow!.id, "upvote")}
                               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
                                 selectedPendingVote === "upvote"
-                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  ? "border-budget-primary bg-budget-bg text-budget-text"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsUp
-                                size={18}
-                                className={selectedPendingVote === "upvote" ? "text-white" : "text-budget-primary"}
-                              />
+                              {voteIcon("up", selectedPendingVote === "upvote")}
                               Upvote <span className="tabular-nums">{selectedPendingTallies.up}</span>
                             </button>
                             <button
@@ -1573,14 +1585,11 @@ export default function BudgetMapApp() {
                               onClick={() => void handleVoteOnSubmission(selectedPendingRow!.id, "downvote")}
                               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
                                 selectedPendingVote === "downvote"
-                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  ? "border-budget-primary bg-budget-bg text-budget-text"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsDown
-                                size={18}
-                                className={selectedPendingVote === "downvote" ? "text-white" : "text-budget-muted"}
-                              />
+                              {voteIcon("down", selectedPendingVote === "downvote")}
                               Downvote <span className="tabular-nums">{selectedPendingTallies.down}</span>
                             </button>
                           </>
@@ -1591,14 +1600,11 @@ export default function BudgetMapApp() {
                               onClick={() => void handleVoteOnPlace(selected.id, "upvote")}
                               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
                                 placeMyVotes[selected.id] === "upvote"
-                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  ? "border-budget-primary bg-budget-bg text-budget-text"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsUp
-                                size={18}
-                                className={placeMyVotes[selected.id] === "upvote" ? "text-white" : "text-budget-primary"}
-                              />
+                              {voteIcon("up", placeMyVotes[selected.id] === "upvote")}
                               Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
                             </button>
                             <button
@@ -1606,14 +1612,11 @@ export default function BudgetMapApp() {
                               onClick={() => void handleVoteOnPlace(selected.id, "downvote")}
                               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
                                 placeMyVotes[selected.id] === "downvote"
-                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  ? "border-budget-primary bg-budget-bg text-budget-text"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsDown
-                                size={18}
-                                className={placeMyVotes[selected.id] === "downvote" ? "text-white" : "text-budget-muted"}
-                              />
+                              {voteIcon("down", placeMyVotes[selected.id] === "downvote")}
                               Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
                             </button>
                           </>
@@ -1624,14 +1627,11 @@ export default function BudgetMapApp() {
                               onClick={() => bumpUpvote(selected.id)}
                               className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${
                                 localPlaceVotes[selected.id] === "upvote"
-                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  ? "border-budget-primary bg-budget-bg text-budget-text"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsUp
-                                size={18}
-                                className={localPlaceVotes[selected.id] === "upvote" ? "text-white" : "text-budget-primary"}
-                              />
+                              {voteIcon("up", localPlaceVotes[selected.id] === "upvote")}
                               Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
                             </button>
                             <button
@@ -1639,14 +1639,11 @@ export default function BudgetMapApp() {
                               onClick={() => bumpDownvote(selected.id)}
                               className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${
                                 localPlaceVotes[selected.id] === "downvote"
-                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  ? "border-budget-primary bg-budget-bg text-budget-text"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsDown
-                                size={18}
-                                className={localPlaceVotes[selected.id] === "downvote" ? "text-white" : "text-budget-muted"}
-                              />
+                              {voteIcon("down", localPlaceVotes[selected.id] === "downvote")}
                               Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
                             </button>
                           </>
@@ -1869,15 +1866,13 @@ export default function BudgetMapApp() {
                           onClick={() => void handleVoteOnSubmission(row.id, "upvote")}
                           className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
                             myVotes[row.id] === "upvote"
-                              ? "border-budget-primary bg-budget-primary text-white"
+                              ? "border-budget-primary bg-budget-bg text-budget-text"
                               : "border-budget-surface bg-budget-bg text-budget-text"
                           }`}
                         >
-                          <ThumbsUp
-                            size={18}
-                            className={`shrink-0 ${myVotes[row.id] === "upvote" ? "text-white" : "text-budget-primary"}`}
-                            aria-hidden
-                          />
+                          <span className="shrink-0" aria-hidden>
+                            {voteIcon("up", myVotes[row.id] === "upvote")}
+                          </span>
                           <span className="min-w-0">Upvote</span>
                           <span className="tabular-nums text-budget-primary">{voteTallies[row.id]?.up ?? 0}</span>
                         </button>
@@ -1886,15 +1881,13 @@ export default function BudgetMapApp() {
                           onClick={() => void handleVoteOnSubmission(row.id, "downvote")}
                           className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
                             myVotes[row.id] === "downvote"
-                              ? "border-budget-primary bg-budget-primary text-white"
+                              ? "border-budget-primary bg-budget-bg text-budget-text"
                               : "border-budget-surface bg-budget-bg text-budget-text"
                           }`}
                         >
-                          <ThumbsDown
-                            size={18}
-                            className={`shrink-0 ${myVotes[row.id] === "downvote" ? "text-white" : "text-budget-muted"}`}
-                            aria-hidden
-                          />
+                          <span className="shrink-0" aria-hidden>
+                            {voteIcon("down", myVotes[row.id] === "downvote")}
+                          </span>
                           <span className="min-w-0">Downvote</span>
                           <span className="tabular-nums text-budget-muted">{voteTallies[row.id]?.down ?? 0}</span>
                         </button>
