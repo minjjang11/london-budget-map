@@ -78,6 +78,11 @@ const LS_SAVED = "budget-map-saved-v2";
 const LS_PENDING_PHOTOS = "budget-map-pending-photos-v1";
 const LOCAL_SUBMITTED_SPOT_ID_PREFIX = "spot_";
 const HIDDEN_SPOT_NAMES = new Set(["budget test spot"]);
+const SUBMIT_PRICE_LIMITS: Record<Category, number> = {
+  restaurant: 12.5,
+  pub: 7.5,
+  cafe: 4.5,
+};
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -306,6 +311,10 @@ function formatSubmissionDate(value: string): string {
   });
 }
 
+function formatBudgetCap(value: number): string {
+  return `£${value.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}`;
+}
+
 function formatReviewTimeRemaining(reviewEndsAt: string): string {
   const end = new Date(reviewEndsAt).getTime();
   if (!Number.isFinite(end)) return "—";
@@ -341,6 +350,7 @@ export default function BudgetMapApp() {
   const [activeCat, setActiveCat] = useState<Category | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  const [mapBudget, setMapBudget] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
@@ -473,6 +483,19 @@ export default function BudgetMapApp() {
     const locals = spots.filter((s) => !remoteIds.has(s.id) && !isHiddenSpotName(s.name));
     return [...approved, ...pendingQueueSpots, ...locals];
   }, [remoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
+
+  const mapBudgetMax = useMemo(() => {
+    const highest = allSpots.reduce((max, spot) => Math.max(max, lowestPrice(spot)), 0);
+    const rounded = Math.ceil(Math.max(15, highest) * 2) / 2;
+    return rounded > 0 ? rounded : 15;
+  }, [allSpots]);
+
+  useEffect(() => {
+    setMapBudget((prev) => {
+      if (prev === null) return mapBudgetMax;
+      return prev > mapBudgetMax ? mapBudgetMax : prev;
+    });
+  }, [mapBudgetMax]);
 
   useEffect(() => {
     setMounted(true);
@@ -639,9 +662,10 @@ export default function BudgetMapApp() {
     () =>
       allSpots.filter((s) => {
         if (activeCat !== "all" && s.category !== activeCat) return false;
+        if (mapBudget !== null && lowestPrice(s) > mapBudget + 0.001) return false;
         return true;
       }),
-    [allSpots, activeCat],
+    [allSpots, activeCat, mapBudget],
   );
 
   /** Rankings tab: approved remote places only (same cat/area filters as the map list). */
@@ -763,8 +787,13 @@ export default function BudgetMapApp() {
     setSubmitSuccess(false);
     const validItems = submitItems.filter((i) => i.name.trim() && i.price > 0);
     const nextErr: { name?: string; menu?: string; geo?: string; address?: string } = {};
+    const submitPriceCap = SUBMIT_PRICE_LIMITS[submitCat];
     if (!submitName.trim()) nextErr.name = "Add a venue name.";
     if (validItems.length === 0) nextErr.menu = "Add at least one menu item with a price above £0.";
+    if (validItems.some((item) => item.price > submitPriceCap)) {
+      const catLabel = CATS.find((x) => x.id === submitCat)?.label ?? "This category";
+      nextErr.menu = `${catLabel} submissions must be ${formatBudgetCap(submitPriceCap)} or under.`;
+    }
 
     const client = getBrowserSupabase();
     if (client) {
@@ -1342,6 +1371,32 @@ export default function BudgetMapApp() {
     );
   };
 
+  const panelHero = (
+    kicker: string,
+    title: string,
+    description: string,
+    Icon: typeof Crown,
+    accentClass: string,
+  ) => (
+    <section
+      className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
+      style={{ top: "max(20px, env(safe-area-inset-top))" }}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-[0_8px_18px_rgb(13_31_26_/0.14)] ${accentClass}`}>
+          <Icon size={22} strokeWidth={2.1} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">{kicker}</p>
+          <h2 className="mt-1 text-[1.35rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-budget-text">
+            {title}
+          </h2>
+          <p className="mt-1.5 text-[12px] leading-snug text-budget-muted">{description}</p>
+        </div>
+      </div>
+    </section>
+  );
+
   const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
 
   return (
@@ -1375,6 +1430,29 @@ export default function BudgetMapApp() {
           </h1>
           <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
+          </div>
+          <div className="mt-3 rounded-[18px] border border-budget-surface/80 bg-budget-bg px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">Map budget</p>
+                <p className="mt-0.5 text-[11px] leading-snug text-budget-muted">
+                  Scroll your max and only show spots at or under that price.
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-budget-primary px-2.5 py-1 text-[12px] font-extrabold text-white">
+                {formatBudgetCap(mapBudget ?? mapBudgetMax)}
+              </span>
+            </div>
+            <input
+              type="range"
+              min={2}
+              max={mapBudgetMax}
+              step={0.5}
+              value={mapBudget ?? mapBudgetMax}
+              onChange={(e) => setMapBudget(parseFloat(e.target.value))}
+              className="mt-2 w-full accent-budget-primary"
+              aria-label="Maximum budget on map"
+            />
           </div>
         </header>
       )}
@@ -1432,14 +1510,14 @@ export default function BudgetMapApp() {
       {toast && tab === "map" && (
         <div
           role="status"
-          className="pointer-events-none absolute left-3 right-3 top-[calc(184px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="pointer-events-none absolute left-3 right-3 top-[calc(262px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
         >
           {toast}
         </div>
       )}
 
       {tab === "map" && mounted && allSpots.length === 0 && (
-        <div className="absolute left-3 right-3 top-[calc(228px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
+        <div className="absolute left-3 right-3 top-[calc(306px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
           Open <strong>Submit</strong> to add a cheap eat, or connect Supabase to show verified spots from the database.
         </div>
@@ -1470,10 +1548,10 @@ export default function BudgetMapApp() {
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className={`absolute bottom-0 left-0 right-0 rounded-t-[26px] border border-budget-surface/80 bg-budget-white px-4 pt-4 shadow-budget-sheet animate-slide-up ${
+                className={`absolute bottom-0 left-0 right-0 border border-budget-surface/80 bg-budget-white px-4 pt-4 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
-                    ? "max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] max-h-[min(48vh,420px)] overflow-hidden pb-4"
+                    ? "rounded-t-[26px] max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(48vh,420px)] overflow-hidden pb-4"
                 }`}
               >
                 {!placeDetailExpanded ? (
@@ -1835,7 +1913,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(176px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(196px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
               <p className="mb-3 text-[12px] leading-snug text-budget-muted">
@@ -2116,8 +2194,17 @@ export default function BudgetMapApp() {
         </div>
       )}
 
+      {tab === "submit" &&
+        panelHero(
+          "Snitch Form",
+          "Submit",
+          "Grass up a bargain before London landlords find it first. Keep it cheap, cheeky, and actually real.",
+          Plus,
+          "bg-budget-cta",
+        )}
+
       {tab === "submit" && (
-        <div className="budget-tab-panel px-4 pb-28 pt-4">
+        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
           <>
             <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
             <p className="mb-4 text-xs text-budget-text/50">
@@ -2208,6 +2295,13 @@ export default function BudgetMapApp() {
                   </button>
                 ))}
               </div>
+              <p className="mb-3 text-[11px] leading-snug text-budget-muted">
+                Price cap:{" "}
+                <strong className="font-extrabold text-budget-text">
+                  {CATS.find((x) => x.id === submitCat)?.label} {formatBudgetCap(SUBMIT_PRICE_LIMITS[submitCat])}
+                </strong>{" "}
+                max.
+              </p>
 
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Address</label>
               <input
@@ -2235,6 +2329,7 @@ export default function BudgetMapApp() {
               {isSupabaseConfigured() && (
                 <p className="mb-1.5 text-[11px] text-budget-muted">
                   The <strong>first</strong> menu row is stored as the representative dish and headline price for review.
+                  Anything above {formatBudgetCap(SUBMIT_PRICE_LIMITS[submitCat])} gets blocked for this category.
                 </p>
               )}
               {submitErrors.menu && (
@@ -2260,6 +2355,8 @@ export default function BudgetMapApp() {
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
+                      max={String(SUBMIT_PRICE_LIMITS[submitCat])}
                       value={item.price || ""}
                       placeholder="0.00"
                       onChange={(e) => {
@@ -2405,12 +2502,17 @@ export default function BudgetMapApp() {
         </div>
       )}
 
+      {tab === "profile" &&
+        panelHero(
+          "Wallet Lore",
+          "Profile",
+          "Your saved spots, sign-in bits, and personal stash of places that keep the overdraft drama manageable.",
+          User,
+          "bg-[#0D1F1A]",
+        )}
+
       {tab === "profile" && (
-        <div className="budget-tab-panel p-4">
-          <h2 className="mb-1 text-lg font-extrabold text-budget-text">Profile</h2>
-          <p className="mb-4 text-[12px] leading-snug text-budget-muted">
-            Account tools and your saved places live here.
-          </p>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
           {isSupabaseConfigured() && getBrowserSupabase() ? (
             <div className="mb-4">
               <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
@@ -2460,8 +2562,17 @@ export default function BudgetMapApp() {
         </div>
       )}
 
+      {tab === "course" &&
+        panelHero(
+          "Pub Crawl Maths",
+          "Course",
+          "Build the most skint-friendly three-stop mission: one coffee, one meal, one pint, zero financial dignity.",
+          Route,
+          "bg-[#165A47]",
+        )}
+
       {tab === "course" && (
-        <div className="budget-tab-panel p-4">
+        <div className="budget-tab-panel p-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
             <p className="mb-2 text-[13px] leading-relaxed text-budget-muted">
