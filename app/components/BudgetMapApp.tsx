@@ -1242,8 +1242,6 @@ export default function BudgetMapApp() {
   /** Fixed 4-slot map filter: same visual style, but always fits without horizontal scroll. */
   const chipCat = (id: Category | "all", label: string, emoji: string) => {
     const active = activeCat === id;
-    const grow =
-      id === "restaurant" ? 1.35 : id === "all" ? 0.8 : id === "pub" ? 0.88 : 0.97;
     return (
       <button
         key={String(id)}
@@ -1252,12 +1250,15 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        className="flex min-h-[38px] min-w-0 max-w-full basis-0 cursor-pointer items-center justify-center gap-1 rounded-full px-2 py-2 text-center transition-colors"
+        className="flex min-h-[38px] min-w-0 max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full text-center transition-colors"
         style={{
-          flexGrow: grow,
           border: "none",
           backgroundColor: active ? "#00A878" : "#E0F7F2",
           color: active ? "#FFFFFF" : "#4C4C4C",
+          paddingLeft: "14px",
+          paddingRight: "14px",
+          paddingTop: "9px",
+          paddingBottom: "9px",
         }}
       >
         {emoji ? (
@@ -1303,7 +1304,7 @@ export default function BudgetMapApp() {
             Budget Map
           </Link>
         </h1>
-        <div className="budget-map-cat-grid min-w-0 w-full shrink-0">
+        <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
           {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
         </div>
       </header>
