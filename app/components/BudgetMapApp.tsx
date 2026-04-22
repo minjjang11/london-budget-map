@@ -2294,7 +2294,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(224px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(182px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
               {isSupabaseConfigured() && getBrowserSupabase() ? (
@@ -2590,7 +2590,7 @@ export default function BudgetMapApp() {
         panelHero("Submit", Plus, "bg-budget-cta", "Snitch form")}
 
       {tab === "submit" && (
-        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(136px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
           <>
             {HAS_GOOGLE_MAPS_KEY ? (
               <SubmitPlacesAutocomplete
@@ -2884,7 +2884,7 @@ export default function BudgetMapApp() {
         panelHero("Profile", User, "bg-[#0D1F1A]", "Saved stash")}
 
       {tab === "profile" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(136px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
           {isSupabaseConfigured() && getBrowserSupabase() ? (
             <div className="mb-4">
               <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
@@ -3039,7 +3039,7 @@ export default function BudgetMapApp() {
         panelHero("Course", Route, "bg-[#165A47]", "Budget crawl")}
 
       {tab === "course" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(136px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
             <ul className="mb-4 list-disc space-y-1 pl-4 text-[12px] text-budget-subtle">
