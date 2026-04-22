@@ -1226,7 +1226,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — use the email sign-in panel at the top of Ranking → Newly-registered.");
+      setToast("Sign in to vote to use this action.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -1256,7 +1256,7 @@ export default function BudgetMapApp() {
     const c = getBrowserSupabase();
     const uid = session?.user?.id;
     if (!c || !uid) {
-      setToast("Sign in to report — use the email sign-in panel at the top of Ranking → Newly-registered.");
+      setToast("Sign in to report this listing.");
       window.setTimeout(() => setToast(null), 4500);
       return;
     }
@@ -1277,7 +1277,7 @@ export default function BudgetMapApp() {
   const handleReportTap = useCallback(
     (submissionId: string) => {
       if (!session?.user) {
-        setToast("Sign in to report — use the email sign-in panel at the top of Ranking → Newly-registered.");
+        setToast("Sign in to report this listing.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -1317,7 +1317,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — open Ranking → Newly-registered and use the same magic-link sign-in.");
+        setToast("Sign in to vote on verified listings.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -1815,9 +1815,9 @@ export default function BudgetMapApp() {
             role="tablist"
             aria-label="Ranking sections"
           >
-            {(["review", "weekly", "alltime"] as const).map((seg) => {
+            {(["weekly", "alltime", "review"] as const).map((seg) => {
               const active = communitySeg === seg;
-              const label = seg === "review" ? "Newly-registered" : seg === "weekly" ? "Weekly" : "All-time";
+              const label = seg === "weekly" ? "Weekly" : seg === "alltime" ? "All-time" : "Newly-registered";
               return (
                 <button
                   key={seg}
@@ -2339,18 +2339,7 @@ export default function BudgetMapApp() {
           {communitySeg === "review" ? (
             <>
               {isSupabaseConfigured() && getBrowserSupabase() ? (
-                <div className="mb-2 space-y-2">
-                  <AuthPanel session={session} onSessionChange={() => void refreshSession()} compact />
-                  {!session?.user ? (
-                    <div
-                      role="note"
-                      className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
-                    >
-                      <span className="font-extrabold">Signed out</span> — sign in above to use Upvote, Downvote, or
-                      Report on newly registered spots. If you tap those on a card, we&apos;ll remind you here with a short
-                      message. You can still read the queue.
-                    </div>
-                  ) : null}
+                <>
                   {isModerator ? (
                     <div className="rounded-xl border border-slate-300/80 bg-slate-50 px-3 py-2.5 text-[12px] leading-snug text-slate-900">
                       <p className="font-extrabold text-slate-800">Moderator</p>
@@ -2368,7 +2357,7 @@ export default function BudgetMapApp() {
                       </button>
                     </div>
                   ) : null}
-                </div>
+                </>
               ) : null}
 
               {!isSupabaseConfigured() || !getBrowserSupabase() ? (
