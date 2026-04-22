@@ -72,6 +72,11 @@ type CommunitySeg = "review" | "weekly" | "alltime";
 
 type RankingWindow = "weekly" | "alltime";
 
+type CourseStop = {
+  id: string;
+  category: Category;
+};
+
 const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
   { id: "all", emoji: "📍", label: "All" },
   { id: "restaurant", emoji: "🍽️", label: "Restaurant" },
@@ -98,6 +103,8 @@ const MAP_BUDGET_LIMITS = {
   pub: 7.5,
   cafe: 4.5,
 } as const;
+
+const CATEGORY_IDS: Category[] = ["restaurant", "pub", "cafe"];
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -366,7 +373,7 @@ export default function BudgetMapApp() {
     [savedLocalIds, savedRemoteIds],
   );
   const [tab, setTab] = useState<Tab>("map");
-  const [activeCat, setActiveCat] = useState<Category | "all">("all");
+  const [activeCats, setActiveCats] = useState<Category[]>(CATEGORY_IDS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
   const [mapBudgets, setMapBudgets] = useState<Record<Category | "all", number>>({
@@ -485,7 +492,13 @@ export default function BudgetMapApp() {
     });
   }, []);
 
+  const courseStopIdRef = useRef(4);
   const [courseBudget, setCourseBudget] = useState(25);
+  const [courseStops, setCourseStops] = useState<CourseStop[]>([
+    { id: "course-1", category: "cafe" },
+    { id: "course-2", category: "restaurant" },
+    { id: "course-3", category: "pub" },
+  ]);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
 
@@ -557,8 +570,9 @@ export default function BudgetMapApp() {
     return [...approved, ...pendingQueueSpots, ...locals];
   }, [mergedRemoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
 
-  const currentMapBudgetMax = MAP_BUDGET_LIMITS[activeCat];
-  const currentMapBudget = mapBudgets[activeCat];
+  const activeBudgetKey: Category | "all" = activeCats.length === 1 ? activeCats[0] : "all";
+  const currentMapBudgetMax = MAP_BUDGET_LIMITS[activeBudgetKey];
+  const currentMapBudget = mapBudgets[activeBudgetKey];
   const currentMapBudgetMin = 2;
   const currentMapBudgetPercent =
     ((currentMapBudget - currentMapBudgetMin) / Math.max(0.5, currentMapBudgetMax - currentMapBudgetMin)) * 100;
@@ -811,11 +825,11 @@ export default function BudgetMapApp() {
   const filtered = useMemo(
     () =>
       allSpots.filter((s) => {
-        if (activeCat !== "all" && s.category !== activeCat) return false;
+        if (!activeCats.includes(s.category)) return false;
         if (lowestPrice(s) > currentMapBudget + 0.001) return false;
         return true;
       }),
-    [allSpots, activeCat, currentMapBudget],
+    [allSpots, activeCats, currentMapBudget],
   );
 
   /** Rankings tab: approved remote places only (same cat/area filters as the map list). */
@@ -823,10 +837,10 @@ export default function BudgetMapApp() {
     () =>
       mergedRemoteApprovedSpots.filter((s) => {
         if (isHiddenSpotName(s.name)) return false;
-        if (activeCat !== "all" && s.category !== activeCat) return false;
+        if (!activeCats.includes(s.category)) return false;
         return true;
       }),
-    [mergedRemoteApprovedSpots, activeCat],
+    [mergedRemoteApprovedSpots, activeCats],
   );
 
   const ranked = useMemo(() => {
@@ -1578,23 +1592,40 @@ export default function BudgetMapApp() {
   const planCourse = () => {
     const by: Record<Category, Spot[]> = { pub: [], restaurant: [], cafe: [] };
     allSpots.forEach((s) => by[s.category].push(s));
+    (Object.keys(by) as Category[]).forEach((category) => {
+      by[category].sort((a, b) => lowestPrice(a) - lowestPrice(b));
+    });
+
     let best: Spot[] | null = null;
     let bestTotal = Infinity;
-    if (by.pub.length === 0 || by.restaurant.length === 0 || by.cafe.length === 0) {
+
+    if (courseStops.length === 0 || courseStops.some((stop) => by[stop.category].length === 0)) {
       setCourseResult([]);
       return;
     }
-    for (const pub of by.pub) {
-      for (const rest of by.restaurant) {
-        for (const cafe of by.cafe) {
-          const t = lowestPrice(pub) + lowestPrice(rest) + lowestPrice(cafe);
-          if (t <= courseBudget && t < bestTotal) {
-            bestTotal = t;
-            best = [cafe, rest, pub];
-          }
-        }
+
+    const walk = (index: number, picked: Spot[], usedIds: Set<string>, total: number) => {
+      if (total > courseBudget || total >= bestTotal) return;
+      if (index >= courseStops.length) {
+        bestTotal = total;
+        best = [...picked];
+        return;
       }
-    }
+
+      const stop = courseStops[index];
+      for (const spot of by[stop.category]) {
+        if (usedIds.has(spot.id)) continue;
+        const nextTotal = total + lowestPrice(spot);
+        if (nextTotal > courseBudget || nextTotal >= bestTotal) continue;
+        usedIds.add(spot.id);
+        picked.push(spot);
+        walk(index + 1, picked, usedIds, nextTotal);
+        picked.pop();
+        usedIds.delete(spot.id);
+      }
+    };
+
+    walk(0, [], new Set<string>(), 0);
     setCourseResult(best || []);
   };
 
@@ -1605,13 +1636,27 @@ export default function BudgetMapApp() {
 
   /** Fixed 4-slot map filter: same visual style, but always fits without horizontal scroll. */
   const chipCat = (id: Category | "all", label: string, emoji: string) => {
-    const active = activeCat === id;
+    const active = id === "all" ? activeCats.length === CATEGORY_IDS.length : activeCats.includes(id);
     return (
       <button
         key={String(id)}
         type="button"
         onClick={() => {
-          setActiveCat(id);
+          if (id === "all") {
+            setActiveCats(CATEGORY_IDS);
+            setCourseResult(null);
+            setSelectedId(null);
+            return;
+          }
+          setActiveCats((prev) => {
+            const has = prev.includes(id);
+            if (has) {
+              const next = prev.filter((cat) => cat !== id);
+              return next.length ? CATEGORY_IDS.filter((cat) => next.includes(cat)) : CATEGORY_IDS;
+            }
+            return CATEGORY_IDS.filter((cat) => [...prev, id].includes(cat));
+          });
+          setCourseResult(null);
           setSelectedId(null);
         }}
         className="flex min-h-[38px] min-w-0 max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full text-center transition-colors"
@@ -1638,6 +1683,16 @@ export default function BudgetMapApp() {
         </span>
       </button>
     );
+  };
+
+  const addCourseStop = (category: Category) => {
+    setCourseStops((prev) => [...prev, { id: `course-${courseStopIdRef.current++}`, category }]);
+    setCourseResult(null);
+  };
+
+  const removeCourseStop = (id: string) => {
+    setCourseStops((prev) => (prev.length <= 1 ? prev : prev.filter((stop) => stop.id !== id)));
+    setCourseResult(null);
   };
 
   const voteIcon = (kind: "up" | "down", active: boolean) => {
@@ -1746,9 +1801,9 @@ export default function BudgetMapApp() {
               aria-controls="map-budget-slider"
             >
               <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
-                {activeCat === "all"
+                {activeBudgetKey === "all"
                   ? "Map budget"
-                  : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
+                  : `${CATS.find((c) => c.id === activeBudgetKey)?.label ?? "Spot"} budget`}
               </p>
               <span className="inline-flex items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] leading-none text-budget-muted">
                 {!mapBudgetOpen ? formatBudgetCap(currentMapBudget) : null}
@@ -1785,10 +1840,20 @@ export default function BudgetMapApp() {
                   step={0.5}
                   value={currentMapBudget}
                   onChange={(e) =>
-                    setMapBudgets((prev) => ({
-                      ...prev,
-                      [activeCat]: parseFloat(e.target.value),
-                    }))
+                    setMapBudgets((prev) => {
+                      const nextValue = parseFloat(e.target.value);
+                      if (activeBudgetKey !== "all") {
+                        return {
+                          ...prev,
+                          [activeBudgetKey]: nextValue,
+                        };
+                      }
+                      const next = { ...prev, all: nextValue };
+                      activeCats.forEach((category) => {
+                        next[category] = nextValue;
+                      });
+                      return next;
+                    })
                   }
                   className="budget-range w-full"
                   style={{ ["--range-progress" as string]: `${currentMapBudgetPercent}%` }}
@@ -1897,7 +1962,7 @@ export default function BudgetMapApp() {
                 className={`absolute bottom-0 left-0 right-0 border border-budget-surface/80 bg-budget-white px-4 pt-4 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
                     ? "rounded-t-[26px] max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(48vh,420px)] overflow-hidden pb-4"
+                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(62vh,520px)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-4"
                 }`}
               >
                 {!placeDetailExpanded ? (
@@ -3084,11 +3149,58 @@ export default function BudgetMapApp() {
         <div className="budget-tab-panel p-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
-            <ul className="mb-4 list-disc space-y-1 pl-4 text-[12px] text-budget-subtle">
-              <li>Uses <strong>lowest menu price</strong> per venue (from submissions).</li>
-              <li>Needs at least one <strong>pub</strong>, one <strong>restaurant</strong>, and one <strong>cafe</strong>.</li>
-              <li>Picks the trio with the <strong>smallest total</strong> that still fits under your max spend.</li>
-            </ul>
+            <div className="mb-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[13px] font-semibold text-budget-text">Stops</span>
+                <span className="text-[12px] font-semibold text-budget-muted">{courseStops.length}</span>
+              </div>
+              <div className="space-y-2">
+                {courseStops.map((stop, index) => {
+                  const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
+                  return (
+                    <div
+                      key={stop.id}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-budget-surface bg-budget-bg px-3 py-2.5"
+                    >
+                      <div className="min-w-0 flex items-center gap-2.5">
+                        <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
+                          Stop {index + 1}
+                        </span>
+                        <span className="text-lg leading-none" aria-hidden>
+                          {catEmoji(stop.category)}
+                        </span>
+                        <span className="text-[13px] font-bold text-budget-text">{stopLabel}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeCourseStop(stop.id)}
+                        disabled={courseStops.length <= 1}
+                        className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full border border-budget-surface bg-budget-white text-budget-muted disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`Remove stop ${index + 1}`}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {CATEGORY_IDS.map((category) => {
+                  const label = CATS.find((c) => c.id === category)?.label ?? "Stop";
+                  return (
+                    <button
+                      key={category}
+                      type="button"
+                      onClick={() => addCourseStop(category)}
+                      className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-budget-surface bg-budget-bg px-3 py-2 text-[12px] font-extrabold text-budget-text"
+                    >
+                      <span aria-hidden>{catEmoji(category)}</span>
+                      Add {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <div className="mb-2 flex items-center justify-between">
               <span className="text-[13px] font-semibold text-budget-text">Max spend</span>
               <span className="text-xl font-extrabold text-budget-primary">£{courseBudget}</span>
@@ -3110,7 +3222,7 @@ export default function BudgetMapApp() {
               onClick={planCourse}
               className="w-full cursor-pointer rounded-2xl border-0 bg-budget-primary py-3.5 text-[15px] font-extrabold text-white"
             >
-              Plan my crawl
+              Plan this crawl
             </button>
           </div>
 
@@ -3118,25 +3230,34 @@ export default function BudgetMapApp() {
             <div className="mt-4">
               {courseResult.length === 0 ? (
                 <div className="rounded-2xl bg-budget-surface p-5 text-center text-sm text-budget-text">
-                  No trio under £{courseBudget}. Treat yourself and bump the slider?
+                  No crawl fits under £{courseBudget} for this line-up. Try removing a stop or bumping the budget.
                 </div>
               ) : (
                 <div className="mt-2 rounded-[20px] border border-budget-surface bg-budget-white p-4">
                   <div className="mb-3 text-xs font-extrabold text-budget-primary">Total £{courseTotal.toFixed(2)}</div>
-                  {courseResult.map((spot) => (
-                    <button
-                      key={spot.id}
-                      type="button"
-                      onClick={() => {
-                        setTab("map");
-                        setSelectedId(spot.id);
-                        setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
-                      }}
-                      className="mb-2 w-full cursor-pointer rounded-[14px] border border-budget-surface bg-budget-bg px-3.5 py-3 text-left text-sm font-bold text-budget-text last:mb-0"
-                    >
-                      {catEmoji(spot.category)} {spot.name} — {formatMapPriceLabel(lowestPrice(spot))}
-                    </button>
-                  ))}
+                  {courseResult.map((spot, index) => {
+                    const stop = courseStops[index];
+                    const stopLabel = stop ? CATS.find((c) => c.id === stop.category)?.label ?? "Stop" : "Stop";
+                    return (
+                      <button
+                        key={`${stop?.id ?? index}-${spot.id}`}
+                        type="button"
+                        onClick={() => {
+                          setTab("map");
+                          setSelectedId(spot.id);
+                          setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
+                        }}
+                        className="mb-2 w-full cursor-pointer rounded-[14px] border border-budget-surface bg-budget-bg px-3.5 py-3 text-left text-sm font-bold text-budget-text last:mb-0"
+                      >
+                        <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
+                          Stop {index + 1} · {stopLabel}
+                        </div>
+                        <div className="mt-1">
+                          {catEmoji(spot.category)} {spot.name} — {formatMapPriceLabel(lowestPrice(spot))}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
