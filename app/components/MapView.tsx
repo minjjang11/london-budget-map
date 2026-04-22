@@ -88,6 +88,7 @@ function makeLeafletIcon(spot: MapSpot, isSelected: boolean) {
           letter-spacing: -0.02em;
           color: ${status.text};
           line-height:1;
+          font-family:'Pretendard','Pretendard Variable',sans-serif;
         ">${spot.priceLabel}</span>
       </div>
     </div>
@@ -193,7 +194,7 @@ function SpotPill({
         </span>
         <span
           className="text-[13px] font-extrabold tracking-tight"
-          style={{ color: status.text }}
+          style={{ color: status.text, fontFamily: "'Pretendard', 'Pretendard Variable', sans-serif" }}
         >
           {spot.priceLabel}
         </span>

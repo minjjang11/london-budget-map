@@ -8,6 +8,7 @@ export type SpotSubmissionRecord = {
   id: string;
   items: SpotMenuItem[];
   review?: string;
+  photo?: string;
   date: string;
 };
 

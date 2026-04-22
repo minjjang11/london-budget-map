@@ -78,6 +78,7 @@ const INITIAL_SPOTS: Spot[] = [];
 
 const LS_KEY = "budget-map-spots-v2";
 const LS_SAVED = "budget-map-saved-v2";
+const LS_PENDING_PHOTOS = "budget-map-pending-photos-v1";
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -117,6 +118,7 @@ function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
         id: row.id,
         items: [{ name: row.menu_item_name, price: row.price_gbp }],
         review: row.description?.trim() || undefined,
+        photo: undefined,
         date: row.submitted_at,
       },
     ],
@@ -161,6 +163,55 @@ function loadSpots(): Spot[] {
     localStorage.setItem(LS_KEY, JSON.stringify(INITIAL_SPOTS));
     return INITIAL_SPOTS;
   }
+}
+
+function loadPendingSubmissionPhotos(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(LS_PENDING_PHOTOS);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed as Record<string, unknown>).filter(
+        (entry): entry is [string, string] => typeof entry[0] === "string" && typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function savePendingSubmissionPhotos(map: Record<string, string>) {
+  try {
+    localStorage.setItem(LS_PENDING_PHOTOS, JSON.stringify(map));
+  } catch { /* ignore */ }
+}
+
+function readImageAsDataUrl(file: File, maxSize = 1280): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read image."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Could not decode image."));
+      img.onload = () => {
+        const ratio = Math.min(maxSize / img.width, maxSize / img.height, 1);
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(img.width * ratio));
+        canvas.height = Math.max(1, Math.round(img.height * ratio));
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          reject(new Error("Canvas unavailable."));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = String(reader.result ?? "");
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 function saveSpots(spots: Spot[]) {
@@ -274,6 +325,7 @@ export default function BudgetMapApp() {
   const [submitAddress, setSubmitAddress] = useState("");
   const [submitCat, setSubmitCat] = useState<Category>("restaurant");
   const [submitItems, setSubmitItems] = useState<SpotMenuItem[]>([{ name: "", price: 0 }]);
+  const [submitPhoto, setSubmitPhoto] = useState("");
   /** Fixed-vocabulary tags for submission description (same slugs as place review tags). */
   const [submitDescTags, setSubmitDescTags] = useState<string[]>([]);
   const [submitLat, setSubmitLat] = useState("");
@@ -290,6 +342,7 @@ export default function BudgetMapApp() {
   } | null>(null);
 
   const [pendingRows, setPendingRows] = useState<PlaceSubmissionRow[]>([]);
+  const [pendingSubmissionPhotos, setPendingSubmissionPhotos] = useState<Record<string, string>>({});
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
   const [pendingRefreshTick, setPendingRefreshTick] = useState(0);
@@ -377,7 +430,21 @@ export default function BudgetMapApp() {
   const remoteIdsRef = useRef(remoteIds);
   remoteIdsRef.current = remoteIds;
 
-  const pendingQueueSpots = useMemo(() => pendingRows.map(pendingRowToSpot), [pendingRows]);
+  const pendingQueueSpots = useMemo(
+    () =>
+      pendingRows.map((row) => {
+        const photo = pendingSubmissionPhotos[row.id];
+        const spot = pendingRowToSpot(row);
+        if (!photo) return spot;
+        return {
+          ...spot,
+          submissions: spot.submissions.map((submission, index) =>
+            index === 0 ? { ...submission, photo } : submission,
+          ),
+        };
+      }),
+    [pendingRows, pendingSubmissionPhotos],
+  );
 
   const allSpots = useMemo(() => {
     const locals = spots.filter((s) => !remoteIds.has(s.id));
@@ -388,6 +455,7 @@ export default function BudgetMapApp() {
     setMounted(true);
     setSpots(loadSpots());
     setSavedLocalIds(loadSaved());
+    setPendingSubmissionPhotos(loadPendingSubmissionPhotos());
   }, []);
 
   useEffect(() => {
@@ -413,6 +481,9 @@ export default function BudgetMapApp() {
   useEffect(() => {
     saveSavedIds(savedLocalIds);
   }, [savedLocalIds]);
+  useEffect(() => {
+    savePendingSubmissionPhotos(pendingSubmissionPhotos);
+  }, [pendingSubmissionPhotos]);
 
   useEffect(() => {
     const c = getBrowserSupabase();
@@ -726,7 +797,7 @@ export default function BudgetMapApp() {
           ? lngNum
           : -0.09 + (Math.random() - 0.5) * 0.05;
       setSubmitBusy(true);
-      const { error } = await insertPlaceSubmission(
+      const { error, submissionId } = await insertPlaceSubmission(
         client,
         {
           place_name: submitName.trim(),
@@ -748,9 +819,13 @@ export default function BudgetMapApp() {
         window.setTimeout(() => setToast(null), 6000);
         return;
       }
+      if (submitPhoto && submissionId) {
+        setPendingSubmissionPhotos((prev) => ({ ...prev, [submissionId]: submitPhoto }));
+      }
       setSubmitName("");
       setSubmitAddress("");
       setSubmitItems([{ name: "", price: 0 }]);
+      setSubmitPhoto("");
       setSubmitDescTags([]);
       setSubmitLat("");
       setSubmitLng("");
@@ -788,6 +863,7 @@ export default function BudgetMapApp() {
           id: `sub_${Date.now()}`,
           items: validItems,
           review: submitDescriptionText.trim() || undefined,
+          photo: submitPhoto || undefined,
           date: nowIso.split("T")[0]!,
         },
       ],
@@ -796,6 +872,7 @@ export default function BudgetMapApp() {
     setSubmitName("");
     setSubmitAddress("");
     setSubmitItems([{ name: "", price: 0 }]);
+    setSubmitPhoto("");
     setSubmitDescTags([]);
     setSubmitLat("");
     setSubmitLng("");
@@ -1170,15 +1247,16 @@ export default function BudgetMapApp() {
           setActiveCat(id);
           setSelectedId(null);
         }}
-        className={`flex min-h-[38px] min-w-0 max-w-full basis-0 cursor-pointer items-center justify-center gap-1 rounded-full border px-2 py-2 text-center transition-colors ${
-          active
-            ? "border-budget-primary/30 bg-budget-primary font-extrabold text-white shadow-[0_2px_8px_rgb(0_168_120_/0.2)]"
-            : "border-budget-surface/90 bg-budget-white/70 font-semibold text-budget-text/55"
-        }`}
-        style={{ flexGrow: grow }}
+        className="flex min-h-[38px] min-w-0 max-w-full basis-0 cursor-pointer items-center justify-center gap-1 rounded-full px-2 py-2 text-center transition-colors"
+        style={{
+          flexGrow: grow,
+          border: "none",
+          backgroundColor: active ? "#00A878" : "#E0F7F2",
+          color: active ? "#FFFFFF" : "#4C4C4C",
+        }}
       >
         {emoji ? (
-          <span className={`shrink-0 text-[11px] leading-none ${active ? "" : "opacity-50"}`} aria-hidden>
+          <span className={`shrink-0 text-[11px] leading-none ${active ? "" : "opacity-70"}`} aria-hidden>
             {emoji}
           </span>
         ) : null}
@@ -1423,10 +1501,17 @@ export default function BudgetMapApp() {
                         <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">
                           Report · {sub.date}
                         </div>
+                        {sub.photo ? (
+                          <img
+                            src={sub.photo}
+                            alt=""
+                            className="mt-3 h-[180px] w-full rounded-[16px] object-cover"
+                          />
+                        ) : null}
                         {sub.items.map((item, ii) => (
                           <div
                             key={ii}
-                            className={`flex justify-between gap-3 text-[14px] text-budget-text ${ii > 0 ? "mt-2.5" : "mt-3"}`}
+                            className={`flex justify-between gap-3 text-[14px] text-budget-text ${ii > 0 || sub.photo ? "mt-2.5" : "mt-3"}`}
                           >
                             <span className="min-w-0 font-semibold leading-snug">{item.name}</span>
                             <span className="shrink-0 font-extrabold text-budget-primary">
@@ -2201,6 +2286,45 @@ export default function BudgetMapApp() {
                   );
                 })}
               </div>
+
+              <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Photo (optional)</label>
+              {submitPhoto ? (
+                <div className="mb-5 rounded-[18px] border border-budget-surface bg-budget-white p-2 shadow-sm">
+                  <img
+                    src={submitPhoto}
+                    alt="Submission preview"
+                    className="h-[170px] w-full rounded-[14px] object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSubmitPhoto("")}
+                    className="mt-2 w-full cursor-pointer rounded-xl border border-budget-surface bg-budget-bg py-2 text-[12px] font-extrabold text-budget-text"
+                  >
+                    Remove photo
+                  </button>
+                </div>
+              ) : (
+                <label className="mb-5 flex cursor-pointer items-center justify-center rounded-[18px] border border-dashed border-budget-surface bg-budget-white px-4 py-4 text-[13px] font-semibold text-budget-text/70">
+                  Add a photo for this review
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      try {
+                        setSubmitPhoto(await readImageAsDataUrl(file));
+                      } catch {
+                        setToast("Couldn’t read that image. Try another photo.");
+                        window.setTimeout(() => setToast(null), 4000);
+                      } finally {
+                        e.currentTarget.value = "";
+                      }
+                    }}
+                  />
+                </label>
+              )}
 
               {submitDuplicateInfo ? (
                 <div

@@ -22,27 +22,31 @@ export async function insertPlaceSubmission(
   client: SupabaseClient<Database>,
   input: NewPlaceSubmissionInput,
   submittedByUserId: string,
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; submissionId: string | null }> {
   const submittedAt = new Date();
   const reviewEndsAt = new Date(submittedAt.getTime() + REVIEW_MS);
 
-  const { error } = await client.from("place_submissions").insert({
-    status: "pending",
-    submitted_at: submittedAt.toISOString(),
-    review_ends_at: reviewEndsAt.toISOString(),
-    submitted_by: submittedByUserId,
-    place_name: input.place_name,
-    address: input.address,
-    lat: input.lat,
-    lng: input.lng,
-    category: input.category,
-    menu_item_name: input.menu_item_name,
-    price_gbp: input.price_gbp,
-    description: input.description,
-    area: input.area,
-    google_place_id: input.google_place_id?.trim() || null,
-  });
+  const { data, error } = await client
+    .from("place_submissions")
+    .insert({
+      status: "pending",
+      submitted_at: submittedAt.toISOString(),
+      review_ends_at: reviewEndsAt.toISOString(),
+      submitted_by: submittedByUserId,
+      place_name: input.place_name,
+      address: input.address,
+      lat: input.lat,
+      lng: input.lng,
+      category: input.category,
+      menu_item_name: input.menu_item_name,
+      price_gbp: input.price_gbp,
+      description: input.description,
+      area: input.area,
+      google_place_id: input.google_place_id?.trim() || null,
+    })
+    .select("id")
+    .single();
 
-  if (error) return { error: error.message };
-  return { error: null };
+  if (error) return { error: error.message, submissionId: null };
+  return { error: null, submissionId: data?.id ?? null };
 }
