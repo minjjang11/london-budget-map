@@ -20,6 +20,7 @@ import {
   Scale,
   ChevronRight,
   Flag,
+  Trash2,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -1382,27 +1383,25 @@ export default function BudgetMapApp() {
     );
   };
 
-  const panelHero = (
-    kicker: string,
-    title: string,
-    description: string,
-    Icon: typeof Crown,
-    accentClass: string,
-  ) => (
+  const panelHero = (title: string, Icon: typeof Crown, accentClass: string, accentLabel: string) => (
     <section
       className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
       style={{ top: "max(20px, env(safe-area-inset-top))" }}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
         <div className={`grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-[0_8px_18px_rgb(13_31_26_/0.14)] ${accentClass}`}>
           <Icon size={22} strokeWidth={2.1} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">{kicker}</p>
-          <h2 className="mt-1 text-[1.35rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-budget-text">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">{accentLabel}</p>
+          <h2 className="mt-0.5 text-[1.35rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-budget-text">
             {title}
           </h2>
-          <p className="mt-1.5 text-[12px] leading-snug text-budget-muted">{description}</p>
+        </div>
+        </div>
+        <div className="shrink-0 rounded-full border border-budget-surface bg-budget-bg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-muted">
+          London
         </div>
       </div>
     </section>
@@ -1484,18 +1483,20 @@ export default function BudgetMapApp() {
           className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
           style={{ top: "max(20px, env(safe-area-inset-top))" }}
         >
-          <div className="flex items-start gap-3">
-            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-budget-primary text-white shadow-[0_8px_18px_rgb(0_168_120_/0.22)]">
-              <Crown size={22} strokeWidth={2.1} />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-budget-primary text-white shadow-[0_8px_18px_rgb(0_168_120_/0.22)]">
+                <Crown size={22} strokeWidth={2.1} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">Leaderboard</p>
+                <h2 className="mt-0.5 text-[1.35rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-budget-text">
+                  Ranking
+                </h2>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">Leaderboard</p>
-              <h2 className="mt-1 text-[1.35rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-budget-text">
-                Ranking
-              </h2>
-              <p className="mt-1.5 text-[12px] leading-snug text-budget-muted">
-                Net score decides the order: upvotes minus downvotes, plus the latest newly-registered queue.
-              </p>
+            <div className="shrink-0 rounded-full border border-budget-surface bg-budget-bg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-muted">
+              Crown picks
             </div>
           </div>
           <div
@@ -1644,7 +1645,7 @@ export default function BudgetMapApp() {
                     </div>
                   </div>
                 ) : (
-                  <>
+                  <div style={{ animation: "detailPushIn 0.24s cubic-bezier(0.22, 1, 0.36, 1)" }}>
                     <div className="mb-3 flex items-center border-b border-budget-surface/60 pb-2.5">
                       <button
                         type="button"
@@ -1926,7 +1927,7 @@ export default function BudgetMapApp() {
                     </p>
                   ) : null}
                 </div>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -1935,7 +1936,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(232px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(266px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
               <p className="mb-3 text-[12px] leading-snug text-budget-muted">
@@ -2217,32 +2218,11 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "submit" &&
-        panelHero(
-          "Snitch Form",
-          "Submit",
-          "Grass up a bargain before London landlords find it first. Keep it cheap, cheeky, and actually real.",
-          Plus,
-          "bg-budget-cta",
-        )}
+        panelHero("Submit", Plus, "bg-budget-cta", "Snitch form")}
 
       {tab === "submit" && (
         <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
           <>
-            <h2 className="mb-1.5 text-lg font-extrabold text-budget-text">Grass up a cheap eat</h2>
-            <p className="mb-4 text-xs text-budget-text/50">
-              {isSupabaseConfigured() ? (
-                <>
-                  Spill the beans on prices — tips go to a <strong>newly-registered queue</strong> and only hit the map after
-                  approval. Use a real address (and venue search when available) so moderators can verify.
-                </>
-              ) : (
-                <>
-                  Spill the beans on prices so the rest of us can survive term time. New spots stay{" "}
-                  <strong>on trial for 7 days</strong> so others can sanity-check them (saved on this device).
-                </>
-              )}
-            </p>
-
             {HAS_GOOGLE_MAPS_KEY ? (
               <SubmitPlacesAutocomplete
                 onPick={(p) => {
@@ -2350,7 +2330,6 @@ export default function BudgetMapApp() {
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">Menu & prices</label>
               {isSupabaseConfigured() && (
                 <p className="mb-1.5 text-[11px] text-budget-muted">
-                  The <strong>first</strong> menu row is stored as the representative dish and headline price for review.
                   Anything above {formatBudgetCap(SUBMIT_PRICE_LIMITS[submitCat])} gets blocked for this category.
                 </p>
               )}
@@ -2390,6 +2369,21 @@ export default function BudgetMapApp() {
                       className="budget-input-sm w-[88px] pl-6 text-sm"
                     />
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubmitItems((prev) => {
+                        if (prev.length === 1) return [{ name: "", price: 0 }];
+                        return prev.filter((_, i) => i !== idx);
+                      });
+                      if (submitErrors.menu) setSubmitErrors((er) => ({ ...er, menu: undefined }));
+                    }}
+                    className="grid size-[42px] shrink-0 cursor-pointer place-items-center rounded-xl border border-budget-surface bg-budget-white text-budget-muted transition hover:border-red-300 hover:text-red-600"
+                    aria-label="Delete item row"
+                    title="Delete item"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
               ))}
               <button
@@ -2525,13 +2519,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "profile" &&
-        panelHero(
-          "Wallet Lore",
-          "Profile",
-          "Your saved spots, sign-in bits, and personal stash of places that keep the overdraft drama manageable.",
-          User,
-          "bg-[#0D1F1A]",
-        )}
+        panelHero("Profile", User, "bg-[#0D1F1A]", "Saved stash")}
 
       {tab === "profile" && (
         <div className="budget-tab-panel p-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
@@ -2585,21 +2573,12 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "course" &&
-        panelHero(
-          "Pub Crawl Maths",
-          "Course",
-          "Build the most skint-friendly three-stop mission: one coffee, one meal, one pint, zero financial dignity.",
-          Route,
-          "bg-[#165A47]",
-        )}
+        panelHero("Course", Route, "bg-[#165A47]", "Budget crawl")}
 
       {tab === "course" && (
         <div className="budget-tab-panel p-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
-            <p className="mb-2 text-[13px] leading-relaxed text-budget-muted">
-              One coffee, one meal, one pint — we search every spot on this map for the cheapest trio under your cap.
-            </p>
             <ul className="mb-4 list-disc space-y-1 pl-4 text-[12px] text-budget-subtle">
               <li>Uses <strong>lowest menu price</strong> per venue (from submissions).</li>
               <li>Needs at least one <strong>pub</strong>, one <strong>restaurant</strong>, and one <strong>cafe</strong>.</li>
