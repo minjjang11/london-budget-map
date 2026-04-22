@@ -77,6 +77,7 @@ const LS_KEY = "budget-map-spots-v2";
 const LS_SAVED = "budget-map-saved-v2";
 const LS_PENDING_PHOTOS = "budget-map-pending-photos-v1";
 const LOCAL_SUBMITTED_SPOT_ID_PREFIX = "spot_";
+const HIDDEN_SPOT_NAMES = new Set(["budget test spot"]);
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -95,6 +96,10 @@ function normalizeSpot(raw: Spot): Spot {
     comments: Array.isArray(raw.comments) ? raw.comments : [],
     description: raw.description?.trim() || undefined,
   };
+}
+
+function isHiddenSpotName(name: string | undefined): boolean {
+  return HIDDEN_SPOT_NAMES.has((name ?? "").trim().toLowerCase());
 }
 
 function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
@@ -157,7 +162,9 @@ function loadSpots(): Spot[] {
       return INITIAL_SPOTS;
     }
     const normalized = (parsed as Spot[]).map(normalizeSpot);
-    const filtered = normalized.filter((spot) => spot.id.startsWith(LOCAL_SUBMITTED_SPOT_ID_PREFIX));
+    const filtered = normalized.filter(
+      (spot) => spot.id.startsWith(LOCAL_SUBMITTED_SPOT_ID_PREFIX) && !isHiddenSpotName(spot.name),
+    );
     if (filtered.length !== normalized.length) {
       localStorage.setItem(LS_KEY, JSON.stringify(filtered));
     }
@@ -447,6 +454,7 @@ export default function BudgetMapApp() {
   const pendingQueueSpots = useMemo(
     () =>
       pendingRows.map((row) => {
+        if (isHiddenSpotName(row.place_name)) return null;
         const photo = pendingSubmissionPhotos[row.id];
         const spot = pendingRowToSpot(row);
         if (!photo) return spot;
@@ -456,13 +464,14 @@ export default function BudgetMapApp() {
             index === 0 ? { ...submission, photo } : submission,
           ),
         };
-      }),
+      }).filter((spot): spot is Spot => spot !== null),
     [pendingRows, pendingSubmissionPhotos],
   );
 
   const allSpots = useMemo(() => {
-    const locals = spots.filter((s) => !remoteIds.has(s.id));
-    return [...remoteApprovedSpots, ...pendingQueueSpots, ...locals];
+    const approved = remoteApprovedSpots.filter((s) => !isHiddenSpotName(s.name));
+    const locals = spots.filter((s) => !remoteIds.has(s.id) && !isHiddenSpotName(s.name));
+    return [...approved, ...pendingQueueSpots, ...locals];
   }, [remoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
 
   useEffect(() => {
@@ -639,6 +648,7 @@ export default function BudgetMapApp() {
   const communityApprovedFiltered = useMemo(
     () =>
       remoteApprovedSpots.filter((s) => {
+        if (isHiddenSpotName(s.name)) return false;
         if (activeCat !== "all" && s.category !== activeCat) return false;
         return true;
       }),
@@ -1343,6 +1353,8 @@ export default function BudgetMapApp() {
         </div>
       )}
 
+      {tab !== "map" && <div className="absolute inset-0 z-[5] bg-budget-bg" aria-hidden />}
+
       {tab === "map" && (
         <header
           className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-budget-header"
@@ -1365,6 +1377,56 @@ export default function BudgetMapApp() {
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
         </header>
+      )}
+
+      {tab === "ranking" && (
+        <section
+          className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
+          style={{ top: "max(20px, env(safe-area-inset-top))" }}
+        >
+          <div className="flex items-start gap-3">
+            <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-budget-primary text-white shadow-[0_8px_18px_rgb(0_168_120_/0.22)]">
+              <Crown size={22} strokeWidth={2.1} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">Leaderboard</p>
+              <h2 className="mt-1 text-[1.35rem] font-extrabold leading-[1.05] tracking-[-0.04em] text-budget-text">
+                Ranking
+              </h2>
+              <p className="mt-1.5 text-[12px] leading-snug text-budget-muted">
+                Net score decides the order: upvotes minus downvotes, plus the latest newly-registered queue.
+              </p>
+            </div>
+          </div>
+          <div
+            className="mt-3 flex rounded-[16px] bg-budget-surface/90 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
+            role="tablist"
+            aria-label="Ranking sections"
+          >
+            {(["review", "weekly", "alltime"] as const).map((seg) => {
+              const active = communitySeg === seg;
+              const label = seg === "review" ? "Newly-registered" : seg === "weekly" ? "Weekly" : "All-time";
+              return (
+                <button
+                  key={seg}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    setCommunitySeg(seg);
+                    if (seg === "weekly") setRankingWindow("weekly");
+                    if (seg === "alltime") setRankingWindow("alltime");
+                  }}
+                  className={`min-h-[42px] min-w-0 flex-1 cursor-pointer rounded-[12px] px-1 py-2 text-center text-[10px] font-extrabold leading-tight transition sm:text-[11px] ${
+                    active ? "bg-budget-white text-budget-text shadow-sm" : "text-budget-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {toast && tab === "map" && (
@@ -1716,6 +1778,48 @@ export default function BudgetMapApp() {
                       Directions
                     </button>
                   </div>
+                  {selectedIsPending ? (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => handleReportTap(selectedPendingRow!.id)}
+                        className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-budget-muted underline decoration-budget-faint underline-offset-2 hover:text-budget-text"
+                      >
+                        <Flag size={12} className="shrink-0 opacity-70" aria-hidden />
+                        Report
+                      </button>
+                    </div>
+                  ) : null}
+                  {selectedIsPending && reportTargetId === selectedPendingRow?.id ? (
+                    <div className="mt-2 space-y-2">
+                      <input
+                        value={reportText}
+                        onChange={(e) => setReportText(e.target.value)}
+                        placeholder="Optional note for moderators"
+                        className="budget-input-sm w-full text-[13px]"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={reportBusy}
+                          onClick={() => void handleSendReport()}
+                          className="flex-1 cursor-pointer rounded-xl border-0 bg-budget-primary py-2.5 text-[12px] font-extrabold text-white disabled:opacity-50"
+                        >
+                          {reportBusy ? "Sending…" : "Send report"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReportTargetId(null);
+                            setReportText("");
+                          }}
+                          className="cursor-pointer rounded-xl border-2 border-budget-surface bg-budget-bg px-3 py-2.5 text-[12px] font-extrabold text-budget-text"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   {remoteIds.has(selected.id) && !session?.user ? (
                     <p className="mt-2 text-center text-[11px] text-budget-muted">
                       Verified spots save to your account after sign-in from Profile.
@@ -1731,41 +1835,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3">
-          <h2 className="mb-0.5 text-lg font-extrabold text-budget-text">Ranking</h2>
-          <p className="mb-3 text-[11px] leading-snug text-budget-muted">
-            Newly registered spots and leaderboard rankings live here.
-          </p>
-
-          <div
-            className="mb-4 flex rounded-[14px] bg-budget-surface/90 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
-            role="tablist"
-            aria-label="Ranking sections"
-          >
-            {(["review", "weekly", "alltime"] as const).map((seg) => {
-              const active = communitySeg === seg;
-              const label = seg === "review" ? "Newly-registered" : seg === "weekly" ? "Weekly" : "All-time";
-              return (
-                <button
-                  key={seg}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => {
-                    setCommunitySeg(seg);
-                    if (seg === "weekly") setRankingWindow("weekly");
-                    if (seg === "alltime") setRankingWindow("alltime");
-                  }}
-                  className={`min-h-[40px] min-w-0 flex-1 cursor-pointer rounded-[11px] px-1 py-2 text-center text-[10px] font-extrabold leading-tight transition sm:text-[11px] ${
-                    active ? "bg-budget-white text-budget-text shadow-sm" : "text-budget-muted"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(176px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
               <p className="mb-3 text-[12px] leading-snug text-budget-muted">
