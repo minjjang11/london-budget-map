@@ -1727,15 +1727,15 @@ export default function BudgetMapApp() {
           <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
-          <div className="mt-2 rounded-[18px] border border-budget-surface/80 bg-budget-bg px-3 py-2">
+          <div className="mt-2 rounded-[16px] border border-budget-surface/80 bg-budget-bg px-2.5 py-1.5">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
               {activeCat === "all"
                 ? "Map budget"
                 : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
             </p>
-            <div className="relative mt-1.5 px-1 pb-0 pt-4">
+            <div className="relative mt-1 px-0.5 pb-0 pt-3.5">
               <span
-                className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-2 py-[3px] text-[10px] font-extrabold leading-none text-budget-primary shadow-sm"
+                className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[9px] font-extrabold leading-none text-budget-primary shadow-sm"
                 style={{ left: `calc(${currentMapBudgetPercent}% * 0.96 + 2%)` }}
               >
                 {formatBudgetCap(currentMapBudget)}
