@@ -83,6 +83,12 @@ const SUBMIT_PRICE_LIMITS: Record<Category, number> = {
   pub: 7.5,
   cafe: 4.5,
 };
+const MAP_BUDGET_LIMITS = {
+  all: 12.5,
+  restaurant: 12.5,
+  pub: 7.5,
+  cafe: 4.5,
+} as const;
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -350,7 +356,12 @@ export default function BudgetMapApp() {
   const [activeCat, setActiveCat] = useState<Category | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  const [mapBudget, setMapBudget] = useState<number | null>(null);
+  const [mapBudgets, setMapBudgets] = useState<Record<Category | "all", number>>({
+    all: MAP_BUDGET_LIMITS.all,
+    restaurant: MAP_BUDGET_LIMITS.restaurant,
+    pub: MAP_BUDGET_LIMITS.pub,
+    cafe: MAP_BUDGET_LIMITS.cafe,
+  });
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
@@ -484,18 +495,18 @@ export default function BudgetMapApp() {
     return [...approved, ...pendingQueueSpots, ...locals];
   }, [remoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
 
-  const mapBudgetMax = useMemo(() => {
-    const highest = allSpots.reduce((max, spot) => Math.max(max, lowestPrice(spot)), 0);
-    const rounded = Math.ceil(Math.max(15, highest) * 2) / 2;
-    return rounded > 0 ? rounded : 15;
-  }, [allSpots]);
+  const currentMapBudgetMax = MAP_BUDGET_LIMITS[activeCat];
+  const currentMapBudget = mapBudgets[activeCat];
 
   useEffect(() => {
-    setMapBudget((prev) => {
-      if (prev === null) return mapBudgetMax;
-      return prev > mapBudgetMax ? mapBudgetMax : prev;
+    setMapBudgets((prev) => {
+      const next = { ...prev };
+      (Object.keys(MAP_BUDGET_LIMITS) as Array<Category | "all">).forEach((key) => {
+        if (next[key] > MAP_BUDGET_LIMITS[key]) next[key] = MAP_BUDGET_LIMITS[key];
+      });
+      return next;
     });
-  }, [mapBudgetMax]);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -662,10 +673,10 @@ export default function BudgetMapApp() {
     () =>
       allSpots.filter((s) => {
         if (activeCat !== "all" && s.category !== activeCat) return false;
-        if (mapBudget !== null && lowestPrice(s) > mapBudget + 0.001) return false;
+        if (lowestPrice(s) > currentMapBudget + 0.001) return false;
         return true;
       }),
-    [allSpots, activeCat, mapBudget],
+    [allSpots, activeCat, currentMapBudget],
   );
 
   /** Rankings tab: approved remote places only (same cat/area filters as the map list). */
@@ -1434,22 +1445,33 @@ export default function BudgetMapApp() {
           <div className="mt-3 rounded-[18px] border border-budget-surface/80 bg-budget-bg px-3 py-2.5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">Map budget</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
+                  {activeCat === "all"
+                    ? "Map budget"
+                    : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
+                </p>
                 <p className="mt-0.5 text-[11px] leading-snug text-budget-muted">
-                  Scroll your max and only show spots at or under that price.
+                  {activeCat === "all"
+                    ? "Scroll your max and only show spots at or under that price."
+                    : "Each category keeps its own max budget, so swap tabs and set them separately."}
                 </p>
               </div>
               <span className="shrink-0 rounded-full bg-budget-primary px-2.5 py-1 text-[12px] font-extrabold text-white">
-                {formatBudgetCap(mapBudget ?? mapBudgetMax)}
+                {formatBudgetCap(currentMapBudget)}
               </span>
             </div>
             <input
               type="range"
               min={2}
-              max={mapBudgetMax}
+              max={currentMapBudgetMax}
               step={0.5}
-              value={mapBudget ?? mapBudgetMax}
-              onChange={(e) => setMapBudget(parseFloat(e.target.value))}
+              value={currentMapBudget}
+              onChange={(e) =>
+                setMapBudgets((prev) => ({
+                  ...prev,
+                  [activeCat]: parseFloat(e.target.value),
+                }))
+              }
               className="mt-2 w-full accent-budget-primary"
               aria-label="Maximum budget on map"
             />
@@ -1913,7 +1935,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(196px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(232px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
               <p className="mb-3 text-[12px] leading-snug text-budget-muted">
