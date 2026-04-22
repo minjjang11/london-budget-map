@@ -174,12 +174,12 @@
 .budget-range {
   -webkit-appearance: none;
   appearance: none;
-  height: 22px;
+  height: 18px;
   background: transparent;
 }
 
 .budget-range::-webkit-slider-runnable-track {
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   background:
     linear-gradient(
@@ -194,9 +194,9 @@
 .budget-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
-  margin-top: -6px;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
   border-radius: 999px;
   border: 2px solid var(--color-white);
   background: var(--color-white);
@@ -204,20 +204,20 @@
 }
 
 .budget-range::-moz-range-track {
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   background: rgb(13 31 26 / 0.16);
 }
 
 .budget-range::-moz-range-progress {
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   background: var(--color-primary);
 }
 
 .budget-range::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border-radius: 999px;
   border: 2px solid var(--color-white);
   background: var(--color-white);
@@ -246,6 +246,17 @@
   from {
     opacity: 0.72;
     transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes detailPushBack {
+  from {
+    opacity: 0.72;
+    transform: translateX(-24px);
   }
   to {
     opacity: 1;

@@ -19,6 +19,7 @@ import {
   LocateFixed,
   Scale,
   ChevronRight,
+  ChevronDown,
   Flag,
   Trash2,
 } from "lucide-react";
@@ -374,6 +375,7 @@ export default function BudgetMapApp() {
     pub: MAP_BUDGET_LIMITS.pub,
     cafe: MAP_BUDGET_LIMITS.cafe,
   });
+  const [mapBudgetOpen, setMapBudgetOpen] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
@@ -463,6 +465,7 @@ export default function BudgetMapApp() {
   const [commentDraft, setCommentDraft] = useState("");
   /** After marker tap: compact preview first; "Full details" opens existing sheet body. */
   const [placeDetailExpanded, setPlaceDetailExpanded] = useState(false);
+  const [placeDetailTransition, setPlaceDetailTransition] = useState<"forward" | "backward" | null>(null);
   const [placeReviewTagCountsByPlace, setPlaceReviewTagCountsByPlace] = useState<
     Record<string, Record<string, number>>
   >({});
@@ -878,11 +881,18 @@ export default function BudgetMapApp() {
   useEffect(() => {
     setCommentDraft("");
     setPlaceDetailExpanded(false);
+    setPlaceDetailTransition(null);
     setContributionItem("");
     setContributionPrice("");
     setContributionComment("");
     setContributionPhoto("");
   }, [selectedId]);
+
+  useEffect(() => {
+    if (!placeDetailTransition) return;
+    const timer = window.setTimeout(() => setPlaceDetailTransition(null), 260);
+    return () => window.clearTimeout(timer);
+  }, [placeDetailTransition]);
 
   const toggleSave = async (id: string) => {
     if (remoteIds.has(id)) {
@@ -1727,36 +1737,54 @@ export default function BudgetMapApp() {
           <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
-          <div className="mt-2 rounded-[16px] border border-budget-surface/80 bg-budget-bg px-2.5 py-1.5">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
-              {activeCat === "all"
-                ? "Map budget"
-                : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
-            </p>
-            <div className="relative mt-1 px-0.5 pb-0 pt-3.5">
-              <span
-                className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[9px] font-extrabold leading-none text-budget-primary shadow-sm"
-                style={{ left: `calc(${currentMapBudgetPercent}% * 0.96 + 2%)` }}
-              >
+          <div className="mt-1.5 rounded-[15px] border border-budget-surface/80 bg-budget-bg px-2 py-1">
+            <button
+              type="button"
+              onClick={() => setMapBudgetOpen((prev) => !prev)}
+              className="flex w-full cursor-pointer items-center justify-between gap-1.5 text-left"
+              aria-expanded={mapBudgetOpen}
+              aria-controls="map-budget-slider"
+            >
+              <p className="text-[9px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
+                {activeCat === "all"
+                  ? "Map budget"
+                  : `${CATS.find((c) => c.id === activeCat)?.label ?? "Spot"} budget`}
+              </p>
+              <span className="inline-flex items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] leading-none text-budget-muted">
                 {formatBudgetCap(currentMapBudget)}
+                <ChevronDown
+                  size={11}
+                  className={`transition-transform ${mapBudgetOpen ? "rotate-180" : ""}`}
+                  aria-hidden
+                />
               </span>
-              <input
-                type="range"
-                min={currentMapBudgetMin}
-                max={currentMapBudgetMax}
-                step={0.5}
-                value={currentMapBudget}
-                onChange={(e) =>
-                  setMapBudgets((prev) => ({
-                    ...prev,
-                    [activeCat]: parseFloat(e.target.value),
-                  }))
-                }
-                className="budget-range w-full"
-                style={{ ["--range-progress" as string]: `${currentMapBudgetPercent}%` }}
-                aria-label="Maximum budget on map"
-              />
-            </div>
+            </button>
+            {mapBudgetOpen ? (
+              <div id="map-budget-slider" className="relative mt-0.5 px-0.5 pb-0 pt-3">
+                <span
+                  className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[8px] font-extrabold leading-none text-budget-primary shadow-sm"
+                  style={{ left: `calc(${currentMapBudgetPercent}% * 0.96 + 2%)` }}
+                >
+                  {formatBudgetCap(currentMapBudget)}
+                </span>
+                <input
+                  type="range"
+                  min={currentMapBudgetMin}
+                  max={currentMapBudgetMax}
+                  step={0.5}
+                  value={currentMapBudget}
+                  onChange={(e) =>
+                    setMapBudgets((prev) => ({
+                      ...prev,
+                      [activeCat]: parseFloat(e.target.value),
+                    }))
+                  }
+                  className="budget-range w-full"
+                  style={{ ["--range-progress" as string]: `${currentMapBudgetPercent}%` }}
+                  aria-label="Maximum budget on map"
+                />
+              </div>
+            ) : null}
           </div>
         </header>
       )}
@@ -1861,7 +1889,14 @@ export default function BudgetMapApp() {
                 }`}
               >
                 {!placeDetailExpanded ? (
-                  <div className="flex gap-3">
+                  <div
+                    className="flex gap-3"
+                    style={
+                      placeDetailTransition === "backward"
+                        ? { animation: "detailPushBack 0.24s cubic-bezier(0.22, 1, 0.36, 1)" }
+                        : undefined
+                    }
+                  >
                     <div
                       className="grid size-[48px] shrink-0 place-items-center rounded-2xl bg-budget-surface text-[24px] leading-none shadow-[inset_0_1px_0_rgb(255_255_255_/0.65)]"
                       aria-hidden
@@ -1918,7 +1953,10 @@ export default function BudgetMapApp() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => setPlaceDetailExpanded(true)}
+                          onClick={() => {
+                            setPlaceDetailTransition("forward");
+                            setPlaceDetailExpanded(true);
+                          }}
                           className="inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-2xl border-2 border-budget-surface bg-budget-white py-3 text-[13px] font-extrabold text-budget-text"
                         >
                           Full details
@@ -1932,7 +1970,10 @@ export default function BudgetMapApp() {
                     <div className="mb-3 flex items-center border-b border-budget-surface/60 pb-2.5">
                       <button
                         type="button"
-                        onClick={() => setPlaceDetailExpanded(false)}
+                        onClick={() => {
+                          setPlaceDetailTransition("backward");
+                          setPlaceDetailExpanded(false);
+                        }}
                         className="cursor-pointer rounded-full border-0 bg-budget-surface px-3 py-1.5 text-[12px] font-extrabold text-budget-text transition hover:bg-budget-surface/80"
                       >
                         ← Summary
