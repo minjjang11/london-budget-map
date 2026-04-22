@@ -1370,18 +1370,34 @@ export default function BudgetMapApp() {
 
   const voteIcon = (kind: "up" | "down", active: boolean) => {
     const Icon = kind === "up" ? ThumbsUp : ThumbsDown;
-    const activeBg = kind === "up" ? "bg-budget-primary" : "bg-[#636167]";
     const inactiveColor = kind === "up" ? "text-budget-primary" : "text-budget-muted";
-    return (
-      <span
-        className={`inline-flex size-7 items-center justify-center rounded-full transition-colors ${
-          active ? `${activeBg} text-white` : `bg-transparent ${inactiveColor}`
-        }`}
-      >
-        <Icon size={16} fill={active ? "currentColor" : "none"} />
-      </span>
-    );
+    return <Icon size={18} className={active ? "text-white" : inactiveColor} />;
   };
+
+  const voteButtonClasses = (kind: "up" | "down", active: boolean) =>
+    active
+      ? kind === "up"
+        ? "border-budget-primary bg-budget-primary text-white"
+        : "border-[#636167] bg-[#636167] text-white"
+      : "border-budget-surface bg-budget-bg text-budget-text";
+
+  const voteCountClasses = (kind: "up" | "down", active: boolean) =>
+    active
+      ? kind === "up"
+        ? "text-emerald-100"
+        : "text-slate-200"
+      : kind === "up"
+        ? "text-budget-primary"
+        : "text-budget-muted";
+
+  const saveIcon = (active: boolean, size = 18) => (
+    <Bookmark
+      size={size}
+      strokeWidth={2}
+      fill={active ? "currentColor" : "none"}
+      className={active ? "text-budget-primary" : "text-budget-muted"}
+    />
+  );
 
   const panelHero = (title: string, Icon: typeof Crown, accentClass: string, accentLabel: string) => (
     <section
@@ -1754,26 +1770,24 @@ export default function BudgetMapApp() {
                             <button
                               type="button"
                               onClick={() => void handleVoteOnSubmission(selectedPendingRow!.id, "upvote")}
-                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
-                                selectedPendingVote === "upvote"
-                                  ? "border-budget-primary bg-budget-bg text-budget-text"
-                                  : "border-budget-surface bg-budget-bg text-budget-text"
-                              }`}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${voteButtonClasses("up", selectedPendingVote === "upvote")}`}
                             >
                               {voteIcon("up", selectedPendingVote === "upvote")}
-                              Upvote <span className="tabular-nums">{selectedPendingTallies.up}</span>
+                              Upvote{" "}
+                              <span className={`tabular-nums ${voteCountClasses("up", selectedPendingVote === "upvote")}`}>
+                                {selectedPendingTallies.up}
+                              </span>
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleVoteOnSubmission(selectedPendingRow!.id, "downvote")}
-                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
-                                selectedPendingVote === "downvote"
-                                  ? "border-budget-primary bg-budget-bg text-budget-text"
-                                  : "border-budget-surface bg-budget-bg text-budget-text"
-                              }`}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${voteButtonClasses("down", selectedPendingVote === "downvote")}`}
                             >
                               {voteIcon("down", selectedPendingVote === "downvote")}
-                              Downvote <span className="tabular-nums">{selectedPendingTallies.down}</span>
+                              Downvote{" "}
+                              <span className={`tabular-nums ${voteCountClasses("down", selectedPendingVote === "downvote")}`}>
+                                {selectedPendingTallies.down}
+                              </span>
                             </button>
                           </>
                         ) : remoteIds.has(selected.id) ? (
@@ -1781,26 +1795,24 @@ export default function BudgetMapApp() {
                             <button
                               type="button"
                               onClick={() => void handleVoteOnPlace(selected.id, "upvote")}
-                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
-                                placeMyVotes[selected.id] === "upvote"
-                                  ? "border-budget-primary bg-budget-bg text-budget-text"
-                                  : "border-budget-surface bg-budget-bg text-budget-text"
-                              }`}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${voteButtonClasses("up", placeMyVotes[selected.id] === "upvote")}`}
                             >
                               {voteIcon("up", placeMyVotes[selected.id] === "upvote")}
-                              Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
+                              Upvote{" "}
+                              <span className={`tabular-nums ${voteCountClasses("up", placeMyVotes[selected.id] === "upvote")}`}>
+                                {selected.upvotes ?? 0}
+                              </span>
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleVoteOnPlace(selected.id, "downvote")}
-                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
-                                placeMyVotes[selected.id] === "downvote"
-                                  ? "border-budget-primary bg-budget-bg text-budget-text"
-                                  : "border-budget-surface bg-budget-bg text-budget-text"
-                              }`}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${voteButtonClasses("down", placeMyVotes[selected.id] === "downvote")}`}
                             >
                               {voteIcon("down", placeMyVotes[selected.id] === "downvote")}
-                              Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
+                              Downvote{" "}
+                              <span className={`tabular-nums ${voteCountClasses("down", placeMyVotes[selected.id] === "downvote")}`}>
+                                {selected.downvotes ?? 0}
+                              </span>
                             </button>
                           </>
                         ) : (
@@ -1808,26 +1820,24 @@ export default function BudgetMapApp() {
                             <button
                               type="button"
                               onClick={() => bumpUpvote(selected.id)}
-                              className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${
-                                localPlaceVotes[selected.id] === "upvote"
-                                  ? "border-budget-primary bg-budget-bg text-budget-text"
-                                  : "border-budget-surface bg-budget-bg text-budget-text"
-                              }`}
+                              className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${voteButtonClasses("up", localPlaceVotes[selected.id] === "upvote")}`}
                             >
                               {voteIcon("up", localPlaceVotes[selected.id] === "upvote")}
-                              Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
+                              Upvote{" "}
+                              <span className={`tabular-nums ${voteCountClasses("up", localPlaceVotes[selected.id] === "upvote")}`}>
+                                {selected.upvotes ?? 0}
+                              </span>
                             </button>
                             <button
                               type="button"
                               onClick={() => bumpDownvote(selected.id)}
-                              className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${
-                                localPlaceVotes[selected.id] === "downvote"
-                                  ? "border-budget-primary bg-budget-bg text-budget-text"
-                                  : "border-budget-surface bg-budget-bg text-budget-text"
-                              }`}
+                              className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${voteButtonClasses("down", localPlaceVotes[selected.id] === "downvote")}`}
                             >
                               {voteIcon("down", localPlaceVotes[selected.id] === "downvote")}
-                              Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
+                              Downvote{" "}
+                              <span className={`tabular-nums ${voteCountClasses("down", localPlaceVotes[selected.id] === "downvote")}`}>
+                                {selected.downvotes ?? 0}
+                              </span>
                             </button>
                           </>
                         )}
@@ -1848,17 +1858,9 @@ export default function BudgetMapApp() {
                       type="button"
                       disabled={savePlaceBusy && remoteIds.has(selected.id)}
                       onClick={() => void toggleSave(selected.id)}
-                      className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 py-3.5 text-[13px] font-extrabold transition disabled:cursor-wait disabled:opacity-60 ${
-                        savedIds.has(selected.id)
-                          ? "border-budget-primary bg-budget-primary text-white"
-                          : "border-budget-surface bg-budget-white text-budget-text"
-                      }`}
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface bg-budget-white py-3.5 text-[13px] font-extrabold text-budget-text transition disabled:cursor-wait disabled:opacity-60"
                     >
-                      <Bookmark
-                        size={18}
-                        strokeWidth={2}
-                        className={savedIds.has(selected.id) ? "text-white" : "text-budget-primary"}
-                      />
+                      {saveIcon(savedIds.has(selected.id))}
                       {savePlaceBusy && remoteIds.has(selected.id)
                         ? "…"
                         : savedIds.has(selected.id)
@@ -1936,18 +1938,11 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(266px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(242px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
-              <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-                Newly registered tips waiting for moderation — they stay off the main map until approved. Anyone can browse;{" "}
-                <strong className="font-semibold text-budget-text/80">Upvote</strong>,{" "}
-                <strong className="font-semibold text-budget-text/80">Downvote</strong>, and{" "}
-                <strong className="font-semibold text-budget-text/80">Report</strong> need sign-in.
-              </p>
-
               {isSupabaseConfigured() && getBrowserSupabase() ? (
-                <div className="mb-3 space-y-2">
+                <div className="mb-2 space-y-2">
                   <AuthPanel session={session} onSessionChange={() => void refreshSession()} compact />
                   {!session?.user ? (
                     <div
@@ -1999,21 +1994,34 @@ export default function BudgetMapApp() {
               const catLabel = CATS.find((c) => c.id === row.category)?.label ?? "Spot";
               const priceNum = Number(row.price_gbp);
               const desc = row.description?.trim();
+              const pendingSpotId = `pending-${row.id}`;
+              const pendingSaved = savedIds.has(pendingSpotId);
               return (
                 <article
                   key={row.id}
                   className="mb-2.5 rounded-2xl border border-budget-surface bg-budget-white px-4 py-3.5 text-left shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
                 >
                   <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] ${
-                        row.status === "needs_review"
-                          ? "bg-slate-200 text-slate-900"
-                          : "bg-amber-100 text-amber-950"
-                      }`}
-                    >
-                      {row.status === "needs_review" ? "Moderator review" : "Newly registered"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] ${
+                          row.status === "needs_review"
+                            ? "bg-slate-200 text-slate-900"
+                            : "bg-amber-100 text-amber-950"
+                        }`}
+                      >
+                        {row.status === "needs_review" ? "Moderator review" : "Newly registered"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void toggleSave(pendingSpotId)}
+                        className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border border-budget-surface bg-budget-white transition hover:border-budget-primary/40"
+                        aria-label={pendingSaved ? "Unsave spot" : "Save spot"}
+                        title={pendingSaved ? "Saved" : "Save"}
+                      >
+                        {saveIcon(pendingSaved, 17)}
+                      </button>
+                    </div>
                     <span className="text-[11px] font-bold text-budget-primary">
                       {formatReviewTimeRemaining(row.review_ends_at)}
                     </span>
@@ -2055,32 +2063,28 @@ export default function BudgetMapApp() {
                         <button
                           type="button"
                           onClick={() => void handleVoteOnSubmission(row.id, "upvote")}
-                          className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
-                            myVotes[row.id] === "upvote"
-                              ? "border-budget-primary bg-budget-bg text-budget-text"
-                              : "border-budget-surface bg-budget-bg text-budget-text"
-                          }`}
+                          className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${voteButtonClasses("up", myVotes[row.id] === "upvote")}`}
                         >
                           <span className="shrink-0" aria-hidden>
                             {voteIcon("up", myVotes[row.id] === "upvote")}
                           </span>
                           <span className="min-w-0">Upvote</span>
-                          <span className="tabular-nums text-budget-primary">{voteTallies[row.id]?.up ?? 0}</span>
+                          <span className={`tabular-nums ${voteCountClasses("up", myVotes[row.id] === "upvote")}`}>
+                            {voteTallies[row.id]?.up ?? 0}
+                          </span>
                         </button>
                         <button
                           type="button"
                           onClick={() => void handleVoteOnSubmission(row.id, "downvote")}
-                          className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
-                            myVotes[row.id] === "downvote"
-                              ? "border-budget-primary bg-budget-bg text-budget-text"
-                              : "border-budget-surface bg-budget-bg text-budget-text"
-                          }`}
+                          className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${voteButtonClasses("down", myVotes[row.id] === "downvote")}`}
                         >
                           <span className="shrink-0" aria-hidden>
                             {voteIcon("down", myVotes[row.id] === "downvote")}
                           </span>
                           <span className="min-w-0">Downvote</span>
-                          <span className="tabular-nums text-budget-muted">{voteTallies[row.id]?.down ?? 0}</span>
+                          <span className={`tabular-nums ${voteCountClasses("down", myVotes[row.id] === "downvote")}`}>
+                            {voteTallies[row.id]?.down ?? 0}
+                          </span>
                         </button>
                       </div>
                       <div className="mt-2 flex justify-end">
@@ -2152,11 +2156,6 @@ export default function BudgetMapApp() {
             </>
           ) : (
             <>
-              <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-                Ranking is ordered by net score: <strong>upvotes minus downvotes</strong>. Weekly uses places first seen in
-                the last {RANKING_RULES.weeklyRegistrationDays} days.
-              </p>
-              <p className="mb-3 text-sm text-budget-muted">Tap a row to open it on the map (same flow as the map tab).</p>
               {remoteApprovedSpots.length === 0 ? (
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
                   No approved spots from the server yet — rankings appear after moderation promotes tips to the map.
@@ -2182,33 +2181,47 @@ export default function BudgetMapApp() {
               ) : (
                 ranked.map((spot, i) => {
                   const catLabel = CATS.find((c) => c.id === spot.category)?.label ?? "Spot";
+                  const saved = savedIds.has(spot.id);
                   return (
-                    <button
+                    <div
                       key={spot.id}
-                      type="button"
-                      onClick={() => {
-                        setTab("map");
-                        setSelectedId(spot.id);
-                        setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
-                      }}
                       className="budget-list-btn shadow-[0_2px_8px_rgb(13_31_26_/0.04)]"
                     >
-                      <span className="text-sm font-extrabold text-budget-primary">#{i + 1}</span>
-                      <span className="text-xl">{catEmoji(spot.category)}</span>
-                      <div className="min-w-0 flex-1 text-left">
-                        <div className="font-bold text-budget-text">{spot.name}</div>
-                        <div className="text-[11px] font-semibold text-budget-subtle">
-                          {catLabel} · {rankingAddressLine(spot)}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setTab("map");
+                          setSelectedId(spot.id);
+                          setFlyTo({ center: [spot.lat, spot.lng], zoom: 16 });
+                        }}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
+                        <span className="text-sm font-extrabold text-budget-primary">#{i + 1}</span>
+                        <span className="text-xl">{catEmoji(spot.category)}</span>
+                        <div className="min-w-0 flex-1 text-left">
+                          <div className="font-bold text-budget-text">{spot.name}</div>
+                          <div className="text-[11px] font-semibold text-budget-subtle">
+                            {catLabel} · {rankingAddressLine(spot)}
+                          </div>
+                          <div className="mt-0.5 text-[10px] font-medium text-budget-faint">{rankingSocialLine(spot)}</div>
                         </div>
-                        <div className="mt-0.5 text-[10px] font-medium text-budget-faint">{rankingSocialLine(spot)}</div>
-                      </div>
-                      <div className="flex flex-col items-end gap-0.5 self-center">
+                      </button>
+                      <div className="ml-3 flex flex-col items-end gap-1 self-center">
+                        <button
+                          type="button"
+                          onClick={() => void toggleSave(spot.id)}
+                          className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border border-budget-surface bg-budget-white transition hover:border-budget-primary/40"
+                          aria-label={saved ? "Unsave spot" : "Save spot"}
+                          title={saved ? "Saved" : "Save"}
+                        >
+                          {saveIcon(saved, 17)}
+                        </button>
                         <span className="font-extrabold text-budget-primary">{formatMapPriceLabel(lowestPrice(spot))}</span>
                         <span className="text-[9px] font-extrabold uppercase tracking-wide text-budget-muted">
                           {rankingWindow === "weekly" ? "Weekly" : "All-time"}
                         </span>
                       </div>
-                    </button>
+                    </div>
                   );
                 })
               )}
@@ -2221,7 +2234,7 @@ export default function BudgetMapApp() {
         panelHero("Submit", Plus, "bg-budget-cta", "Snitch form")}
 
       {tab === "submit" && (
-        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(148px + env(safe-area-inset-top, 0px))" }}>
           <>
             {HAS_GOOGLE_MAPS_KEY ? (
               <SubmitPlacesAutocomplete
@@ -2522,7 +2535,7 @@ export default function BudgetMapApp() {
         panelHero("Profile", User, "bg-[#0D1F1A]", "Saved stash")}
 
       {tab === "profile" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(148px + env(safe-area-inset-top, 0px))" }}>
           {isSupabaseConfigured() && getBrowserSupabase() ? (
             <div className="mb-4">
               <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
@@ -2576,7 +2589,7 @@ export default function BudgetMapApp() {
         panelHero("Course", Route, "bg-[#165A47]", "Budget crawl")}
 
       {tab === "course" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(164px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(148px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
             <ul className="mb-4 list-disc space-y-1 pl-4 text-[12px] text-budget-subtle">
