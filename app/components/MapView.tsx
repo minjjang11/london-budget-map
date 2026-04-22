@@ -408,12 +408,16 @@ function MapViewGoogle({
   );
 }
 
-/** Always prefer Leaflet here so the app keeps a clean map canvas without Google footer UI. */
+/** Google Maps when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is set; otherwise Leaflet + MapTiler/Carto. */
 export default function MapView(props: {
   spots: MapSpot[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
 }) {
+  const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, "");
+  if (googleKey) {
+    return <MapViewGoogle {...props} apiKey={googleKey} />;
+  }
   return <MapViewLeaflet {...props} />;
 }

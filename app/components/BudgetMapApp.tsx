@@ -1354,7 +1354,7 @@ export default function BudgetMapApp() {
           onClick={flyToMyLocation}
           aria-label="Centre map on my location"
           title="My location"
-          className="absolute bottom-[calc(120px+env(safe-area-inset-bottom,0px))] right-4 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
+          className="absolute bottom-[calc(98px+env(safe-area-inset-bottom,0px))] right-4 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
         >
           <LocateFixed size={22} strokeWidth={2.25} aria-hidden />
         </button>
@@ -1376,7 +1376,7 @@ export default function BudgetMapApp() {
                 className={`absolute bottom-0 left-0 right-0 rounded-t-[26px] border border-budget-surface/80 bg-budget-white px-4 pt-4 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
                     ? "max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-                    : "mx-3 mb-[calc(82px+env(safe-area-inset-bottom,0px))] max-h-[min(48vh,420px)] overflow-hidden pb-4"
+                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] max-h-[min(48vh,420px)] overflow-hidden pb-4"
                 }`}
               >
                 {!placeDetailExpanded ? (
@@ -2447,19 +2447,18 @@ export default function BudgetMapApp() {
       <nav
         style={{
           background: "white",
-          borderRadius: "68px",
-          height: "61px",
-          width: "calc(100% - 22px)",
-          margin: "0 auto",
+          borderRadius: "28px 28px 0 0",
+          minHeight: "74px",
+          width: "100%",
           position: "absolute",
-          bottom: "max(11px, env(safe-area-inset-bottom))",
-          left: "11px",
-          right: "11px",
+          bottom: "0",
+          left: "0",
+          right: "0",
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-around",
-          padding: "0 8px",
-          boxShadow: "0 4px 20px rgba(13, 31, 26, 0.08)",
+          padding: "10px 10px calc(8px + env(safe-area-inset-bottom, 0px))",
+          boxShadow: "0 -4px 20px rgba(13, 31, 26, 0.08)",
           border: "none",
           zIndex: 60,
         }}
