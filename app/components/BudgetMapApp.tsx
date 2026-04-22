@@ -7,10 +7,11 @@ import dynamic from "next/dynamic";
 import type { MapSpot } from "./MapView";
 import {
   Map,
-  Users,
+  Crown,
   Plus,
   Bookmark,
   Route,
+  User,
   X,
   Navigation,
   ThumbsUp,
@@ -55,12 +56,10 @@ const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
 const HAS_GOOGLE_MAPS_KEY = Boolean((process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, ""));
 
-type Tab = "map" | "community" | "submit" | "saved" | "course";
+type Tab = "map" | "ranking" | "submit" | "course" | "profile";
 
 /** Unified Review tab (nav id `community`): queue vs ranking windows. */
 type CommunitySeg = "review" | "weekly" | "alltime";
-
-type CommunitySort = "price" | "buzz" | "snitches";
 
 type RankingWindow = "weekly" | "alltime";
 
@@ -351,6 +350,7 @@ export default function BudgetMapApp() {
   const [moderationBusyId, setModerationBusyId] = useState<string | null>(null);
   /** Current user's vote on approved map places (place id → vote). */
   const [placeMyVotes, setPlaceMyVotes] = useState<Record<string, SubmissionVoteType>>({});
+  const [localPlaceVotes, setLocalPlaceVotes] = useState<Record<string, SubmissionVoteType>>({});
   const [voteTallies, setVoteTallies] = useState<Record<string, { up: number; down: number }>>({});
   const [myVotes, setMyVotes] = useState<Record<string, SubmissionVoteType>>({});
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
@@ -390,7 +390,6 @@ export default function BudgetMapApp() {
   }, [pendingRows, session?.user?.id]);
   const [toast, setToast] = useState<string | null>(null);
 
-  const [communitySort, setCommunitySort] = useState<CommunitySort>("price");
   const [rankingWindow, setRankingWindow] = useState<RankingWindow>("alltime");
   const [communitySeg, setCommunitySeg] = useState<CommunitySeg>("review");
   const [commentDraft, setCommentDraft] = useState("");
@@ -552,7 +551,7 @@ export default function BudgetMapApp() {
   }, [session?.user?.email]);
 
   useEffect(() => {
-    if (tab !== "community" || communitySeg !== "review" || !isModerator) return;
+    if (tab !== "ranking" || communitySeg !== "review" || !isModerator) return;
     let cancelled = false;
     void (async () => {
       const r = await fetch("/api/moderation/evaluate-expired", { method: "POST", credentials: "include" });
@@ -573,7 +572,7 @@ export default function BudgetMapApp() {
   }, [tab, communitySeg, isModerator]);
 
   useEffect(() => {
-    if (tab !== "community" || communitySeg !== "review") {
+    if (tab !== "ranking" || communitySeg !== "review") {
       setVoteTallies({});
       setMyVotes({});
       return;
@@ -589,7 +588,7 @@ export default function BudgetMapApp() {
       return;
     }
     let cancelled = false;
-    if (tab === "community" && communitySeg === "review") {
+    if (tab === "ranking" && communitySeg === "review") {
       setPendingLoading(true);
       setPendingError(null);
     }
@@ -637,21 +636,12 @@ export default function BudgetMapApp() {
     }
     const up = (s: Spot) => s.upvotes ?? 0;
     const down = (s: Spot) => s.downvotes ?? 0;
-    if (communitySort === "price") {
-      return pool.sort((a, b) => lowestPrice(a) - lowestPrice(b));
-    }
-    if (communitySort === "buzz") {
-      return pool.sort(
-        (a, b) =>
-          rankingNetScore(up(b), down(b)) - rankingNetScore(up(a), down(a)) ||
-          lowestPrice(a) - lowestPrice(b),
-      );
-    }
     return pool.sort(
       (a, b) =>
-        b.submissions.length - a.submissions.length || lowestPrice(a) - lowestPrice(b),
+        rankingNetScore(up(b), down(b)) - rankingNetScore(up(a), down(a)) ||
+        lowestPrice(a) - lowestPrice(b),
     );
-  }, [communityApprovedFiltered, rankingWindow, communitySort]);
+  }, [communityApprovedFiltered, rankingWindow]);
 
   const mapSpots: MapSpot[] = useMemo(
     () =>
@@ -672,6 +662,15 @@ export default function BudgetMapApp() {
   );
 
   const selected = allSpots.find((s) => s.id === selectedId) || null;
+  const selectedPendingRow = useMemo(
+    () => pendingRows.find((row) => `pending-${row.id}` === selectedId) ?? null,
+    [pendingRows, selectedId],
+  );
+  const selectedIsPending = Boolean(selectedPendingRow);
+  const selectedPendingVote = selectedPendingRow ? myVotes[selectedPendingRow.id] : undefined;
+  const selectedPendingTallies = selectedPendingRow
+    ? voteTallies[selectedPendingRow.id] ?? { up: 0, down: 0 }
+    : { up: 0, down: 0 };
 
   useEffect(() => {
     setCommentDraft("");
@@ -681,7 +680,7 @@ export default function BudgetMapApp() {
   const toggleSave = async (id: string) => {
     if (remoteIds.has(id)) {
       if (!session?.user?.id) {
-        setToast("Sign in to save verified places — use the Review tab magic link.");
+        setToast("Sign in to save verified places from the Profile tab.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -886,7 +885,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — use the email sign-in panel at the top of Review → Under Review.");
+        setToast("Sign in to vote — use the email sign-in panel at the top of Ranking → Newly-registered.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -916,7 +915,7 @@ export default function BudgetMapApp() {
     const c = getBrowserSupabase();
     const uid = session?.user?.id;
     if (!c || !uid) {
-      setToast("Sign in to report — use the email sign-in panel at the top of Review → Under Review.");
+      setToast("Sign in to report — use the email sign-in panel at the top of Ranking → Newly-registered.");
       window.setTimeout(() => setToast(null), 4500);
       return;
     }
@@ -937,7 +936,7 @@ export default function BudgetMapApp() {
   const handleReportTap = useCallback(
     (submissionId: string) => {
       if (!session?.user) {
-        setToast("Sign in to report — use the email sign-in panel at the top of Review → Under Review.");
+        setToast("Sign in to report — use the email sign-in panel at the top of Ranking → Newly-registered.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -977,7 +976,7 @@ export default function BudgetMapApp() {
       const c = getBrowserSupabase();
       const uid = session?.user?.id;
       if (!c || !uid) {
-        setToast("Sign in to vote — open Review → Under Review and use the same magic-link sign-in.");
+        setToast("Sign in to vote — open Ranking → Newly-registered and use the same magic-link sign-in.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -1016,7 +1015,7 @@ export default function BudgetMapApp() {
   const togglePlaceReviewDraftTag = useCallback(
     (slug: string) => {
       if (!session?.user) {
-        setToast("Sign in to add tags — use the Review tab magic link.");
+        setToast("Sign in to add tags — use the Ranking tab magic link.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -1174,20 +1173,44 @@ export default function BudgetMapApp() {
 
   const bumpUpvote = (spotId: string) => {
     if (remoteIds.has(spotId)) return;
+    const current = localPlaceVotes[spotId];
     setSpots((prev) =>
-      prev.map((s) =>
-        s.id === spotId ? { ...s, upvotes: (s.upvotes ?? 0) + 1 } : s,
-      ),
+      prev.map((s) => {
+        if (s.id !== spotId) return s;
+        const up = s.upvotes ?? 0;
+        const down = s.downvotes ?? 0;
+        if (current === "upvote") return { ...s, upvotes: Math.max(0, up - 1) };
+        if (current === "downvote") return { ...s, upvotes: up + 1, downvotes: Math.max(0, down - 1) };
+        return { ...s, upvotes: up + 1 };
+      }),
     );
+    setLocalPlaceVotes((prev) => {
+      const next = { ...prev };
+      if (current === "upvote") delete next[spotId];
+      else next[spotId] = "upvote";
+      return next;
+    });
   };
 
   const bumpDownvote = (spotId: string) => {
     if (remoteIds.has(spotId)) return;
+    const current = localPlaceVotes[spotId];
     setSpots((prev) =>
-      prev.map((s) =>
-        s.id === spotId ? { ...s, downvotes: (s.downvotes ?? 0) + 1 } : s,
-      ),
+      prev.map((s) => {
+        if (s.id !== spotId) return s;
+        const up = s.upvotes ?? 0;
+        const down = s.downvotes ?? 0;
+        if (current === "downvote") return { ...s, downvotes: Math.max(0, down - 1) };
+        if (current === "upvote") return { ...s, downvotes: down + 1, upvotes: Math.max(0, up - 1) };
+        return { ...s, downvotes: down + 1 };
+      }),
     );
+    setLocalPlaceVotes((prev) => {
+      const next = { ...prev };
+      if (current === "downvote") delete next[spotId];
+      else next[spotId] = "downvote";
+      return next;
+    });
   };
 
   const addComment = (spotId: string, text: string) => {
@@ -1343,17 +1366,17 @@ export default function BudgetMapApp() {
           {selected && (
             <div
               role="presentation"
-              className="absolute inset-0 z-[45] animate-fade-in bg-budget-text/25"
+              className="absolute inset-0 z-[80] animate-fade-in bg-budget-text/25"
               onClick={() => setSelectedId(null)}
             >
               <div
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className={`absolute bottom-[calc(108px+env(safe-area-inset-bottom,0px))] left-3 right-3 rounded-[26px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-4 shadow-budget-sheet animate-slide-up ${
+                className={`absolute bottom-0 left-0 right-0 rounded-t-[26px] border border-budget-surface/80 bg-budget-white px-4 pt-4 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
-                    ? "max-h-[62vh] overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-                    : "max-h-[min(48vh,420px)] overflow-hidden pb-4"
+                    ? "max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+                    : "mx-3 mb-[calc(82px+env(safe-area-inset-bottom,0px))] max-h-[min(48vh,420px)] overflow-hidden pb-4"
                 }`}
               >
                 {!placeDetailExpanded ? (
@@ -1391,10 +1414,11 @@ export default function BudgetMapApp() {
                       <p className="mt-2 line-clamp-4 text-[13px] leading-snug text-budget-text/75">
                         {spotPreviewBlurb(selected)}
                       </p>
-                      {remoteIds.has(selected.id) ? (
+                      {remoteIds.has(selected.id) || selectedIsPending ? (
                         <p className="mt-2 text-[11px] font-semibold text-budget-muted">
-                          👍 {selected.upvotes ?? 0} · 👎 {selected.downvotes ?? 0}
-                          {!session?.user ? " · Sign in (Review → Under Review) to vote" : null}
+                          👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
+                          {selectedIsPending ? selectedPendingTallies.down : selected.downvotes ?? 0}
+                          {!session?.user ? " · Sign in (Ranking → Newly-registered) to vote" : null}
                         </p>
                       ) : null}
                       <div className="mt-4 flex flex-col gap-2">
@@ -1468,9 +1492,10 @@ export default function BudgetMapApp() {
                       <span className="text-[12px] font-semibold text-budget-muted">
                         {selected.submissions.length} report{selected.submissions.length === 1 ? "" : "s"}
                       </span>
-                      {remoteIds.has(selected.id) ? (
+                      {remoteIds.has(selected.id) || selectedIsPending ? (
                         <span className="text-[12px] font-semibold text-budget-muted">
-                          👍 {selected.upvotes ?? 0} · 👎 {selected.downvotes ?? 0}
+                          👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
+                          {selectedIsPending ? selectedPendingTallies.down : selected.downvotes ?? 0}
                         </span>
                       ) : null}
                     </div>
@@ -1526,18 +1551,54 @@ export default function BudgetMapApp() {
                         Community votes
                       </p>
                       <div className="mt-3 flex gap-2">
-                        {remoteIds.has(selected.id) ? (
+                        {selectedIsPending ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void handleVoteOnSubmission(selectedPendingRow!.id, "upvote")}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
+                                selectedPendingVote === "upvote"
+                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  : "border-budget-surface bg-budget-bg text-budget-text"
+                              }`}
+                            >
+                              <ThumbsUp
+                                size={18}
+                                className={selectedPendingVote === "upvote" ? "text-white" : "text-budget-primary"}
+                              />
+                              Upvote <span className="tabular-nums">{selectedPendingTallies.up}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleVoteOnSubmission(selectedPendingRow!.id, "downvote")}
+                              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
+                                selectedPendingVote === "downvote"
+                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  : "border-budget-surface bg-budget-bg text-budget-text"
+                              }`}
+                            >
+                              <ThumbsDown
+                                size={18}
+                                className={selectedPendingVote === "downvote" ? "text-white" : "text-budget-muted"}
+                              />
+                              Downvote <span className="tabular-nums">{selectedPendingTallies.down}</span>
+                            </button>
+                          </>
+                        ) : remoteIds.has(selected.id) ? (
                           <>
                             <button
                               type="button"
                               onClick={() => void handleVoteOnPlace(selected.id, "upvote")}
                               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
                                 placeMyVotes[selected.id] === "upvote"
-                                  ? "border-budget-primary bg-budget-surface text-budget-text"
+                                  ? "border-budget-primary bg-budget-primary text-white"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsUp size={18} className="text-budget-primary" />
+                              <ThumbsUp
+                                size={18}
+                                className={placeMyVotes[selected.id] === "upvote" ? "text-white" : "text-budget-primary"}
+                              />
                               Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
                             </button>
                             <button
@@ -1545,11 +1606,14 @@ export default function BudgetMapApp() {
                               onClick={() => void handleVoteOnPlace(selected.id, "downvote")}
                               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-2xl border-2 py-2.5 text-[13px] font-extrabold ${
                                 placeMyVotes[selected.id] === "downvote"
-                                  ? "border-budget-primary bg-budget-surface text-budget-text"
+                                  ? "border-budget-primary bg-budget-primary text-white"
                                   : "border-budget-surface bg-budget-bg text-budget-text"
                               }`}
                             >
-                              <ThumbsDown size={18} className="text-budget-muted" />
+                              <ThumbsDown
+                                size={18}
+                                className={placeMyVotes[selected.id] === "downvote" ? "text-white" : "text-budget-muted"}
+                              />
                               Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
                             </button>
                           </>
@@ -1558,26 +1622,42 @@ export default function BudgetMapApp() {
                             <button
                               type="button"
                               onClick={() => bumpUpvote(selected.id)}
-                              className="inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
+                              className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${
+                                localPlaceVotes[selected.id] === "upvote"
+                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  : "border-budget-surface bg-budget-bg text-budget-text"
+                              }`}
                             >
-                              <ThumbsUp size={18} className="text-budget-primary" />
+                              <ThumbsUp
+                                size={18}
+                                className={localPlaceVotes[selected.id] === "upvote" ? "text-white" : "text-budget-primary"}
+                              />
                               Upvote <span className="tabular-nums">{selected.upvotes ?? 0}</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => bumpDownvote(selected.id)}
-                              className="inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border border-budget-surface bg-budget-bg py-3.5 text-[13px] font-extrabold text-budget-text"
+                              className={`inline-flex min-h-[44px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border py-3.5 text-[13px] font-extrabold ${
+                                localPlaceVotes[selected.id] === "downvote"
+                                  ? "border-budget-primary bg-budget-primary text-white"
+                                  : "border-budget-surface bg-budget-bg text-budget-text"
+                              }`}
                             >
-                              <ThumbsDown size={18} className="text-budget-muted" />
+                              <ThumbsDown
+                                size={18}
+                                className={localPlaceVotes[selected.id] === "downvote" ? "text-white" : "text-budget-muted"}
+                              />
                               Downvote <span className="tabular-nums">{selected.downvotes ?? 0}</span>
                             </button>
                           </>
                         )}
                       </div>
                       <p className="mt-2 text-[11px] text-budget-subtle">
-                        {remoteIds.has(selected.id)
-                          ? "Sign in via Review to vote on verified listings."
-                          : "Stored on this device until shared voting is shipped."}
+                        {selectedIsPending
+                          ? "Newly registered spots use shared queue votes and reports before approval."
+                          : remoteIds.has(selected.id)
+                            ? "Sign in via Ranking to vote on verified listings."
+                            : "Stored on this device until shared voting is shipped."}
                       </p>
                     </div>
                   </div>
@@ -1588,11 +1668,17 @@ export default function BudgetMapApp() {
                       type="button"
                       disabled={savePlaceBusy && remoteIds.has(selected.id)}
                       onClick={() => void toggleSave(selected.id)}
-                      className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface py-3.5 text-[13px] font-extrabold text-budget-text transition disabled:cursor-wait disabled:opacity-60 ${
-                        savedIds.has(selected.id) ? "bg-budget-surface" : "bg-budget-white"
+                      className={`flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 py-3.5 text-[13px] font-extrabold transition disabled:cursor-wait disabled:opacity-60 ${
+                        savedIds.has(selected.id)
+                          ? "border-budget-primary bg-budget-primary text-white"
+                          : "border-budget-surface bg-budget-white text-budget-text"
                       }`}
                     >
-                      <Bookmark size={18} strokeWidth={2} className="text-budget-primary" />
+                      <Bookmark
+                        size={18}
+                        strokeWidth={2}
+                        className={savedIds.has(selected.id) ? "text-white" : "text-budget-primary"}
+                      />
                       {savePlaceBusy && remoteIds.has(selected.id)
                         ? "…"
                         : savedIds.has(selected.id)
@@ -1615,7 +1701,7 @@ export default function BudgetMapApp() {
                   </div>
                   {remoteIds.has(selected.id) && !session?.user ? (
                     <p className="mt-2 text-center text-[11px] text-budget-muted">
-                      Verified spots save to your account after sign-in (Review → Under Review).
+                      Verified spots save to your account after sign-in from Profile.
                     </p>
                   ) : null}
                 </div>
@@ -1627,21 +1713,21 @@ export default function BudgetMapApp() {
         </>
       )}
 
-      {tab === "community" && (
+      {tab === "ranking" && (
         <div className="budget-tab-panel px-3 pb-3">
-          <h2 className="mb-0.5 text-lg font-extrabold text-budget-text">Review</h2>
+          <h2 className="mb-0.5 text-lg font-extrabold text-budget-text">Ranking</h2>
           <p className="mb-3 text-[11px] leading-snug text-budget-muted">
-            Queue, votes, and verified rankings — pick a section below.
+            Newly registered spots and leaderboard rankings live here.
           </p>
 
           <div
             className="mb-4 flex rounded-[14px] bg-budget-surface/90 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
             role="tablist"
-            aria-label="Review sections"
+            aria-label="Ranking sections"
           >
             {(["review", "weekly", "alltime"] as const).map((seg) => {
               const active = communitySeg === seg;
-              const label = seg === "review" ? "Under Review" : seg === "weekly" ? "Weekly" : "All-time";
+              const label = seg === "review" ? "Newly-registered" : seg === "weekly" ? "Weekly" : "All-time";
               return (
                 <button
                   key={seg}
@@ -1666,7 +1752,7 @@ export default function BudgetMapApp() {
           {communitySeg === "review" ? (
             <>
               <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-                Tips waiting for moderation — they stay off the main map until approved. Anyone can browse;{" "}
+                Newly registered tips waiting for moderation — they stay off the main map until approved. Anyone can browse;{" "}
                 <strong className="font-semibold text-budget-text/80">Upvote</strong>,{" "}
                 <strong className="font-semibold text-budget-text/80">Downvote</strong>, and{" "}
                 <strong className="font-semibold text-budget-text/80">Report</strong> need sign-in.
@@ -1681,15 +1767,15 @@ export default function BudgetMapApp() {
                       className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
                     >
                       <span className="font-extrabold">Signed out</span> — sign in above to use Upvote, Downvote, or
-                      Report. If you tap those on a card, we&apos;ll remind you here with a short message. You can still
-                      read the queue.
+                      Report on newly registered spots. If you tap those on a card, we&apos;ll remind you here with a short
+                      message. You can still read the queue.
                     </div>
                   ) : null}
                   {isModerator ? (
                     <div className="rounded-xl border border-slate-300/80 bg-slate-50 px-3 py-2.5 text-[12px] leading-snug text-slate-900">
                       <p className="font-extrabold text-slate-800">Moderator</p>
                       <p className="mt-1 text-[11px] text-slate-600">
-                        Expired tips are scored automatically when you open Under Review (thresholds live in server
+                        Expired tips are scored automatically when you open Newly-registered (thresholds live in server
                         config, not here). Re-run if you have just changed votes or reports.
                       </p>
                       <button
@@ -1738,7 +1824,7 @@ export default function BudgetMapApp() {
                           : "bg-amber-100 text-amber-950"
                       }`}
                     >
-                      {row.status === "needs_review" ? "Moderator review" : "Under review"}
+                      {row.status === "needs_review" ? "Moderator review" : "Newly registered"}
                     </span>
                     <span className="text-[11px] font-bold text-budget-primary">
                       {formatReviewTimeRemaining(row.review_ends_at)}
@@ -1783,11 +1869,15 @@ export default function BudgetMapApp() {
                           onClick={() => void handleVoteOnSubmission(row.id, "upvote")}
                           className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
                             myVotes[row.id] === "upvote"
-                              ? "border-budget-primary bg-budget-surface text-budget-text"
+                              ? "border-budget-primary bg-budget-primary text-white"
                               : "border-budget-surface bg-budget-bg text-budget-text"
                           }`}
                         >
-                          <ThumbsUp size={18} className="shrink-0 text-budget-primary" aria-hidden />
+                          <ThumbsUp
+                            size={18}
+                            className={`shrink-0 ${myVotes[row.id] === "upvote" ? "text-white" : "text-budget-primary"}`}
+                            aria-hidden
+                          />
                           <span className="min-w-0">Upvote</span>
                           <span className="tabular-nums text-budget-primary">{voteTallies[row.id]?.up ?? 0}</span>
                         </button>
@@ -1796,11 +1886,15 @@ export default function BudgetMapApp() {
                           onClick={() => void handleVoteOnSubmission(row.id, "downvote")}
                           className={`inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border-2 px-2 py-2.5 text-[13px] font-extrabold ${
                             myVotes[row.id] === "downvote"
-                              ? "border-budget-primary bg-budget-surface text-budget-text"
+                              ? "border-budget-primary bg-budget-primary text-white"
                               : "border-budget-surface bg-budget-bg text-budget-text"
                           }`}
                         >
-                          <ThumbsDown size={18} className="shrink-0 text-budget-muted" aria-hidden />
+                          <ThumbsDown
+                            size={18}
+                            className={`shrink-0 ${myVotes[row.id] === "downvote" ? "text-white" : "text-budget-muted"}`}
+                            aria-hidden
+                          />
                           <span className="min-w-0">Downvote</span>
                           <span className="tabular-nums text-budget-muted">{voteTallies[row.id]?.down ?? 0}</span>
                         </button>
@@ -1875,34 +1969,9 @@ export default function BudgetMapApp() {
           ) : (
             <>
               <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-                Verified map spots only (not device-only tips). Weekly uses spots that first appeared in the last{" "}
-                {RANKING_RULES.weeklyRegistrationDays} days; scores use cumulative 👍/👎 until per-week vote history
-                exists.
+                Ranking is ordered by net score: <strong>upvotes minus downvotes</strong>. Weekly uses places first seen in
+                the last {RANKING_RULES.weeklyRegistrationDays} days.
               </p>
-              <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-budget-subtle">Sort</p>
-              <div className="mb-4 flex flex-wrap gap-1.5">
-                {(
-                  [
-                    { id: "price" as const, label: "Cheapest" },
-                    { id: "buzz" as const, label: "Net score" },
-                    { id: "snitches" as const, label: "Most tips" },
-                  ] as const
-                ).map(({ id, label }) => {
-                  const active = communitySort === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setCommunitySort(id)}
-                      className={`cursor-pointer rounded-full border-0 px-3.5 py-2 text-xs font-semibold ${
-                        active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
               <p className="mb-3 text-sm text-budget-muted">Tap a row to open it on the map (same flow as the map tab).</p>
               {remoteApprovedSpots.length === 0 ? (
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
@@ -1971,7 +2040,7 @@ export default function BudgetMapApp() {
             <p className="mb-4 text-xs text-budget-text/50">
               {isSupabaseConfigured() ? (
                 <>
-                  Spill the beans on prices — tips go to a <strong>review queue</strong> and only hit the map after
+                  Spill the beans on prices — tips go to a <strong>newly-registered queue</strong> and only hit the map after
                   approval. Use a real address (and venue search when available) so moderators can verify.
                 </>
               ) : (
@@ -2016,7 +2085,7 @@ export default function BudgetMapApp() {
 
             {isSupabaseConfigured() && !session?.user ? (
               <p className="mb-3 rounded-[14px] border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-center text-[12px] font-semibold text-amber-950">
-                Sign in with the magic link above to send your tip to the database-backed review queue.
+                Sign in with the magic link above to send your tip to the database-backed newly-registered queue.
               </p>
             ) : null}
 
@@ -2218,7 +2287,7 @@ export default function BudgetMapApp() {
                     This Google place is already{" "}
                     {submitDuplicateInfo.kind === "approved"
                       ? "on the map as an approved spot"
-                      : "in the review queue"}{" "}
+                      : "in the newly-registered queue"}{" "}
                     {submitDuplicateInfo.name ? (
                       <>
                         (<span className="font-semibold">{submitDuplicateInfo.name}</span>).
@@ -2253,18 +2322,31 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      {tab === "saved" && (
+      {tab === "profile" && (
         <div className="budget-tab-panel p-4">
+          <h2 className="mb-1 text-lg font-extrabold text-budget-text">Profile</h2>
+          <p className="mb-4 text-[12px] leading-snug text-budget-muted">
+            Account tools and your saved places live here.
+          </p>
+          {isSupabaseConfigured() && getBrowserSupabase() ? (
+            <div className="mb-4">
+              <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
+            </div>
+          ) : null}
           {isSupabaseConfigured() && getBrowserSupabase() && !session?.user ? (
             <div
               role="note"
               className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
             >
               <span className="font-extrabold">Signed out</span> — device-only saves appear here.{" "}
-              <span className="font-semibold">Sign in</span> via Review → Under Review to sync verified map spots to your
+              <span className="font-semibold">Sign in</span> via Ranking to sync verified map spots to your
               account.
             </div>
           ) : null}
+          <div className="mb-2 flex items-center justify-between">
+            <h3 className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">Saved</h3>
+            <span className="text-[12px] font-semibold text-budget-muted">{savedSpots.length}</span>
+          </div>
           {savedSpots.length === 0 ? (
             <div className="px-3 py-12 text-center text-budget-text/50">
               <Bookmark size={40} strokeWidth={1.25} className="mx-auto mb-4 opacity-[0.35]" />
@@ -2385,10 +2467,10 @@ export default function BudgetMapApp() {
         {(
           [
             { id: "map" as Tab, label: "Map", Icon: Map },
-            { id: "community" as Tab, label: "Review", Icon: Users },
+            { id: "ranking" as Tab, label: "Ranking", Icon: Crown },
             { id: "submit" as Tab, label: "Submit", Icon: Plus },
-            { id: "saved" as Tab, label: "Saved", Icon: Bookmark },
             { id: "course" as Tab, label: "Course", Icon: Route },
+            { id: "profile" as Tab, label: "Profile", Icon: User },
           ] as const
         ).map(({ id, label, Icon }) => {
           const active = tab === id;

@@ -218,8 +218,11 @@ function MapViewLeaflet({
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const onSelectRef = useRef(onSelect);
-  onSelectRef.current = onSelect;
   const lastFlyRef = useRef<string>("");
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -296,7 +299,10 @@ function MapViewGoogle({
   const mapRef = useRef<google.maps.Map | null>(null);
   const lastFlyRef = useRef<string>("");
   const onSelectRef = useRef(onSelect);
-  onSelectRef.current = onSelect;
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+  }, [onSelect]);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: BUDGET_MAP_GOOGLE_LOADER_ID,
@@ -402,17 +408,12 @@ function MapViewGoogle({
   );
 }
 
-/** Google Maps when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is set; otherwise Leaflet + MapTiler/Carto. */
+/** Always prefer Leaflet here so the app keeps a clean map canvas without Google footer UI. */
 export default function MapView(props: {
   spots: MapSpot[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
 }) {
-  /* Strip all whitespace — Vercel paste often inserts accidental spaces inside the key */
-  const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, "");
-  if (googleKey) {
-    return <MapViewGoogle {...props} apiKey={googleKey} />;
-  }
   return <MapViewLeaflet {...props} />;
 }
