@@ -1643,7 +1643,7 @@ export default function BudgetMapApp() {
         type="button"
         onClick={() => {
           if (id === "all") {
-            setActiveCats(CATEGORY_IDS);
+            setActiveCats((prev) => (prev.length === CATEGORY_IDS.length ? [] : CATEGORY_IDS));
             setCourseResult(null);
             setSelectedId(null);
             return;
