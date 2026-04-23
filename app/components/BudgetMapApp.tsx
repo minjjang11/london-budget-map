@@ -1858,7 +1858,7 @@ export default function BudgetMapApp() {
               >
                 <span
                   style={{
-                    fontSize: "9px",
+                    fontSize: "11px",
                     fontWeight: 800,
                     color: "#00A878",
                     letterSpacing: "0.08em",
@@ -2021,23 +2021,25 @@ export default function BudgetMapApp() {
                       {catEmoji(selected.category)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
-                          {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
-                          {selected.area.toUpperCase()}
-                        </p>
+                      <div className="flex items-start justify-between gap-1.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
+                            {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
+                            {selected.area.toUpperCase()}
+                          </p>
+                          <h2 className="mt-0.5 break-words text-[1.2rem] font-extrabold leading-[1.15] tracking-[-0.03em] text-budget-text">
+                            {selected.name}
+                          </h2>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setSelectedId(null)}
-                          className="grid size-9 shrink-0 place-items-center rounded-full border-0 bg-budget-surface text-budget-text cursor-pointer transition hover:bg-budget-surface/80"
+                          className="mt-0.5 grid size-9 shrink-0 place-items-center rounded-full border-0 bg-budget-surface text-budget-text cursor-pointer transition hover:bg-budget-surface/80"
                           aria-label="Close"
                         >
                           <X size={16} />
                         </button>
                       </div>
-                      <h2 className="mt-0.5 text-[1.2rem] font-extrabold leading-[1.15] tracking-[-0.03em] text-budget-text">
-                        {selected.name}
-                      </h2>
                       <div className="mt-2">
                         <span className="inline-flex rounded-full bg-budget-primary px-3 py-1.5 text-[13px] font-extrabold text-white shadow-[0_4px_12px_rgb(0_168_120_/0.35)]">
                           from {formatMapPriceLabel(lowestPrice(selected))}
