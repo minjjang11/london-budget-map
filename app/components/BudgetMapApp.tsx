@@ -1830,11 +1830,11 @@ export default function BudgetMapApp() {
             style={{
               position: "absolute",
               right: "38px",
-              top: "0",
+              top: "4px",
               width: "calc(100% - 42px)",
               maxWidth: "326px",
               overflow: "hidden",
-              maxHeight: budgetOpen ? "54px" : "0px",
+              maxHeight: budgetOpen ? "50px" : "0px",
               opacity: budgetOpen ? 1 : 0,
               transition: "max-height 0.32s ease, opacity 0.22s ease",
             }}
@@ -1843,7 +1843,7 @@ export default function BudgetMapApp() {
               style={{
                 background: "#F7FDFB",
                 borderRadius: "16px",
-                padding: "6px 10px 6px",
+                padding: "4px 10px 5px",
                 boxShadow: "0 4px 20px rgba(13, 31, 26, 0.10)",
                 border: "none",
               }}
@@ -1853,7 +1853,7 @@ export default function BudgetMapApp() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: "2px",
+                  marginBottom: "1px",
                 }}
               >
                 <span
@@ -1868,7 +1868,7 @@ export default function BudgetMapApp() {
                   Map Budget
                 </span>
               </div>
-              <div style={{ position: "relative", padding: "8px 3px 0" }}>
+              <div style={{ position: "relative", padding: "7px 3px 0" }}>
                 <span
                   style={{
                     position: "absolute",
