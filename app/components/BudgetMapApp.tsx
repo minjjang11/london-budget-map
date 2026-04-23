@@ -160,7 +160,7 @@ function spotPreviewBlurb(spot: Spot): string {
   for (const sub of spot.submissions) {
     if (sub.review?.trim()) return sub.review.trim();
   }
-  return "Crowdsourced prices — open full details for the menu breakdown and buzz.";
+  return "Crowdsourced prices — open full details for the menu breakdown.";
 }
 
 /** New spots stay “on trial” for 7 days for community scrutiny (local UX until backend). */
@@ -1996,7 +1996,7 @@ export default function BudgetMapApp() {
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className={`absolute bottom-0 left-0 right-0 border border-budget-surface/80 bg-budget-white px-4 pt-4 shadow-budget-sheet animate-slide-up ${
+                className={`absolute bottom-0 left-0 right-0 border border-budget-surface/80 bg-budget-white px-4 pt-3 shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
                     ? "rounded-t-[26px] max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
                     : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(62vh,520px)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-4"
@@ -2004,7 +2004,7 @@ export default function BudgetMapApp() {
               >
                 {!placeDetailExpanded ? (
                   <div
-                    className="flex gap-3"
+                    className="flex gap-2.5"
                     style={
                       placeDetailTransition === "backward"
                         ? { animation: "detailPushBack 0.24s cubic-bezier(0.22, 1, 0.36, 1)" }
@@ -2032,26 +2032,26 @@ export default function BudgetMapApp() {
                           <X size={16} />
                         </button>
                       </div>
-                      <h2 className="mt-1 text-[1.2rem] font-extrabold leading-[1.15] tracking-[-0.03em] text-budget-text">
+                      <h2 className="mt-0.5 text-[1.2rem] font-extrabold leading-[1.15] tracking-[-0.03em] text-budget-text">
                         {selected.name}
                       </h2>
-                      <div className="mt-2.5">
+                      <div className="mt-2">
                         <span className="inline-flex rounded-full bg-budget-primary px-3 py-1.5 text-[13px] font-extrabold text-white shadow-[0_4px_12px_rgb(0_168_120_/0.35)]">
                           from {formatMapPriceLabel(lowestPrice(selected))}
                         </span>
                       </div>
-                      <p className="mt-2 text-[11px] leading-snug text-budget-text/50">{selected.address}</p>
-                      <p className="mt-2 line-clamp-4 text-[13px] leading-snug text-budget-text/75">
+                      <p className="mt-1.5 text-[11px] leading-snug text-budget-text/50">{selected.address}</p>
+                      <p className="mt-1.5 line-clamp-4 text-[13px] leading-snug text-budget-text/75">
                         {spotPreviewBlurb(selected)}
                       </p>
                       {remoteIds.has(selected.id) || selectedIsPending ? (
-                        <p className="mt-2 text-[11px] font-semibold text-budget-muted">
+                        <p className="mt-1.5 text-[11px] font-semibold text-budget-muted">
                           👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
                           {selectedIsPending ? selectedPendingTallies.down : selected.downvotes ?? 0}
                           {!session?.user ? " · Sign in (Ranking → Newly-registered) to vote" : null}
                         </p>
                       ) : null}
-                      <div className="mt-4 flex flex-col gap-2">
+                      <div className="mt-3 flex flex-col gap-2">
                         <button
                           type="button"
                           onClick={() => {
