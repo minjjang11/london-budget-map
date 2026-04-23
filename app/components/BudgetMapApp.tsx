@@ -1705,7 +1705,13 @@ export default function BudgetMapApp() {
     />
   );
 
-  const panelHero = (title: string, Icon: typeof Crown, accentClass: string, accentLabel: string) => (
+  const panelHero = (
+    title: string,
+    Icon: typeof Crown,
+    accentClass: string,
+    accentLabel: string,
+    rightBadge?: string,
+  ) => (
     <section
       className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
       style={{ top: "max(20px, env(safe-area-inset-top))" }}
@@ -1722,9 +1728,11 @@ export default function BudgetMapApp() {
           </h2>
         </div>
         </div>
-        <div className="shrink-0 rounded-full border border-budget-surface bg-budget-bg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-muted">
-          London
-        </div>
+        {rightBadge ? (
+          <div className="shrink-0 rounded-full border border-budget-surface bg-budget-bg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-muted">
+            {rightBadge}
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -1783,14 +1791,14 @@ export default function BudgetMapApp() {
             left: "12px",
             right: "12px",
             zIndex: 49,
-            top: "calc(max(29px, env(safe-area-inset-top)) + 96px)",
+            top: "calc(max(29px, env(safe-area-inset-top)) + 102px)",
           }}
         >
           <div
             style={{
               display: "flex",
               justifyContent: "flex-end",
-              marginBottom: budgetOpen ? "6px" : "0px",
+              marginBottom: budgetOpen ? "8px" : "0px",
               transition: "margin-bottom 0.28s ease",
             }}
           >
@@ -1800,18 +1808,18 @@ export default function BudgetMapApp() {
               style={{
                 background: "#F7FDFB",
                 border: "none",
-                borderRadius: "12px",
-                width: "36px",
-                height: "36px",
+                borderRadius: "999px",
+                width: "30px",
+                height: "30px",
                 display: "grid",
                 placeItems: "center",
                 cursor: "pointer",
-                boxShadow: "0 4px 16px rgba(13, 31, 26, 0.12)",
+                boxShadow: "0 3px 12px rgba(13, 31, 26, 0.10)",
               }}
               aria-label={budgetOpen ? "Close budget filter" : "Open budget filter"}
             >
               <SlidersHorizontal
-                size={18}
+                size={14}
                 strokeWidth={2}
                 color={budgetOpen ? "#00A878" : "#0D1F1A"}
               />
@@ -1819,10 +1827,11 @@ export default function BudgetMapApp() {
           </div>
           <div
             style={{
-              width: "calc(100% - 46px)",
-              marginRight: "46px",
+              width: "calc(100% - 56px)",
+              maxWidth: "296px",
+              marginRight: "40px",
               overflow: "hidden",
-              maxHeight: budgetOpen ? "74px" : "0px",
+              maxHeight: budgetOpen ? "68px" : "0px",
               opacity: budgetOpen ? 1 : 0,
               transition: "max-height 0.32s ease, opacity 0.22s ease",
             }}
@@ -1831,7 +1840,7 @@ export default function BudgetMapApp() {
               style={{
                 background: "#F7FDFB",
                 borderRadius: "16px",
-                padding: "8px 12px 9px",
+                padding: "7px 10px 8px",
                 boxShadow: "0 4px 20px rgba(13, 31, 26, 0.10)",
                 border: "none",
               }}
@@ -1841,7 +1850,7 @@ export default function BudgetMapApp() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: "5px",
+                  marginBottom: "4px",
                 }}
               >
                 <span
@@ -1856,7 +1865,7 @@ export default function BudgetMapApp() {
                   Map Budget
                 </span>
               </div>
-              <div style={{ position: "relative", padding: "11px 4px 0" }}>
+              <div style={{ position: "relative", padding: "10px 4px 0" }}>
                 <span
                   style={{
                     position: "absolute",
