@@ -1796,16 +1796,17 @@ export default function BudgetMapApp() {
         >
           <div
             style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginBottom: budgetOpen ? "5px" : "0px",
-              transition: "margin-bottom 0.28s ease",
+              position: "relative",
+              minHeight: budgetOpen ? "62px" : "32px",
             }}
           >
             <button
               type="button"
               onClick={() => setBudgetOpen((v) => !v)}
               style={{
+                position: "absolute",
+                right: "0",
+                top: budgetOpen ? "26px" : "2px",
                 background: "#F7FDFB",
                 border: "none",
                 borderRadius: "999px",
@@ -1815,6 +1816,7 @@ export default function BudgetMapApp() {
                 placeItems: "center",
                 cursor: "pointer",
                 boxShadow: "0 3px 12px rgba(13, 31, 26, 0.10)",
+                transition: "top 0.28s ease",
               }}
               aria-label={budgetOpen ? "Close budget filter" : "Open budget filter"}
             >
@@ -1827,9 +1829,9 @@ export default function BudgetMapApp() {
           </div>
           <div
             style={{
-              width: "calc(100% - 38px)",
-              maxWidth: "322px",
-              marginRight: "34px",
+              width: "calc(100% - 42px)",
+              maxWidth: "326px",
+              marginRight: "38px",
               overflow: "hidden",
               maxHeight: budgetOpen ? "60px" : "0px",
               opacity: budgetOpen ? 1 : 0,
