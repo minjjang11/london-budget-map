@@ -1783,17 +1783,21 @@ export default function BudgetMapApp() {
             left: "12px",
             right: "12px",
             zIndex: 49,
-            top: "calc(max(29px, env(safe-area-inset-top)) + 86px)",
+            top: "calc(max(29px, env(safe-area-inset-top)) + 96px)",
           }}
         >
-          <div style={{ position: "relative", minHeight: budgetOpen ? "74px" : "36px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              marginBottom: budgetOpen ? "6px" : "0px",
+              transition: "margin-bottom 0.28s ease",
+            }}
+          >
             <button
               type="button"
               onClick={() => setBudgetOpen((v) => !v)}
               style={{
-                position: "absolute",
-                right: "0",
-                top: budgetOpen ? "10px" : "0",
                 background: "#F7FDFB",
                 border: "none",
                 borderRadius: "12px",
@@ -1803,7 +1807,6 @@ export default function BudgetMapApp() {
                 placeItems: "center",
                 cursor: "pointer",
                 boxShadow: "0 4px 16px rgba(13, 31, 26, 0.12)",
-                transition: "top 0.3s ease, background-color 0.2s ease",
               }}
               aria-label={budgetOpen ? "Close budget filter" : "Open budget filter"}
             >
@@ -1813,78 +1816,78 @@ export default function BudgetMapApp() {
                 color={budgetOpen ? "#00A878" : "#0D1F1A"}
               />
             </button>
-
+          </div>
+          <div
+            style={{
+              width: "calc(100% - 46px)",
+              marginRight: "46px",
+              overflow: "hidden",
+              maxHeight: budgetOpen ? "74px" : "0px",
+              opacity: budgetOpen ? 1 : 0,
+              transition: "max-height 0.32s ease, opacity 0.22s ease",
+            }}
+          >
             <div
               style={{
-                overflow: "hidden",
-                maxHeight: budgetOpen ? "92px" : "0px",
-                opacity: budgetOpen ? 1 : 0,
-                transition: "max-height 0.32s ease, opacity 0.22s ease",
-                width: "calc(100% - 46px)",
+                background: "#F7FDFB",
+                borderRadius: "16px",
+                padding: "8px 12px 9px",
+                boxShadow: "0 4px 20px rgba(13, 31, 26, 0.10)",
+                border: "none",
               }}
             >
               <div
                 style={{
-                  background: "#F7FDFB",
-                  borderRadius: "16px",
-                  padding: "10px 14px 12px",
-                  boxShadow: "0 4px 20px rgba(13, 31, 26, 0.10)",
-                  border: "none",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "5px",
                 }}
               >
-                <div
+                <span
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: "8px",
+                    fontSize: "9px",
+                    fontWeight: 800,
+                    color: "#00A878",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
                   }}
                 >
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: 800,
-                      color: "#00A878",
-                      letterSpacing: "0.08em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Map Budget
-                  </span>
-                </div>
-                <div style={{ position: "relative", padding: "12px 6px 0" }}>
-                  <span
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: `calc(${mapBudgetPercent}% * 0.84 + 8%)`,
-                      transform: "translateX(-50%)",
-                      pointerEvents: "none",
-                      borderRadius: "999px",
-                      border: "1px solid #E0F7F2",
-                      background: "#FFFFFF",
-                      padding: "2px 8px",
-                      fontSize: "10px",
-                      fontWeight: 800,
-                      lineHeight: 1,
-                      color: "#0D1F1A",
-                      boxShadow: "0 2px 8px rgba(13,31,26,0.08)",
-                    }}
-                  >
-                    {formatBudgetCap(mapBudget)}
-                  </span>
-                  <input
-                    type="range"
-                    min={mapBudgetMin}
-                    max={mapBudgetMax}
-                    step={0.5}
-                    value={mapBudget}
-                    onChange={(e) => setMapBudget(parseFloat(e.target.value))}
-                    className="budget-range w-full"
-                    style={{ ["--range-progress" as string]: `${mapBudgetPercent}%` }}
-                    aria-label="Maximum budget on map"
-                  />
-                </div>
+                  Map Budget
+                </span>
+              </div>
+              <div style={{ position: "relative", padding: "11px 4px 0" }}>
+                <span
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: `calc(${mapBudgetPercent}% * 0.84 + 8%)`,
+                    transform: "translateX(-50%)",
+                    pointerEvents: "none",
+                    borderRadius: "999px",
+                    border: "1px solid #E0F7F2",
+                    background: "#FFFFFF",
+                    padding: "2px 8px",
+                    fontSize: "9px",
+                    fontWeight: 800,
+                    lineHeight: 1,
+                    color: "#0D1F1A",
+                    boxShadow: "0 2px 8px rgba(13,31,26,0.08)",
+                  }}
+                >
+                  {formatBudgetCap(mapBudget)}
+                </span>
+                <input
+                  type="range"
+                  min={mapBudgetMin}
+                  max={mapBudgetMax}
+                  step={0.5}
+                  value={mapBudget}
+                  onChange={(e) => setMapBudget(parseFloat(e.target.value))}
+                  className="budget-range w-full"
+                  style={{ ["--range-progress" as string]: `${mapBudgetPercent}%` }}
+                  aria-label="Maximum budget on map"
+                />
               </div>
             </div>
           </div>
