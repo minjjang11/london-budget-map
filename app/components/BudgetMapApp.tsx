@@ -1637,7 +1637,8 @@ export default function BudgetMapApp() {
 
   /** Fixed 4-slot map filter: same visual style, but always fits without horizontal scroll. */
   const chipCat = (id: Category | "all", label: string, emoji: string) => {
-    const active = id === "all" ? activeCats.length === CATEGORY_IDS.length : activeCats.includes(id);
+    const allSelected = activeCats.length === CATEGORY_IDS.length;
+    const active = id === "all" ? allSelected : !allSelected && activeCats.includes(id);
     return (
       <button
         key={String(id)}
@@ -1790,20 +1791,10 @@ export default function BudgetMapApp() {
               Budget Map
             </Link>
           </h1>
-          <div className="mt-0.5 flex items-center gap-1.5">
+          <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-0 flex-1 flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
             </div>
-            <button
-              type="button"
-              onClick={() => setMapBudgetOpen((prev) => !prev)}
-              className="inline-flex size-[38px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-budget-surface bg-budget-bg text-budget-primary shadow-[inset_0_1px_0_rgb(255_255_255_/0.45)]"
-              aria-expanded={mapBudgetOpen}
-              aria-controls="map-budget-slider"
-              aria-label={mapBudgetOpen ? "Hide map budget" : "Show map budget"}
-            >
-              <SlidersHorizontal size={16} strokeWidth={2.1} aria-hidden />
-            </button>
           </div>
           <div
             id="map-budget-slider"
@@ -1870,6 +1861,16 @@ export default function BudgetMapApp() {
               </div>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setMapBudgetOpen((prev) => !prev)}
+            className="absolute right-[-12px] top-[88px] inline-flex size-[38px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-budget-surface bg-budget-white text-budget-primary shadow-budget-float"
+            aria-expanded={mapBudgetOpen}
+            aria-controls="map-budget-slider"
+            aria-label={mapBudgetOpen ? "Hide map budget" : "Show map budget"}
+          >
+            <SlidersHorizontal size={16} strokeWidth={2.1} aria-hidden />
+          </button>
         </header>
       )}
 
