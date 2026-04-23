@@ -1652,7 +1652,7 @@ export default function BudgetMapApp() {
             const has = prev.includes(id);
             if (has) {
               const next = prev.filter((cat) => cat !== id);
-              return next.length ? CATEGORY_IDS.filter((cat) => next.includes(cat)) : CATEGORY_IDS;
+              return CATEGORY_IDS.filter((cat) => next.includes(cat));
             }
             return CATEGORY_IDS.filter((cat) => [...prev, id].includes(cat));
           });
