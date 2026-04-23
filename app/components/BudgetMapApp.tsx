@@ -1880,7 +1880,7 @@ export default function BudgetMapApp() {
                     border: "1px solid #E0F7F2",
                     background: "#FFFFFF",
                     padding: "2px 7px",
-                    fontSize: "8px",
+                    fontSize: "9px",
                     fontWeight: 800,
                     lineHeight: 1,
                     color: "#0D1F1A",
