@@ -98,13 +98,6 @@ const SUBMIT_PRICE_LIMITS: Record<Category, number> = {
   pub: 7.5,
   cafe: 4.5,
 };
-const MAP_BUDGET_LIMITS = {
-  all: 12.5,
-  restaurant: 12.5,
-  pub: 7.5,
-  cafe: 4.5,
-} as const;
-
 const CATEGORY_IDS: Category[] = ["restaurant", "pub", "cafe"];
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -377,13 +370,8 @@ export default function BudgetMapApp() {
   const [activeCats, setActiveCats] = useState<Category[]>(CATEGORY_IDS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
-  const [mapBudgets, setMapBudgets] = useState<Record<Category | "all", number>>({
-    all: MAP_BUDGET_LIMITS.all,
-    restaurant: MAP_BUDGET_LIMITS.restaurant,
-    pub: MAP_BUDGET_LIMITS.pub,
-    cafe: MAP_BUDGET_LIMITS.cafe,
-  });
-  const [mapBudgetOpen, setMapBudgetOpen] = useState(false);
+  const [budgetOpen, setBudgetOpen] = useState(false);
+  const [mapBudget, setMapBudget] = useState(10);
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
@@ -570,23 +558,6 @@ export default function BudgetMapApp() {
     const locals = spots.filter((s) => !remoteIds.has(s.id) && !isHiddenSpotName(s.name));
     return [...approved, ...pendingQueueSpots, ...locals];
   }, [mergedRemoteApprovedSpots, pendingQueueSpots, spots, remoteIds]);
-
-  const activeBudgetKey: Category | "all" = activeCats.length === 1 ? activeCats[0] : "all";
-  const currentMapBudgetMax = MAP_BUDGET_LIMITS[activeBudgetKey];
-  const currentMapBudget = mapBudgets[activeBudgetKey];
-  const currentMapBudgetMin = 2;
-  const currentMapBudgetPercent =
-    ((currentMapBudget - currentMapBudgetMin) / Math.max(0.5, currentMapBudgetMax - currentMapBudgetMin)) * 100;
-
-  useEffect(() => {
-    setMapBudgets((prev) => {
-      const next = { ...prev };
-      (Object.keys(MAP_BUDGET_LIMITS) as Array<Category | "all">).forEach((key) => {
-        if (next[key] > MAP_BUDGET_LIMITS[key]) next[key] = MAP_BUDGET_LIMITS[key];
-      });
-      return next;
-    });
-  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -827,10 +798,10 @@ export default function BudgetMapApp() {
     () =>
       allSpots.filter((s) => {
         if (!activeCats.includes(s.category)) return false;
-        if (lowestPrice(s) > currentMapBudget + 0.001) return false;
+        if (lowestPrice(s) > mapBudget + 0.001) return false;
         return true;
       }),
-    [allSpots, activeCats, currentMapBudget],
+    [allSpots, activeCats, mapBudget],
   );
 
   /** Rankings tab: approved remote places only (same cat/area filters as the map list). */
@@ -1796,82 +1767,109 @@ export default function BudgetMapApp() {
               {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
             </div>
           </div>
+        </header>
+      )}
+
+      {tab === "map" && (
+        <div
+          style={{
+            position: "absolute",
+            left: "12px",
+            right: "12px",
+            zIndex: 49,
+            top: budgetOpen
+              ? "calc(max(29px, env(safe-area-inset-top)) + 118px + 12px)"
+              : "calc(max(29px, env(safe-area-inset-top)) + 118px + 12px)",
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={() => setBudgetOpen((v) => !v)}
+              style={{
+                background: "#F7FDFB",
+                border: "none",
+                borderRadius: "12px",
+                width: "36px",
+                height: "36px",
+                display: "grid",
+                placeItems: "center",
+                cursor: "pointer",
+                boxShadow: "0 4px 16px rgba(13, 31, 26, 0.12)",
+              }}
+              aria-label={budgetOpen ? "Close budget filter" : "Open budget filter"}
+            >
+              <SlidersHorizontal
+                size={18}
+                strokeWidth={2}
+                color={budgetOpen ? "#00A878" : "#0D1F1A"}
+              />
+            </button>
+          </div>
+
           <div
-            id="map-budget-slider"
-            aria-hidden={!mapBudgetOpen}
-            className={`grid overflow-hidden transition-all duration-300 ease-out ${
-              mapBudgetOpen ? "mt-1.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
-            }`}
+            style={{
+              overflow: "hidden",
+              maxHeight: budgetOpen ? "120px" : "0px",
+              opacity: budgetOpen ? 1 : 0,
+              transition: "max-height 0.3s ease, opacity 0.25s ease",
+              marginTop: "8px",
+            }}
           >
-            <div className="min-h-0">
+            <div
+              style={{
+                background: "#F7FDFB",
+                borderRadius: "16px",
+                padding: "14px 16px",
+                boxShadow: "0 4px 20px rgba(13, 31, 26, 0.10)",
+                border: "none",
+              }}
+            >
               <div
-                className={`rounded-[15px] border border-budget-surface/80 bg-budget-bg px-2.5 pb-1.5 pt-1.5 transition-all duration-300 ease-out ${
-                  mapBudgetOpen ? "translate-y-0" : "-translate-y-2"
-                }`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  marginBottom: "10px",
+                }}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
-                    {activeBudgetKey === "all"
-                      ? "Map budget"
-                      : `${CATS.find((c) => c.id === activeBudgetKey)?.label ?? "Spot"} budget`}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setMapBudgetOpen(false)}
-                    className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-budget-surface bg-budget-white text-budget-muted"
-                    aria-label="Close map budget"
-                  >
-                    <X size={12} strokeWidth={2.3} aria-hidden />
-                  </button>
-                </div>
-                <div className="relative mt-1.5 px-2.5 pt-3">
-                  <span
-                    className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[8px] font-extrabold leading-none text-budget-primary shadow-sm"
-                    style={{ left: `calc(${currentMapBudgetPercent}% * 0.84 + 8%)` }}
-                  >
-                    {formatBudgetCap(currentMapBudget)}
-                  </span>
-                  <input
-                    type="range"
-                    min={currentMapBudgetMin}
-                    max={currentMapBudgetMax}
-                    step={0.5}
-                    value={currentMapBudget}
-                    onChange={(e) =>
-                      setMapBudgets((prev) => {
-                        const nextValue = parseFloat(e.target.value);
-                        if (activeBudgetKey !== "all") {
-                          return {
-                            ...prev,
-                            [activeBudgetKey]: nextValue,
-                          };
-                        }
-                        const next = { ...prev, all: nextValue };
-                        activeCats.forEach((category) => {
-                          next[category] = nextValue;
-                        });
-                        return next;
-                      })
-                    }
-                    className="budget-range w-full"
-                    style={{ ["--range-progress" as string]: `${currentMapBudgetPercent}%` }}
-                    aria-label="Maximum budget on map"
-                  />
-                </div>
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "#00A878",
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Map Budget
+                </span>
+                <span
+                  style={{
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    color: "#0D1F1A",
+                    background: "#fff",
+                    borderRadius: "999px",
+                    padding: "2px 10px",
+                    boxShadow: "0 2px 8px rgba(13,31,26,0.08)",
+                  }}
+                >
+                  £{mapBudget}
+                </span>
               </div>
+              <input
+                type="range"
+                min={3}
+                max={15}
+                step={0.5}
+                value={mapBudget}
+                onChange={(e) => setMapBudget(parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "#00A878" }}
+              />
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setMapBudgetOpen((prev) => !prev)}
-            className="absolute right-[-12px] top-[88px] inline-flex size-[38px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-budget-surface bg-budget-white text-budget-primary shadow-budget-float"
-            aria-expanded={mapBudgetOpen}
-            aria-controls="map-budget-slider"
-            aria-label={mapBudgetOpen ? "Hide map budget" : "Show map budget"}
-          >
-            <SlidersHorizontal size={16} strokeWidth={2.1} aria-hidden />
-          </button>
-        </header>
+        </div>
       )}
 
       {tab === "ranking" && (
