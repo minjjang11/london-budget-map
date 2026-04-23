@@ -367,7 +367,7 @@ export default function BudgetMapApp() {
     [savedLocalIds, savedRemoteIds],
   );
   const [tab, setTab] = useState<Tab>("map");
-  const [activeCats, setActiveCats] = useState<Category[]>(CATEGORY_IDS);
+  const [activeCats, setActiveCats] = useState<Category[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
   const [budgetOpen, setBudgetOpen] = useState(false);
@@ -797,7 +797,7 @@ export default function BudgetMapApp() {
   const filtered = useMemo(
     () =>
       allSpots.filter((s) => {
-        if (!activeCats.includes(s.category)) return false;
+        if (activeCats.length > 0 && !activeCats.includes(s.category)) return false;
         if (lowestPrice(s) > mapBudget + 0.001) return false;
         return true;
       }),
@@ -814,7 +814,7 @@ export default function BudgetMapApp() {
     () =>
       mergedRemoteApprovedSpots.filter((s) => {
         if (isHiddenSpotName(s.name)) return false;
-        if (!activeCats.includes(s.category)) return false;
+        if (activeCats.length > 0 && !activeCats.includes(s.category)) return false;
         return true;
       }),
     [mergedRemoteApprovedSpots, activeCats],
@@ -1613,20 +1613,21 @@ export default function BudgetMapApp() {
 
   /** Fixed 4-slot map filter: same visual style, but always fits without horizontal scroll. */
   const chipCat = (id: Category | "all", label: string, emoji: string) => {
-    const allSelected = activeCats.length === CATEGORY_IDS.length;
-    const active = id === "all" ? allSelected : !allSelected && activeCats.includes(id);
+    const allSelected = activeCats.length === 0;
+    const active = id === "all" ? allSelected : activeCats.includes(id);
     return (
       <button
         key={String(id)}
         type="button"
         onClick={() => {
           if (id === "all") {
-            setActiveCats((prev) => (prev.length === CATEGORY_IDS.length ? [] : CATEGORY_IDS));
+            setActiveCats([]);
             setCourseResult(null);
             setSelectedId(null);
             return;
           }
           setActiveCats((prev) => {
+            if (prev.length === 0) return [id];
             const has = prev.includes(id);
             if (has) {
               const next = prev.filter((cat) => cat !== id);
