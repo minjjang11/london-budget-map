@@ -1791,14 +1791,14 @@ export default function BudgetMapApp() {
             left: "12px",
             right: "12px",
             zIndex: 49,
-            top: "calc(max(29px, env(safe-area-inset-top)) + 102px)",
+            top: "calc(max(29px, env(safe-area-inset-top)) + 97px)",
           }}
         >
           <div
             style={{
               display: "flex",
               justifyContent: "flex-end",
-              marginBottom: budgetOpen ? "8px" : "0px",
+              marginBottom: budgetOpen ? "5px" : "0px",
               transition: "margin-bottom 0.28s ease",
             }}
           >
@@ -1827,11 +1827,11 @@ export default function BudgetMapApp() {
           </div>
           <div
             style={{
-              width: "calc(100% - 56px)",
-              maxWidth: "296px",
-              marginRight: "40px",
+              width: "calc(100% - 38px)",
+              maxWidth: "322px",
+              marginRight: "34px",
               overflow: "hidden",
-              maxHeight: budgetOpen ? "68px" : "0px",
+              maxHeight: budgetOpen ? "60px" : "0px",
               opacity: budgetOpen ? 1 : 0,
               transition: "max-height 0.32s ease, opacity 0.22s ease",
             }}
@@ -1840,7 +1840,7 @@ export default function BudgetMapApp() {
               style={{
                 background: "#F7FDFB",
                 borderRadius: "16px",
-                padding: "7px 10px 8px",
+                padding: "6px 10px 6px",
                 boxShadow: "0 4px 20px rgba(13, 31, 26, 0.10)",
                 border: "none",
               }}
@@ -1850,7 +1850,7 @@ export default function BudgetMapApp() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  marginBottom: "4px",
+                  marginBottom: "2px",
                 }}
               >
                 <span
@@ -1865,7 +1865,7 @@ export default function BudgetMapApp() {
                   Map Budget
                 </span>
               </div>
-              <div style={{ position: "relative", padding: "10px 4px 0" }}>
+              <div style={{ position: "relative", padding: "8px 3px 0" }}>
                 <span
                   style={{
                     position: "absolute",
@@ -1876,8 +1876,8 @@ export default function BudgetMapApp() {
                     borderRadius: "999px",
                     border: "1px solid #E0F7F2",
                     background: "#FFFFFF",
-                    padding: "2px 8px",
-                    fontSize: "9px",
+                    padding: "2px 7px",
+                    fontSize: "8px",
                     fontWeight: 800,
                     lineHeight: 1,
                     color: "#0D1F1A",
