@@ -1834,6 +1834,7 @@ export default function BudgetMapApp() {
               width: "calc(100% - 42px)",
               maxWidth: "326px",
               overflow: "hidden",
+              borderRadius: "16px",
               maxHeight: budgetOpen ? "50px" : "0px",
               opacity: budgetOpen ? 1 : 0,
               transition: "max-height 0.32s ease, opacity 0.22s ease",
@@ -1858,7 +1859,7 @@ export default function BudgetMapApp() {
               >
                 <span
                   style={{
-                    fontSize: "11px",
+                    fontSize: "9px",
                     fontWeight: 800,
                     color: "#00A878",
                     letterSpacing: "0.08em",
@@ -1879,8 +1880,8 @@ export default function BudgetMapApp() {
                     borderRadius: "999px",
                     border: "1px solid #E0F7F2",
                     background: "#FFFFFF",
-                    padding: "2px 7px",
-                    fontSize: "9px",
+                    padding: "2px 8px",
+                    fontSize: "11px",
                     fontWeight: 800,
                     lineHeight: 1,
                     color: "#0D1F1A",
