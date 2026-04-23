@@ -20,6 +20,7 @@ import {
   Scale,
   ChevronRight,
   ChevronDown,
+  SlidersHorizontal,
   Flag,
   Trash2,
 } from "lucide-react";
@@ -382,7 +383,7 @@ export default function BudgetMapApp() {
     pub: MAP_BUDGET_LIMITS.pub,
     cafe: MAP_BUDGET_LIMITS.cafe,
   });
-  const [mapBudgetOpen, setMapBudgetOpen] = useState(true);
+  const [mapBudgetOpen, setMapBudgetOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
@@ -1789,29 +1790,50 @@ export default function BudgetMapApp() {
               Budget Map
             </Link>
           </h1>
-          <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
-            {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <div className="flex min-w-0 flex-1 flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setMapBudgetOpen((prev) => !prev)}
+              className="inline-flex size-[38px] shrink-0 cursor-pointer items-center justify-center rounded-full border border-budget-surface bg-budget-bg text-budget-primary shadow-[inset_0_1px_0_rgb(255_255_255_/0.45)]"
+              aria-expanded={mapBudgetOpen}
+              aria-controls="map-budget-slider"
+              aria-label={mapBudgetOpen ? "Hide map budget" : "Show map budget"}
+            >
+              <SlidersHorizontal size={16} strokeWidth={2.1} aria-hidden />
+            </button>
           </div>
-          <div className="mt-1.5 rounded-[15px] border border-budget-surface/80 bg-budget-bg px-2 pb-0 pt-0.5">
-            <div className="flex items-center gap-1">
-              <p className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
-                {activeBudgetKey === "all"
-                  ? "Map budget"
-                  : `${CATS.find((c) => c.id === activeBudgetKey)?.label ?? "Spot"} budget`}
-              </p>
-              <div className="ml-auto flex min-w-0 items-center gap-1">
+          <div
+            id="map-budget-slider"
+            aria-hidden={!mapBudgetOpen}
+            className={`grid overflow-hidden transition-all duration-300 ease-out ${
+              mapBudgetOpen ? "mt-1.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"
+            }`}
+          >
+            <div className="min-h-0">
               <div
-                id="map-budget-slider"
-                aria-hidden={!mapBudgetOpen}
-                className={`min-w-0 flex-1 overflow-visible transition-all duration-300 ease-out ${
-                  mapBudgetOpen ? "max-w-[214px] opacity-100" : "max-w-0 opacity-0"
+                className={`rounded-[15px] border border-budget-surface/80 bg-budget-bg px-2.5 pb-1.5 pt-1.5 transition-all duration-300 ease-out ${
+                  mapBudgetOpen ? "translate-y-0" : "-translate-y-2"
                 }`}
               >
-                <div
-                  className={`relative ml-auto transition-all duration-300 ease-out ${
-                    mapBudgetOpen ? "w-[204px] translate-y-0 pt-2" : "w-0 -translate-y-1 pt-0"
-                  }`}
-                >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
+                    {activeBudgetKey === "all"
+                      ? "Map budget"
+                      : `${CATS.find((c) => c.id === activeBudgetKey)?.label ?? "Spot"} budget`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setMapBudgetOpen(false)}
+                    className="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-full border border-budget-surface bg-budget-white text-budget-muted"
+                    aria-label="Close map budget"
+                  >
+                    <X size={12} strokeWidth={2.3} aria-hidden />
+                  </button>
+                </div>
+                <div className="relative mt-1.5 px-2.5 pt-3">
                   <span
                     className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[8px] font-extrabold leading-none text-budget-primary shadow-sm"
                     style={{ left: `calc(${currentMapBudgetPercent}% * 0.84 + 8%)` }}
@@ -1845,21 +1867,6 @@ export default function BudgetMapApp() {
                     aria-label="Maximum budget on map"
                   />
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setMapBudgetOpen((prev) => !prev)}
-                className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[9px] font-extrabold uppercase tracking-[0.08em] leading-none text-budget-muted"
-                aria-expanded={mapBudgetOpen}
-                aria-controls="map-budget-slider"
-              >
-                {!mapBudgetOpen ? formatBudgetCap(currentMapBudget) : null}
-                <ChevronDown
-                  size={11}
-                  className={`transition-transform duration-300 ease-out ${mapBudgetOpen ? "rotate-180" : ""}`}
-                  aria-hidden
-                />
-              </button>
               </div>
             </div>
           </div>
