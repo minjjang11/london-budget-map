@@ -1792,23 +1792,24 @@ export default function BudgetMapApp() {
           <div className="flex flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden w-full">
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
-          <div className="mt-1.5 rounded-[15px] border border-budget-surface/80 bg-budget-bg px-2 py-1">
-            <div className="flex items-center gap-2">
+          <div className="mt-1.5 rounded-[15px] border border-budget-surface/80 bg-budget-bg px-2 pb-0 pt-0.5">
+            <div className="flex items-center gap-1">
               <p className="shrink-0 text-[9px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
                 {activeBudgetKey === "all"
                   ? "Map budget"
                   : `${CATS.find((c) => c.id === activeBudgetKey)?.label ?? "Spot"} budget`}
               </p>
+              <div className="ml-auto flex min-w-0 items-center gap-1">
               <div
                 id="map-budget-slider"
                 aria-hidden={!mapBudgetOpen}
                 className={`min-w-0 flex-1 overflow-visible transition-all duration-300 ease-out ${
-                  mapBudgetOpen ? "max-w-[160px] opacity-100" : "max-w-0 opacity-0"
+                  mapBudgetOpen ? "max-w-[214px] opacity-100" : "max-w-0 opacity-0"
                 }`}
               >
                 <div
                   className={`relative ml-auto transition-all duration-300 ease-out ${
-                    mapBudgetOpen ? "w-[150px] translate-y-0 pt-3" : "w-0 -translate-y-1 pt-0"
+                    mapBudgetOpen ? "w-[204px] translate-y-0 pt-2" : "w-0 -translate-y-1 pt-0"
                   }`}
                 >
                   <span
@@ -1848,7 +1849,7 @@ export default function BudgetMapApp() {
               <button
                 type="button"
                 onClick={() => setMapBudgetOpen((prev) => !prev)}
-                className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.08em] leading-none text-budget-muted"
+                className="inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-1.5 py-[2px] text-[9px] font-extrabold uppercase tracking-[0.08em] leading-none text-budget-muted"
                 aria-expanded={mapBudgetOpen}
                 aria-controls="map-budget-slider"
               >
@@ -1859,6 +1860,7 @@ export default function BudgetMapApp() {
                   aria-hidden
                 />
               </button>
+              </div>
             </div>
           </div>
         </header>
