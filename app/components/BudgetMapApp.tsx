@@ -2144,7 +2144,7 @@ export default function BudgetMapApp() {
                   </div>
                 </div>
 
-                {trialDaysLeft(selected.registeredAt) !== null && (
+                {!selected.isImportedSeed && trialDaysLeft(selected.registeredAt) !== null && (
                   <div className="mt-3 inline-flex w-full items-center gap-1.5 rounded-2xl bg-amber-100 px-3 py-2 text-[11px] font-extrabold leading-snug text-amber-950">
                     <Scale size={14} strokeWidth={2.25} aria-hidden className="shrink-0" />
                     On trial · {trialDaysLeft(selected.registeredAt)}d left — verify prices and cheer if it&apos;s legit

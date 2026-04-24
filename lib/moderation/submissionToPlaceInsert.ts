@@ -25,6 +25,7 @@ export function submissionRowToPlaceInsert(sub: PlaceSubmissionRow): PlaceInsert
     category: sub.category,
     area: sub.area?.trim() || "London",
     address: sub.address?.trim() || null,
+    menu_name: sub.menu_item_name.trim() || null,
     lat: sub.lat,
     lng: sub.lng,
     lowest_price_gbp: Number(sub.price_gbp),

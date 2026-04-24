@@ -14,6 +14,8 @@ export type PlaceRow = {
   category: Category;
   area: string;
   address: string | null;
+  /** Representative menu item name for approved seed / imported places. */
+  menu_name?: string | null;
   /** Short public blurb for map preview (column added in 002 migration). */
   description?: string | null;
   /** Google Place ID for dedupe vs submissions (009 migration). */
@@ -40,6 +42,7 @@ export type PlaceInsert = {
   category: Category;
   area: string;
   address: string | null;
+  menu_name?: string | null;
   lat: number;
   lng: number;
   lowest_price_gbp: number | null;

@@ -49,14 +49,31 @@ function parseComments(raw: unknown): SpotComment[] {
   return out;
 }
 
-function syntheticSubmission(lowest: number, registeredAt: string | null): SpotSubmissionRecord[] {
+function parseMenuNameFromDescription(description: string | null | undefined): string | null {
+  if (typeof description !== "string") return null;
+  const text = description.trim();
+  if (!text) return null;
+  const match = text.match(/:\s*(.+?)\s+for\s+£/i);
+  return match?.[1]?.trim() || null;
+}
+
+function syntheticSubmission(
+  lowest: number,
+  registeredAt: string | null,
+  menuName: string | null | undefined,
+  description: string | null | undefined,
+): SpotSubmissionRecord[] {
   const date = registeredAt?.includes("T")
     ? registeredAt.split("T")[0]!
     : registeredAt ?? new Date().toISOString().split("T")[0]!;
+  const label =
+    (typeof menuName === "string" && menuName.trim() ? menuName.trim() : null) ??
+    parseMenuNameFromDescription(description) ??
+    "Menu (verified)";
   return [
     {
       id: "db_lowest",
-      items: [{ name: "Menu (verified)", price: lowest }],
+      items: [{ name: label, price: lowest }],
       date,
     },
   ];
@@ -66,8 +83,9 @@ function syntheticSubmission(lowest: number, registeredAt: string | null): SpotS
 export function mapPlaceRowToSpot(row: PlaceRow): Spot {
   let submissions = parseSubmissions(row.submissions);
   const low = row.lowest_price_gbp;
+  const isImportedSeed = submissions.length === 0;
   if (submissions.length === 0 && low != null && Number.isFinite(low) && low > 0) {
-    submissions = syntheticSubmission(low, row.registered_at);
+    submissions = syntheticSubmission(low, row.registered_at, row.menu_name, row.description);
   }
 
   const registeredAt = row.registered_at ?? undefined;
@@ -91,5 +109,6 @@ export function mapPlaceRowToSpot(row: PlaceRow): Spot {
     upvotes: row.upvotes ?? 0,
     downvotes: row.downvotes ?? 0,
     comments: parseComments(row.comments),
+    isImportedSeed,
   };
 }

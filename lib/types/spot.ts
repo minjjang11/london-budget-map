@@ -35,4 +35,6 @@ export type Spot = {
   /** Cumulative downvotes on approved `places` rows (rankings / future map voting). */
   downvotes?: number;
   comments?: SpotComment[];
+  /** True for approved seed/import rows synthesized from `places` without submission history. */
+  isImportedSeed?: boolean;
 };
