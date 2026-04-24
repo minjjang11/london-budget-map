@@ -2009,6 +2009,11 @@ export default function BudgetMapApp() {
                     ? "rounded-t-[26px] max-h-[calc(100dvh-5.5rem)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
                     : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(62vh,520px)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-4"
                 }`}
+                style={
+                  placeDetailExpanded
+                    ? undefined
+                    : { maxHeight: "calc(100dvh - 220px - env(safe-area-inset-top, 0px))" }
+                }
               >
                 {!placeDetailExpanded ? (
                   <div
