@@ -835,6 +835,11 @@ export default function BudgetMapApp() {
     );
   }, [communityApprovedFiltered, rankingWindow]);
 
+  const rankingFilterLabel =
+    activeCats.length === 0
+      ? "All categories"
+      : activeCats.map((id) => CATS.find((c) => c.id === id)?.label ?? id).join(", ");
+
   const mapSpots: MapSpot[] = useMemo(
     () =>
       filtered.map((s) => {
@@ -2086,7 +2091,7 @@ export default function BudgetMapApp() {
                   </div>
                 ) : (
                   <div style={{ animation: "detailPushIn 0.24s cubic-bezier(0.22, 1, 0.36, 1)" }}>
-                    <div className="mb-3 flex items-center border-b border-budget-surface/60 pb-2.5">
+                    <div className="sticky top-0 z-10 bg-budget-white mb-3 flex items-center border-b border-budget-surface/60 pb-2.5">
                       <button
                         type="button"
                         onClick={() => {
@@ -2129,9 +2134,6 @@ export default function BudgetMapApp() {
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span className="rounded-full bg-budget-primary px-3.5 py-1.5 text-[14px] font-extrabold text-white shadow-[0_4px_12px_rgb(0_168_120_/0.35)]">
                         from {formatMapPriceLabel(lowestPrice(selected))}
-                      </span>
-                      <span className="text-[12px] font-semibold text-budget-muted">
-                        {selected.submissions.length} report{selected.submissions.length === 1 ? "" : "s"}
                       </span>
                       {remoteIds.has(selected.id) || selectedIsPending ? (
                         <span className="text-[12px] font-semibold text-budget-muted">
@@ -2661,6 +2663,17 @@ export default function BudgetMapApp() {
             </>
           ) : (
             <>
+              <p className="mb-2 text-[11px] font-semibold text-budget-primary">
+                Filtered by: {rankingFilterLabel}
+                {" · "}
+                <button
+                  type="button"
+                  onClick={() => setTab("map")}
+                  className="underline underline-offset-2 cursor-pointer border-0 bg-transparent text-budget-primary"
+                >
+                  change on map tab
+                </button>
+              </p>
               {remoteApprovedSpots.length === 0 ? (
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
                   No approved spots from the server yet — rankings appear after moderation promotes tips to the map.
