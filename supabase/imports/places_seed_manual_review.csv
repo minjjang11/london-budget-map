@@ -1,0 +1,3 @@
+source_sheet,source_rows,name,category,area,address,representative_menu,lowest_price_gbp,google_query,review_reason,match_score,match_reasons,matched_name,matched_address,google_place_id,lat,lng
+Sheet1,43|44|45,Crosby & Hope,cafe,Borough,,Espresso,2.4,"Crosby & Hope, Borough, London",low-confidence:0.66,0.66,exact-name|name-only-boost,Crosby & Hope,"1-2 Bear Gdns, London SE1 9ED, United Kingdom",ChIJzdYYM7sFdkgRShMB1eg0JSg,51.5073108,-0.0959746
+Sheet1,46|47|48,Scenery,cafe,Borough,,Americano,3.4,"Scenery, Borough, London",low-confidence:0.66,0.66,exact-name|name-only-boost,Scenery,"171 Union St, London SE1 0LN, United Kingdom",ChIJU-GRv6gFdkgR5uttl138rm4,51.5036648,-0.09929679999999999

@@ -294,14 +294,13 @@ function rankingSocialLine(spot: Spot): string {
   return `Net ${score} · 👍 ${u} · 👎 ${d}`;
 }
 
-/** Screenshot-style prices: £12, £4.3, £6.5 — 🔥 when under £3 */
+/** Screenshot-style prices: £12, £4.3, £6.5 */
 function formatMapPriceLabel(lowest: number): string {
-  const fire = lowest < 3 ? "🔥 " : "";
   const r = Math.round(lowest * 10) / 10;
   const body = Number.isInteger(r) || Math.abs(r - Math.round(r)) < 0.05
     ? Math.round(r).toString()
     : r.toFixed(1).replace(/\.0$/, "");
-  return `${fire}£${body}`;
+  return `£${body}`;
 }
 
 function catEmoji(c: Category) {
@@ -2175,7 +2174,7 @@ export default function BudgetMapApp() {
                           >
                             <span className="min-w-0 font-semibold leading-snug">{item.name}</span>
                             <span className="shrink-0 font-extrabold text-budget-primary">
-                              {item.price < 3 ? "🔥 " : ""}£{item.price.toFixed(2)}
+                              £{item.price.toFixed(2)}
                             </span>
                           </div>
                         ))}
