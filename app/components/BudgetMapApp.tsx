@@ -489,6 +489,7 @@ export default function BudgetMapApp() {
   ]);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
+  const placeDetailSheetRef = useRef<HTMLDivElement | null>(null);
 
   const remoteIds = useMemo(
     () => new Set(remoteApprovedSpots.map((s) => s.id)),
@@ -877,6 +878,7 @@ export default function BudgetMapApp() {
     setCommentDraft("");
     setPlaceDetailExpanded(false);
     setPlaceDetailTransition(null);
+    placeDetailSheetRef.current?.scrollTo({ top: 0, behavior: "auto" });
     setContributionItem("");
     setContributionPrice("");
     setContributionComment("");
@@ -888,6 +890,14 @@ export default function BudgetMapApp() {
     const timer = window.setTimeout(() => setPlaceDetailTransition(null), 260);
     return () => window.clearTimeout(timer);
   }, [placeDetailTransition]);
+
+  useEffect(() => {
+    if (!placeDetailExpanded) return;
+    const frame = window.requestAnimationFrame(() => {
+      placeDetailSheetRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [placeDetailExpanded, selectedId]);
 
   const toggleSave = async (id: string) => {
     if (remoteIds.has(id)) {
@@ -2001,6 +2011,7 @@ export default function BudgetMapApp() {
               onClick={() => setSelectedId(null)}
             >
               <div
+                ref={placeDetailSheetRef}
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
