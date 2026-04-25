@@ -23,7 +23,6 @@ import {
   SlidersHorizontal,
   Flag,
   Trash2,
-  GripVertical,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -52,11 +51,7 @@ import {
   fetchPlaceReviewTagCountsByPlace,
   replaceMyPlaceReviewTags,
 } from "@/lib/places/placeReviewTagDb";
-import {
-  labelForPlaceReviewSlug,
-  MAX_PLACE_REVIEW_TAGS_PER_USER,
-  PLACE_REVIEW_TAG_SLUGS,
-} from "@/lib/places/placeReviewTags";
+import { MAX_PLACE_REVIEW_TAGS_PER_USER } from "@/lib/places/placeReviewTags";
 import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicate";
 import { rankingNetScore, registeredWithinTrailingDays, RANKING_RULES } from "@/lib/ranking/rankingScores";
 import type { PlaceContributionRow } from "@/lib/types/placeContributions";
@@ -568,10 +563,22 @@ export default function BudgetMapApp() {
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
   const [courseResultRadiusKm, setCourseResultRadiusKm] = useState<number | null>(null);
   const [courseStartPoint, setCourseStartPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [courseDraftStartPoint, setCourseDraftStartPoint] = useState<{ lat: number; lng: number } | null>(null);
   const [coursePickingStart, setCoursePickingStart] = useState(false);
-  const [draggingCourseStopId, setDraggingCourseStopId] = useState<string | null>(null);
+  const [courseDragState, setCourseDragState] = useState<{
+    activeId: string;
+    overIndex: number;
+    pointerY: number;
+    offsetY: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
   const placeDetailSheetRef = useRef<HTMLDivElement | null>(null);
+  const courseStopRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const coursePressTimerRef = useRef<number | null>(null);
+  const coursePressInfoRef = useRef<{ id: string; startX: number; startY: number } | null>(null);
 
   const remoteIds = useMemo(
     () => new Set(remoteApprovedSpots.map((s) => s.id)),
@@ -1829,39 +1836,121 @@ export default function BudgetMapApp() {
   };
 
   const requestCourseStartPick = () => {
+    setCourseDraftStartPoint(courseStartPoint);
     setCoursePickingStart(true);
-    setSelectedId(null);
-    setTab("map");
-    setToast("Tap the map to drop your crawl start pin.");
-    window.setTimeout(() => setToast(null), 4500);
   };
 
-  const handleCourseStartPick = useCallback((coords: { lat: number; lng: number }) => {
-    setCourseStartPoint(coords);
+  const handleCourseDraftPick = useCallback((coords: { lat: number; lng: number }) => {
+    setCourseDraftStartPoint(coords);
+  }, []);
+
+  const confirmCourseStartPick = () => {
+    if (!courseDraftStartPoint) {
+      setToast("Tap the map first to place your start pin.");
+      window.setTimeout(() => setToast(null), 3000);
+      return;
+    }
+    setCourseStartPoint(courseDraftStartPoint);
     setCoursePickingStart(false);
     setCourseResult(null);
     setCourseResultRadiusKm(null);
-    setFlyTo({ center: [coords.lat, coords.lng], zoom: 15 });
-    setTab("course");
-    setToast("Start point locked in. Build your crawl.");
-    window.setTimeout(() => setToast(null), 3500);
-  }, []);
-
-  const moveCourseStop = (fromId: string, toId: string) => {
-    if (fromId === toId) return;
-    setCourseStops((prev) => {
-      const fromIndex = prev.findIndex((stop) => stop.id === fromId);
-      const toIndex = prev.findIndex((stop) => stop.id === toId);
-      if (fromIndex === -1 || toIndex === -1) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      if (!moved) return prev;
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-    setCourseResult(null);
-    setCourseResultRadiusKm(null);
+    setFlyTo({ center: [courseDraftStartPoint.lat, courseDraftStartPoint.lng], zoom: 15 });
   };
+
+  const cancelCourseStartPick = () => {
+    setCourseDraftStartPoint(null);
+    setCoursePickingStart(false);
+  };
+
+  const coursePreviewStops = useMemo(() => {
+    if (!courseDragState) return courseStops;
+    const active = courseStops.find((stop) => stop.id === courseDragState.activeId);
+    if (!active) return courseStops;
+    const without = courseStops.filter((stop) => stop.id !== courseDragState.activeId);
+    const next = [...without];
+    next.splice(Math.min(courseDragState.overIndex, next.length), 0, active);
+    return next;
+  }, [courseStops, courseDragState]);
+
+  useEffect(() => {
+    if (!courseDragState && !coursePressInfoRef.current) return;
+    const clearHold = () => {
+      if (coursePressTimerRef.current !== null) {
+        window.clearTimeout(coursePressTimerRef.current);
+        coursePressTimerRef.current = null;
+      }
+      coursePressInfoRef.current = null;
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!courseDragState) {
+        const press = coursePressInfoRef.current;
+        if (!press) return;
+        const dx = Math.abs(event.clientX - press.startX);
+        const dy = Math.abs(event.clientY - press.startY);
+        if (dx > 8 || dy > 8) clearHold();
+        return;
+      }
+
+      event.preventDefault();
+      const otherStops = coursePreviewStops.filter((stop) => stop.id !== courseDragState.activeId);
+      let insertIndex = 0;
+      for (const stop of otherStops) {
+        const rect = courseStopRefs.current[stop.id]?.getBoundingClientRect();
+        if (!rect) continue;
+        if (event.clientY > rect.top + rect.height / 2) insertIndex += 1;
+      }
+      setCourseDragState((prev) =>
+        prev
+          ? {
+              ...prev,
+              pointerY: event.clientY,
+              overIndex: insertIndex,
+            }
+          : prev,
+      );
+    };
+
+    const onPointerUp = () => {
+      clearHold();
+      setCourseDragState((prev) => {
+        if (!prev) return null;
+        const active = courseStops.find((stop) => stop.id === prev.activeId);
+        if (!active) return null;
+        const without = courseStops.filter((stop) => stop.id !== prev.activeId);
+        const next = [...without];
+        next.splice(Math.min(prev.overIndex, next.length), 0, active);
+        const changed = next.some((stop, index) => stop.id !== courseStops[index]?.id);
+        if (changed) {
+          setCourseStops(next);
+          setCourseResult(null);
+          setCourseResultRadiusKm(null);
+        }
+        return null;
+      });
+    };
+
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+    return () => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+  }, [courseDragState, coursePreviewStops, courseStops]);
+
+  useEffect(() => {
+    if (!courseDragState) return;
+    const prevUserSelect = document.body.style.userSelect;
+    const prevTouchAction = document.body.style.touchAction;
+    document.body.style.userSelect = "none";
+    document.body.style.touchAction = "none";
+    return () => {
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.touchAction = prevTouchAction;
+    };
+  }, [courseDragState]);
 
   const voteIcon = (kind: "up" | "down", active: boolean) => {
     const Icon = kind === "up" ? ThumbsUp : ThumbsDown;
@@ -1944,10 +2033,9 @@ export default function BudgetMapApp() {
           <MapView
             spots={mapSpots}
             selectedId={selectedId}
-            onSelect={coursePickingStart ? () => undefined : handleSelect}
+            onSelect={handleSelect}
             flyTo={flyTo}
             pickedLocation={courseStartPoint}
-            onMapPick={coursePickingStart ? handleCourseStartPick : null}
           />
         </div>
       )}
@@ -2164,23 +2252,49 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      {tab === "map" && coursePickingStart && (
-        <div className="absolute left-3 right-3 top-[calc(306px+env(safe-area-inset-top,0px))] z-[56] rounded-[18px] border border-budget-primary/20 bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="font-extrabold text-budget-primary">Pick your crawl start</p>
-              <p className="mt-1 text-[12px] text-budget-muted">Tap anywhere on the map to drop the start pin.</p>
+      {coursePickingStart && (
+        <div className="absolute inset-0 z-[95] bg-budget-text/24">
+          <div className="absolute inset-0 p-3 md:p-4">
+            <div className="relative h-full w-full overflow-hidden rounded-[28px] border border-budget-surface/80 bg-budget-white shadow-[0_24px_60px_rgb(13_31_26_/0.24)]">
+              <div className="absolute inset-0 z-0">
+                <MapView
+                  spots={mapSpots}
+                  selectedId={null}
+                  onSelect={() => undefined}
+                  flyTo={
+                    courseDraftStartPoint
+                      ? { center: [courseDraftStartPoint.lat, courseDraftStartPoint.lng], zoom: 15 }
+                      : courseStartPoint
+                        ? { center: [courseStartPoint.lat, courseStartPoint.lng], zoom: 15 }
+                        : null
+                  }
+                  pickedLocation={courseDraftStartPoint ?? courseStartPoint}
+                  onMapPick={handleCourseDraftPick}
+                />
+              </div>
+              <div className="absolute left-3 right-3 top-3 z-20 rounded-[20px] border border-budget-primary/15 bg-budget-white/96 px-4 py-3 shadow-budget-float backdrop-blur-sm">
+                <p className="text-[13px] font-extrabold text-budget-primary">Set your crawl start point</p>
+                <p className="mt-1 text-[12px] leading-snug text-budget-muted">
+                  Tap the map, move the pin until it feels right, then confirm.
+                </p>
+              </div>
+              <div className="absolute bottom-3 left-3 right-3 z-20 flex gap-2">
+                <button
+                  type="button"
+                  onClick={cancelCourseStartPick}
+                  className="flex-1 cursor-pointer rounded-2xl border border-budget-surface bg-budget-white py-3 text-[13px] font-extrabold text-budget-text shadow-budget-float"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmCourseStartPick}
+                  className="flex-1 cursor-pointer rounded-2xl border-0 bg-budget-primary py-3 text-[13px] font-extrabold text-white shadow-[0_10px_24px_rgb(0_168_120_/0.28)]"
+                >
+                  Confirm location
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCoursePickingStart(false);
-                setTab("course");
-              }}
-              className="shrink-0 cursor-pointer rounded-full border border-budget-surface bg-budget-white px-3 py-1.5 text-[11px] font-extrabold text-budget-text"
-            >
-              Cancel
-            </button>
           </div>
         </div>
       )}
@@ -3426,7 +3540,7 @@ export default function BudgetMapApp() {
                   <p className="text-[12px] font-extrabold text-budget-text">Course start</p>
                   <p className="mt-1 text-[11px] leading-snug text-budget-muted">
                     {courseStartPoint
-                      ? `Pinned at ${courseStartPoint.lat.toFixed(4)}, ${courseStartPoint.lng.toFixed(4)}`
+                      ? "Location set. You can move it any time."
                       : "Drop a start pin first. We begin within 1 km and widen the search only when needed."}
                   </p>
                 </div>
@@ -3448,32 +3562,51 @@ export default function BudgetMapApp() {
                 Drag the stop cards to change the order before you plan the route.
               </p>
               <div className="space-y-2">
-                {courseStops.map((stop, index) => {
+                {coursePreviewStops.map((stop, index) => {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
+                  const activeDrag = courseDragState?.activeId === stop.id;
                   return (
                     <div
                       key={stop.id}
-                      draggable
-                      onDragStart={() => setDraggingCourseStopId(stop.id)}
-                      onDragEnd={() => setDraggingCourseStopId(null)}
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={() => {
-                        if (draggingCourseStopId) moveCourseStop(draggingCourseStopId, stop.id);
-                        setDraggingCourseStopId(null);
+                      ref={(node) => {
+                        courseStopRefs.current[stop.id] = node;
+                      }}
+                      onPointerDown={(e) => {
+                        if (e.pointerType === "mouse" && e.button !== 0) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        coursePressInfoRef.current = { id: stop.id, startX: e.clientX, startY: e.clientY };
+                        if (coursePressTimerRef.current !== null) window.clearTimeout(coursePressTimerRef.current);
+                        coursePressTimerRef.current = window.setTimeout(() => {
+                          setCourseDragState({
+                            activeId: stop.id,
+                            overIndex: index,
+                            pointerY: e.clientY,
+                            offsetY: e.clientY - rect.top,
+                            left: rect.left,
+                            width: rect.width,
+                            height: rect.height,
+                          });
+                          coursePressTimerRef.current = null;
+                          coursePressInfoRef.current = null;
+                        }, 220);
+                      }}
+                      onPointerUp={() => {
+                        if (coursePressTimerRef.current !== null) {
+                          window.clearTimeout(coursePressTimerRef.current);
+                          coursePressTimerRef.current = null;
+                          coursePressInfoRef.current = null;
+                        }
+                      }}
+                      onContextMenu={(e) => {
+                        if (courseDragState?.activeId === stop.id) e.preventDefault();
                       }}
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
-                        draggingCourseStopId === stop.id
-                          ? "border-budget-primary/50 shadow-[0_0_0_2px_rgb(0_168_120_/0.08)]"
+                        activeDrag
+                          ? "border-dashed border-budget-primary/30 opacity-0"
                           : "border-budget-surface"
                       }`}
                     >
                       <div className="min-w-0 flex items-center gap-2.5">
-                        <span
-                          className="grid size-8 shrink-0 place-items-center rounded-full border border-budget-surface bg-budget-white text-budget-muted"
-                          aria-hidden
-                        >
-                          <GripVertical size={15} />
-                        </span>
                         <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
                           Stop {index + 1}
                         </span>
@@ -3495,6 +3628,34 @@ export default function BudgetMapApp() {
                   );
                 })}
               </div>
+              {courseDragState ? (
+                <div
+                  className="pointer-events-none fixed z-[120] rounded-2xl border border-budget-primary/45 bg-budget-white px-3 py-2.5 shadow-[0_18px_40px_rgb(13_31_26_/0.18)]"
+                  style={{
+                    left: courseDragState.left,
+                    top: courseDragState.pointerY - courseDragState.offsetY,
+                    width: courseDragState.width,
+                  }}
+                >
+                  {(() => {
+                    const activeStop = courseStops.find((stop) => stop.id === courseDragState.activeId);
+                    if (!activeStop) return null;
+                    const activeLabel = CATS.find((c) => c.id === activeStop.category)?.label ?? "Stop";
+                    const activeIndex = coursePreviewStops.findIndex((stop) => stop.id === activeStop.id);
+                    return (
+                      <div className="min-w-0 flex items-center gap-2.5">
+                        <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
+                          Stop {activeIndex + 1}
+                        </span>
+                        <span className="text-lg leading-none" aria-hidden>
+                          {catEmoji(activeStop.category)}
+                        </span>
+                        <span className="text-[13px] font-bold text-budget-text">{activeLabel}</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {CATEGORY_IDS.map((category) => {
                   const label = CATS.find((c) => c.id === category)?.label ?? "Stop";
