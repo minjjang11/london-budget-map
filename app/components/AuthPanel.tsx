@@ -133,7 +133,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setEmail(e.target.value);
                 setMsg(null);
               }}
-              placeholder="you@uni.ac.uk"
+              placeholder="example@email.com"
               autoComplete="email"
               className="budget-input-sm min-w-0 flex-1 text-[13px]"
             />
