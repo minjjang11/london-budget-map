@@ -70,6 +70,7 @@ export type PlaceSubmissionRow = {
   menu_item_name: string;
   price_gbp: number;
   description: string | null;
+  photo?: string | null;
   area: string | null;
   google_place_id?: string | null;
 };
@@ -88,6 +89,7 @@ export type PlaceSubmissionInsert = {
   menu_item_name: string;
   price_gbp: number;
   description: string | null;
+  photo?: string | null;
   area: string | null;
   google_place_id?: string | null;
 };

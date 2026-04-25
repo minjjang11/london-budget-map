@@ -98,6 +98,7 @@ const CATEGORY_IDS: Category[] = ["restaurant", "pub", "cafe"];
 const COURSE_START_RADIUS_KM = 1;
 const COURSE_MAX_RADIUS_KM = 12;
 const COURSE_CLUSTER_PADDING_KM = 1.25;
+const SUBMIT_WORD_PICK_LIMIT = 5;
 const SUBMIT_WORD_OPTIONS = [
   "Great flavour",
   "Authentic",
@@ -197,7 +198,7 @@ function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
         id: row.id,
         items: [{ name: row.menu_item_name, price: row.price_gbp }],
         review: row.description?.trim() || undefined,
-        photo: undefined,
+        photo: row.photo?.trim() || undefined,
         date: row.submitted_at,
       },
     ],
@@ -548,7 +549,7 @@ export default function BudgetMapApp() {
   const toggleSubmitDescTag = useCallback((slug: string) => {
     setSubmitDescTags((prev) => {
       if (prev.includes(slug)) return prev.filter((x) => x !== slug);
-      if (prev.length >= MAX_PLACE_REVIEW_TAGS_PER_USER) return prev;
+      if (prev.length >= SUBMIT_WORD_PICK_LIMIT) return prev;
       return [...prev, slug];
     });
   }, []);
@@ -1127,6 +1128,7 @@ export default function BudgetMapApp() {
           menu_item_name: rep.name.trim(),
           price_gbp: rep.price,
           description: submitDescriptionText.trim() || null,
+          photo: submitPhoto || null,
           area: null,
           google_place_id: submitGooglePlaceId,
         },
@@ -1153,8 +1155,10 @@ export default function BudgetMapApp() {
       setSubmitErrors({});
       setSubmitSuccess(true);
       setPendingRefreshTick((n) => n + 1);
+      setActiveCats([]);
+      setMapBudget((prev) => Math.max(prev, rep.price));
       setTab("map");
-      setSelectedId(null);
+      setSelectedId(submissionId ? `pending-${submissionId}` : null);
       setFlyTo({ center: [latFinal, lngFinal], zoom: 16 });
       setToast("Spot submitted — it now appears on the map as under review.");
       window.setTimeout(() => setToast(null), 4000);
@@ -2462,7 +2466,17 @@ export default function BudgetMapApp() {
                   </div>
                 ) : (
                   <div style={{ animation: "detailPushIn 0.24s cubic-bezier(0.22, 1, 0.36, 1)" }}>
-                    <div className="sticky top-0 z-10 bg-budget-white mb-3 flex items-center border-b border-budget-surface/60 pb-2.5">
+                    <div
+                      className="sticky top-0 z-10 mb-3 flex items-center border-b border-budget-surface/60 pb-2.5"
+                      style={{
+                        backgroundColor: "#ffffff",
+                        marginLeft: "-1rem",
+                        marginRight: "-1rem",
+                        paddingLeft: "1rem",
+                        paddingRight: "1rem",
+                        paddingTop: "0.75rem",
+                      }}
+                    >
                       <button
                         type="button"
                         onClick={() => {
@@ -2899,6 +2913,15 @@ export default function BudgetMapApp() {
                       {formatReviewTimeRemaining(row.review_ends_at)}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab("map");
+                      setSelectedId(pendingSpotId);
+                      setFlyTo({ center: [row.lat, row.lng], zoom: 16 });
+                    }}
+                    className="mb-3 block w-full cursor-pointer text-left"
+                  >
                   <div className="flex gap-3">
                     <span className="text-xl leading-none" aria-hidden>
                       {catEmoji(row.category)}
@@ -2926,6 +2949,7 @@ export default function BudgetMapApp() {
                       </p>
                     </div>
                   </div>
+                  </button>
 
                   {isSupabaseConfigured() && getBrowserSupabase() ? (
                     <div className="mt-3 border-t border-budget-surface/60 pt-3">
@@ -3281,7 +3305,7 @@ export default function BudgetMapApp() {
               </button>
 
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">
-                Pick up to {MAX_PLACE_REVIEW_TAGS_PER_USER} words
+                Pick up to {SUBMIT_WORD_PICK_LIMIT} words
               </label>
               <p className="mb-2 text-[11px] leading-snug text-budget-muted">
                 Tap to add or remove the words that best match the spot.

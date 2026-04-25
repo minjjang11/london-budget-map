@@ -13,6 +13,7 @@ export type NewPlaceSubmissionInput = {
   menu_item_name: string;
   price_gbp: number;
   description: string | null;
+  photo?: string | null;
   area: string | null;
   /** Google Place ID when picked from Autocomplete; optional for duplicate checks later. */
   google_place_id?: string | null;
@@ -41,6 +42,7 @@ export async function insertPlaceSubmission(
       menu_item_name: input.menu_item_name,
       price_gbp: input.price_gbp,
       description: input.description,
+      photo: input.photo?.trim() || null,
       area: input.area,
       google_place_id: input.google_place_id?.trim() || null,
     })

@@ -15,6 +15,7 @@ export function submissionRowToPlaceInsert(sub: PlaceSubmissionRow): PlaceInsert
       items: [{ name: sub.menu_item_name.trim(), price: Number(sub.price_gbp) }],
       date,
       ...(sub.description?.trim() ? { review: sub.description.trim() } : {}),
+      ...(sub.photo?.trim() ? { photo: sub.photo.trim() } : {}),
     },
   ];
 
