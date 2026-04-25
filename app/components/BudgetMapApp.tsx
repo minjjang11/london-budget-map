@@ -447,7 +447,7 @@ export default function BudgetMapApp() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
   const [budgetOpen, setBudgetOpen] = useState(false);
-  const [mapBudget, setMapBudget] = useState(10);
+  const [mapBudget, setMapBudget] = useState(15);
   const [mounted, setMounted] = useState(false);
 
   const [submitName, setSubmitName] = useState("");
@@ -2048,7 +2048,6 @@ export default function BudgetMapApp() {
   );
 
   const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
-  const myCommentedContributions = myContributionRows.filter((row) => row.comment?.trim());
   const placeNameById = useMemo(
     () =>
       Object.fromEntries(
@@ -2470,6 +2469,7 @@ export default function BudgetMapApp() {
                       className="sticky top-0 z-10 mb-3 flex items-center border-b border-budget-surface/60 pb-2.5"
                       style={{
                         backgroundColor: "#ffffff",
+                        marginTop: "-0.75rem",
                         marginLeft: "-1rem",
                         marginRight: "-1rem",
                         paddingLeft: "1rem",
@@ -3502,43 +3502,6 @@ export default function BudgetMapApp() {
                       </div>
                     </div>
                   ))}
-              </div>
-            )}
-          </div>
-          <div className="mb-5">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-[12px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">Your comments</h3>
-              <span className="text-[12px] font-semibold text-budget-muted">{myCommentedContributions.length}</span>
-            </div>
-            {myCommentedContributions.length === 0 ? (
-              <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-5 text-[13px] text-budget-muted">
-                No comments from this account yet.
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {myCommentedContributions.map((row) => (
-                  <div key={row.id} className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-budget-primary">
-                          {placeNameById[row.place_id] ?? "Approved place"}
-                        </p>
-                        <p className="mt-1 text-[13px] leading-snug text-budget-text">{row.comment}</p>
-                        <p className="mt-2 text-[11px] text-budget-muted">
-                          {row.menu_item_name} · {formatBudgetCap(Number(row.price_gbp))}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        disabled={contributionDeleteBusyId === row.id}
-                        onClick={() => void handleDeleteContribution(row.id)}
-                        className="cursor-pointer rounded-xl border border-red-200 bg-white px-3 py-2 text-[11px] font-extrabold text-red-700 disabled:opacity-50"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                ))}
               </div>
             )}
           </div>
