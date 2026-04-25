@@ -925,11 +925,6 @@ export default function BudgetMapApp() {
     );
   }, [communityApprovedFiltered, rankingWindow]);
 
-  const rankingFilterLabel =
-    activeCats.length === 0
-      ? "All categories"
-      : activeCats.map((id) => CATS.find((c) => c.id === id)?.label ?? id).join(", ");
-
   const mapSpots: MapSpot[] = useMemo(
     () =>
       filtered.map((s) => {
@@ -1836,7 +1831,9 @@ export default function BudgetMapApp() {
   };
 
   const requestCourseStartPick = () => {
-    setCourseDraftStartPoint(courseStartPoint);
+    setCourseDraftStartPoint(
+      courseStartPoint ?? (flyTo ? { lat: flyTo.center[0], lng: flyTo.center[1] } : { lat: 51.4927, lng: -0.1565 }),
+    );
     setCoursePickingStart(true);
   };
 
@@ -1858,7 +1855,7 @@ export default function BudgetMapApp() {
   };
 
   const cancelCourseStartPick = () => {
-    setCourseDraftStartPoint(null);
+    setCourseDraftStartPoint(courseStartPoint);
     setCoursePickingStart(false);
   };
 
@@ -2240,6 +2237,9 @@ export default function BudgetMapApp() {
               );
             })}
           </div>
+          <div className="mt-2.5 flex flex-wrap gap-1.5">
+            {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
+          </div>
         </section>
       )}
 
@@ -2269,14 +2269,23 @@ export default function BudgetMapApp() {
                         : null
                   }
                   pickedLocation={courseDraftStartPoint ?? courseStartPoint}
-                  onMapPick={handleCourseDraftPick}
+                  centerPinMode
+                  onCenterChange={handleCourseDraftPick}
                 />
               </div>
               <div className="absolute left-3 right-3 top-3 z-20 rounded-[20px] border border-budget-primary/15 bg-budget-white/96 px-4 py-3 shadow-budget-float backdrop-blur-sm">
                 <p className="text-[13px] font-extrabold text-budget-primary">Set your crawl start point</p>
                 <p className="mt-1 text-[12px] leading-snug text-budget-muted">
-                  Tap the map, move the pin until it feels right, then confirm.
+                  Move the map under the fixed pin, then confirm when the spot feels right.
                 </p>
+              </div>
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <div className="flex flex-col items-center -translate-y-3">
+                  <div className="rounded-full border-[3px] border-budget-text bg-budget-primary shadow-[0_8px_20px_rgb(0_168_120_/0.3)]" style={{ width: 18, height: 18 }} />
+                  <div className="mt-1 rounded-full bg-budget-white px-2 py-1 text-[10px] font-extrabold text-budget-text shadow-budget-float">
+                    Start
+                  </div>
+                </div>
               </div>
               <div className="absolute bottom-3 left-3 right-3 z-20 flex gap-2">
                 <button
@@ -2993,24 +3002,13 @@ export default function BudgetMapApp() {
             </>
           ) : (
             <>
-              <p className="mb-2 text-[11px] font-semibold text-budget-primary">
-                Filtered by: {rankingFilterLabel}
-                {" · "}
-                <button
-                  type="button"
-                  onClick={() => setTab("map")}
-                  className="underline underline-offset-2 cursor-pointer border-0 bg-transparent text-budget-primary"
-                >
-                  change on map tab
-                </button>
-              </p>
               {remoteApprovedSpots.length === 0 ? (
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
                   No approved spots from the server yet — rankings appear after moderation promotes tips to the map.
                 </div>
               ) : communityApprovedFiltered.length === 0 ? (
             <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] text-budget-muted">
-              No spots match this category. Try <strong>All</strong> or another category on the map tab.
+              No spots match this category. Try <strong>All</strong> or another category above.
             </div>
               ) : rankingWindow === "weekly" && ranked.length === 0 ? (
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-8 text-center text-[13px] leading-relaxed text-budget-muted">
@@ -3533,7 +3531,6 @@ export default function BudgetMapApp() {
       {tab === "course" && (
         <div className="budget-tab-panel p-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
-            <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
             <div className="mb-4 rounded-2xl border border-budget-surface bg-budget-bg px-3.5 py-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -3602,7 +3599,7 @@ export default function BudgetMapApp() {
                       }}
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
                         activeDrag
-                          ? "border-dashed border-budget-primary/30 opacity-0"
+                          ? "border-dashed border-budget-primary/35 opacity-[0.45]"
                           : "border-budget-surface"
                       }`}
                     >

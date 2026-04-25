@@ -209,21 +209,23 @@ function MapViewLeaflet({
   onSelect,
   flyTo,
   pickedLocation,
-  onMapPick,
+  centerPinMode,
+  onCenterChange,
 }: {
   spots: MapSpot[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
   pickedLocation?: { lat: number; lng: number } | null;
-  onMapPick?: ((coords: { lat: number; lng: number }) => void) | null;
+  centerPinMode?: boolean;
+  onCenterChange?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const pickedMarkerRef = useRef<L.CircleMarker | null>(null);
   const onSelectRef = useRef(onSelect);
-  const onMapPickRef = useRef(onMapPick);
+  const onCenterChangeRef = useRef(onCenterChange);
   const lastFlyRef = useRef<string>("");
 
   useEffect(() => {
@@ -231,8 +233,8 @@ function MapViewLeaflet({
   }, [onSelect]);
 
   useEffect(() => {
-    onMapPickRef.current = onMapPick;
-  }, [onMapPick]);
+    onCenterChangeRef.current = onCenterChange;
+  }, [onCenterChange]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -247,8 +249,9 @@ function MapViewLeaflet({
 
     /** No default zoom stack — avoids overlap with app bottom nav + FAB (pinch / double-tap still zooms). */
     addBasemap(map);
-    map.on("click", (event: L.LeafletMouseEvent) => {
-      onMapPickRef.current?.({ lat: event.latlng.lat, lng: event.latlng.lng });
+    map.on("moveend", () => {
+      const center = map.getCenter();
+      onCenterChangeRef.current?.({ lat: center.lat, lng: center.lng });
     });
 
     mapRef.current = map;
@@ -292,7 +295,7 @@ function MapViewLeaflet({
     if (!map) return;
     pickedMarkerRef.current?.remove();
     pickedMarkerRef.current = null;
-    if (!pickedLocation) return;
+    if (!pickedLocation || centerPinMode) return;
     pickedMarkerRef.current = L.circleMarker([pickedLocation.lat, pickedLocation.lng], {
       radius: 9,
       color: "#0d1f1a",
@@ -318,7 +321,8 @@ function MapViewGoogle({
   flyTo,
   apiKey,
   pickedLocation,
-  onMapPick,
+  centerPinMode,
+  onCenterChange,
 }: {
   spots: MapSpot[];
   selectedId: string | null;
@@ -326,20 +330,21 @@ function MapViewGoogle({
   flyTo?: { center: [number, number]; zoom: number } | null;
   apiKey: string;
   pickedLocation?: { lat: number; lng: number } | null;
-  onMapPick?: ((coords: { lat: number; lng: number }) => void) | null;
+  centerPinMode?: boolean;
+  onCenterChange?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const lastFlyRef = useRef<string>("");
   const onSelectRef = useRef(onSelect);
-  const onMapPickRef = useRef(onMapPick);
+  const onCenterChangeRef = useRef(onCenterChange);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
 
   useEffect(() => {
-    onMapPickRef.current = onMapPick;
-  }, [onMapPick]);
+    onCenterChangeRef.current = onCenterChange;
+  }, [onCenterChange]);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: BUDGET_MAP_GOOGLE_LOADER_ID,
@@ -366,6 +371,8 @@ function MapViewGoogle({
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
+    const center = map.getCenter();
+    if (center) onCenterChangeRef.current?.({ lat: center.lat(), lng: center.lng() });
   }, []);
 
   const onMapUnmount = useCallback(() => {
@@ -420,11 +427,10 @@ function MapViewGoogle({
         zoom={DEFAULT_ZOOM}
         onLoad={onMapLoad}
         onUnmount={onMapUnmount}
-        onClick={(event) => {
-          const lat = event.latLng?.lat();
-          const lng = event.latLng?.lng();
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-          onMapPickRef.current?.({ lat: lat!, lng: lng! });
+        onIdle={() => {
+          const center = mapRef.current?.getCenter();
+          if (!center) return;
+          onCenterChangeRef.current?.({ lat: center.lat(), lng: center.lng() });
         }}
         options={mapOptions}
       >
@@ -446,7 +452,7 @@ function MapViewGoogle({
             </OverlayViewF>
           );
         })}
-        {pickedLocation ? (
+        {pickedLocation && !centerPinMode ? (
           <OverlayViewF
             position={{ lat: pickedLocation.lat, lng: pickedLocation.lng }}
             mapPaneName={OVERLAY_MOUSE_TARGET}
@@ -476,7 +482,8 @@ export default function MapView(props: {
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
   pickedLocation?: { lat: number; lng: number } | null;
-  onMapPick?: ((coords: { lat: number; lng: number }) => void) | null;
+  centerPinMode?: boolean;
+  onCenterChange?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
   const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, "");
   if (googleKey) {
