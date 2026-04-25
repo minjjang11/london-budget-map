@@ -1449,7 +1449,7 @@ export default function BudgetMapApp() {
   const togglePlaceReviewDraftTag = useCallback(
     (slug: string) => {
       if (!session?.user) {
-        setToast("Sign in to add tags — use the Ranking tab magic link.");
+        setToast("Sign in to add tags — use the Ranking tab sign-in panel.");
         window.setTimeout(() => setToast(null), 4500);
         return;
       }
@@ -3160,7 +3160,7 @@ export default function BudgetMapApp() {
 
             {isSupabaseConfigured() && !session?.user ? (
               <p className="mb-3 rounded-[14px] border border-amber-200 bg-amber-50/80 px-3 py-2.5 text-center text-[12px] font-semibold text-amber-950">
-                Sign in with the magic link above to send your tip to the database-backed newly-registered queue.
+                Sign in above to send your tip to the database-backed newly-registered queue.
               </p>
             ) : null}
 
