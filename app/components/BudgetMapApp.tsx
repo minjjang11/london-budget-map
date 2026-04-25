@@ -3593,7 +3593,7 @@ export default function BudgetMapApp() {
                           });
                           coursePressTimerRef.current = null;
                           coursePressInfoRef.current = null;
-                        }, 300);
+                        }, 1000);
                       }}
                       onPointerUp={() => {
                         if (coursePressTimerRef.current !== null) {
