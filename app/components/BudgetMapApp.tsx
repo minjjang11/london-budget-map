@@ -531,8 +531,8 @@ export default function BudgetMapApp() {
   }, [pendingRows, session?.user?.id]);
   const [toast, setToast] = useState<string | null>(null);
 
-  const [rankingWindow, setRankingWindow] = useState<RankingWindow>("alltime");
-  const [communitySeg, setCommunitySeg] = useState<CommunitySeg>("review");
+  const [rankingWindow, setRankingWindow] = useState<RankingWindow>("weekly");
+  const [communitySeg, setCommunitySeg] = useState<CommunitySeg>("weekly");
   const [commentDraft, setCommentDraft] = useState("");
   /** After marker tap: compact preview first; "Full details" opens existing sheet body. */
   const [placeDetailExpanded, setPlaceDetailExpanded] = useState(false);
