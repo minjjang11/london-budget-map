@@ -3563,7 +3563,7 @@ export default function BudgetMapApp() {
                 <span className="text-[12px] font-semibold text-budget-muted">{courseStops.length}</span>
               </div>
               <p className="mb-2 text-[11px] font-semibold text-budget-primary">
-                Drag the stop cards to change the order before you plan the route.
+                Hold, then drag a stop card to change the order.
               </p>
               <div className="space-y-2">
                 {coursePreviewStops.map((stop, index) => {
@@ -3593,7 +3593,7 @@ export default function BudgetMapApp() {
                           });
                           coursePressTimerRef.current = null;
                           coursePressInfoRef.current = null;
-                        }, 220);
+                        }, 300);
                       }}
                       onPointerUp={() => {
                         if (coursePressTimerRef.current !== null) {
