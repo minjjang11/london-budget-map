@@ -208,21 +208,31 @@ function MapViewLeaflet({
   selectedId,
   onSelect,
   flyTo,
+  pickedLocation,
+  onMapPick,
 }: {
   spots: MapSpot[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
+  pickedLocation?: { lat: number; lng: number } | null;
+  onMapPick?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const pickedMarkerRef = useRef<L.CircleMarker | null>(null);
   const onSelectRef = useRef(onSelect);
+  const onMapPickRef = useRef(onMapPick);
   const lastFlyRef = useRef<string>("");
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    onMapPickRef.current = onMapPick;
+  }, [onMapPick]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -237,6 +247,9 @@ function MapViewLeaflet({
 
     /** No default zoom stack — avoids overlap with app bottom nav + FAB (pinch / double-tap still zooms). */
     addBasemap(map);
+    map.on("click", (event: L.LeafletMouseEvent) => {
+      onMapPickRef.current?.({ lat: event.latlng.lat, lng: event.latlng.lng });
+    });
 
     mapRef.current = map;
 
@@ -274,6 +287,21 @@ function MapViewLeaflet({
     map.flyTo(center, zoom, { duration: 0.55 });
   }, [flyTo]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    pickedMarkerRef.current?.remove();
+    pickedMarkerRef.current = null;
+    if (!pickedLocation) return;
+    pickedMarkerRef.current = L.circleMarker([pickedLocation.lat, pickedLocation.lng], {
+      radius: 9,
+      color: "#0d1f1a",
+      weight: 3,
+      fillColor: "#00a878",
+      fillOpacity: 0.95,
+    }).addTo(map);
+  }, [pickedLocation]);
+
   return (
     <div
       className="map-fill"
@@ -289,20 +317,29 @@ function MapViewGoogle({
   onSelect,
   flyTo,
   apiKey,
+  pickedLocation,
+  onMapPick,
 }: {
   spots: MapSpot[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
   apiKey: string;
+  pickedLocation?: { lat: number; lng: number } | null;
+  onMapPick?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
   const mapRef = useRef<google.maps.Map | null>(null);
   const lastFlyRef = useRef<string>("");
   const onSelectRef = useRef(onSelect);
+  const onMapPickRef = useRef(onMapPick);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
   }, [onSelect]);
+
+  useEffect(() => {
+    onMapPickRef.current = onMapPick;
+  }, [onMapPick]);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: BUDGET_MAP_GOOGLE_LOADER_ID,
@@ -383,6 +420,12 @@ function MapViewGoogle({
         zoom={DEFAULT_ZOOM}
         onLoad={onMapLoad}
         onUnmount={onMapUnmount}
+        onClick={(event) => {
+          const lat = event.latLng?.lat();
+          const lng = event.latLng?.lng();
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+          onMapPickRef.current?.({ lat: lat!, lng: lng! });
+        }}
         options={mapOptions}
       >
         {spots.map((spot) => {
@@ -403,6 +446,24 @@ function MapViewGoogle({
             </OverlayViewF>
           );
         })}
+        {pickedLocation ? (
+          <OverlayViewF
+            position={{ lat: pickedLocation.lat, lng: pickedLocation.lng }}
+            mapPaneName={OVERLAY_MOUSE_TARGET}
+            zIndex={1100}
+            getPixelPositionOffset={(w, h) => ({
+              x: -(w / 2),
+              y: -h,
+            })}
+          >
+            <div className="pointer-events-none flex flex-col items-center">
+              <div className="rounded-full border-[3px] border-budget-text bg-budget-primary shadow-[0_8px_20px_rgb(0_168_120_/0.3)]" style={{ width: 18, height: 18 }} />
+              <div className="mt-1 rounded-full bg-budget-white px-2 py-1 text-[10px] font-extrabold text-budget-text shadow-budget-float">
+                Start
+              </div>
+            </div>
+          </OverlayViewF>
+        ) : null}
       </GoogleMap>
     </div>
   );
@@ -414,6 +475,8 @@ export default function MapView(props: {
   selectedId: string | null;
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
+  pickedLocation?: { lat: number; lng: number } | null;
+  onMapPick?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
   const googleKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, "");
   if (googleKey) {

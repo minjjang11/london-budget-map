@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
   Flag,
   Trash2,
+  GripVertical,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -99,6 +100,61 @@ const SUBMIT_PRICE_LIMITS: Record<Category, number> = {
   cafe: 4.5,
 };
 const CATEGORY_IDS: Category[] = ["restaurant", "pub", "cafe"];
+const COURSE_START_RADIUS_KM = 1;
+const COURSE_MAX_RADIUS_KM = 12;
+const COURSE_CLUSTER_PADDING_KM = 1.25;
+const SUBMIT_WORD_OPTIONS = [
+  "Great flavour",
+  "Authentic",
+  "Generous portions",
+  "Small portions",
+  "Fresh ingredients",
+  "Comfort food",
+  "Worth the calories",
+  "Spicy",
+  "Bland",
+  "Hidden gem",
+  "Consistent quality",
+  "Seasonal menu",
+  "Homemade feel",
+  "Overhyped",
+  "Must-try dish",
+  "Excellent value",
+  "Great value",
+  "Worth every penny",
+  "Budget-friendly",
+  "Student-friendly",
+  "Affordable",
+  "Pricey for what it is",
+  "Cheap and cheerful",
+  "Good deal",
+  "Overpriced",
+  "Lively atmosphere",
+  "Cosy",
+  "Quiet and relaxed",
+  "Cramped",
+  "Spacious",
+  "No-frills",
+  "Great for groups",
+  "Good for solo dining",
+  "Local favourite",
+  "Outdoor seating",
+  "Friendly staff",
+  "Attentive service",
+  "Slow service",
+  "Quick service",
+  "Cash only",
+  "No reservations needed",
+  "Gets busy quickly",
+  "Long queue",
+  "Queue moves fast",
+  "Dog-friendly",
+  "Highly recommend",
+  "Would return",
+  "Wouldn't return",
+  "Underrated",
+  "Reliable choice",
+] as const;
 
 const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -334,6 +390,31 @@ function formatBudgetCap(value: number): string {
   return `£${value.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}`;
 }
 
+function toRadians(value: number): number {
+  return (value * Math.PI) / 180;
+}
+
+function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const earthRadiusKm = 6371;
+  const dLat = toRadians(b.lat - a.lat);
+  const dLng = toRadians(b.lng - a.lng);
+  const lat1 = toRadians(a.lat);
+  const lat2 = toRadians(b.lat);
+  const hav =
+    Math.sin(dLat / 2) ** 2 +
+    Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * earthRadiusKm * Math.asin(Math.sqrt(hav));
+}
+
+function shuffle<T>(input: T[]): T[] {
+  const out = [...input];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
 function formatReviewTimeRemaining(reviewEndsAt: string): string {
   const end = new Date(reviewEndsAt).getTime();
   if (!Number.isFinite(end)) return "—";
@@ -467,10 +548,7 @@ export default function BudgetMapApp() {
   const [myPlaceReviewDraft, setMyPlaceReviewDraft] = useState<string[]>([]);
   const [placeReviewTagsBusy, setPlaceReviewTagsBusy] = useState(false);
 
-  const submitDescriptionText = useMemo(
-    () => submitDescTags.map((s) => labelForPlaceReviewSlug(s)).join(" · "),
-    [submitDescTags],
-  );
+  const submitDescriptionText = useMemo(() => submitDescTags.join(" · "), [submitDescTags]);
 
   const toggleSubmitDescTag = useCallback((slug: string) => {
     setSubmitDescTags((prev) => {
@@ -488,6 +566,10 @@ export default function BudgetMapApp() {
     { id: "course-3", category: "pub" },
   ]);
   const [courseResult, setCourseResult] = useState<Spot[] | null>(null);
+  const [courseResultRadiusKm, setCourseResultRadiusKm] = useState<number | null>(null);
+  const [courseStartPoint, setCourseStartPoint] = useState<{ lat: number; lng: number } | null>(null);
+  const [coursePickingStart, setCoursePickingStart] = useState(false);
+  const [draggingCourseStopId, setDraggingCourseStopId] = useState<string | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
   const placeDetailSheetRef = useRef<HTMLDivElement | null>(null);
 
@@ -1581,43 +1663,97 @@ export default function BudgetMapApp() {
   };
 
   const planCourse = () => {
-    const by: Record<Category, Spot[]> = { pub: [], restaurant: [], cafe: [] };
-    allSpots.forEach((s) => by[s.category].push(s));
-    (Object.keys(by) as Category[]).forEach((category) => {
-      by[category].sort((a, b) => lowestPrice(a) - lowestPrice(b));
-    });
-
-    let best: Spot[] | null = null;
-    let bestTotal = Infinity;
-
-    if (courseStops.length === 0 || courseStops.some((stop) => by[stop.category].length === 0)) {
-      setCourseResult([]);
+    if (!courseStartPoint) {
+      setToast("Set a crawl start point on the map first.");
+      window.setTimeout(() => setToast(null), 3500);
       return;
     }
 
-    const walk = (index: number, picked: Spot[], usedIds: Set<string>, total: number) => {
-      if (total > courseBudget || total >= bestTotal) return;
-      if (index >= courseStops.length) {
-        bestTotal = total;
-        best = [...picked];
-        return;
+    const candidates = allSpots.filter(
+      (spot) => isFinite(spot.lat) && isFinite(spot.lng) && !isHiddenSpotName(spot.name),
+    );
+    if (courseStops.length === 0 || candidates.length === 0) {
+      setCourseResult([]);
+      setCourseResultRadiusKm(null);
+      return;
+    }
+
+    let bestPlan: Spot[] | null = null;
+    let bestRadius: number | null = null;
+    let bestScore = Number.POSITIVE_INFINITY;
+
+    for (let radiusKm = COURSE_START_RADIUS_KM; radiusKm <= COURSE_MAX_RADIUS_KM; radiusKm += 1) {
+      const inRadius = candidates.filter(
+        (spot) => distanceKm(courseStartPoint, { lat: spot.lat, lng: spot.lng }) <= radiusKm,
+      );
+      if (courseStops.some((stop) => !inRadius.some((spot) => spot.category === stop.category))) continue;
+
+      const maxStepKm = Math.max(COURSE_CLUSTER_PADDING_KM, radiusKm * 0.9);
+
+      for (let attempt = 0; attempt < 160; attempt += 1) {
+        const picked: Spot[] = [];
+        const usedIds = new Set<string>();
+        let total = 0;
+        let routeDistance = 0;
+        let failed = false;
+
+        for (const stop of courseStops) {
+          let pool = inRadius.filter((spot) => spot.category === stop.category && !usedIds.has(spot.id));
+          if (picked.length > 0) {
+            const prev = picked[picked.length - 1]!;
+            const closePool = pool.filter(
+              (spot) => distanceKm({ lat: prev.lat, lng: prev.lng }, { lat: spot.lat, lng: spot.lng }) <= maxStepKm,
+            );
+            if (closePool.length > 0) pool = closePool;
+          }
+          if (pool.length === 0) {
+            failed = true;
+            break;
+          }
+
+          const rankedPool = shuffle(pool).sort((a, b) => {
+            const aFromStart = distanceKm(courseStartPoint, { lat: a.lat, lng: a.lng });
+            const bFromStart = distanceKm(courseStartPoint, { lat: b.lat, lng: b.lng });
+            const prev = picked[picked.length - 1];
+            const aFromPrev = prev ? distanceKm({ lat: prev.lat, lng: prev.lng }, { lat: a.lat, lng: a.lng }) : 0;
+            const bFromPrev = prev ? distanceKm({ lat: prev.lat, lng: prev.lng }, { lat: b.lat, lng: b.lng }) : 0;
+            return aFromStart + aFromPrev + lowestPrice(a) * 0.22 - (bFromStart + bFromPrev + lowestPrice(b) * 0.22);
+          });
+
+          const chosen = rankedPool[Math.floor(Math.random() * Math.min(3, rankedPool.length))] ?? rankedPool[0];
+          if (!chosen) {
+            failed = true;
+            break;
+          }
+
+          const nextTotal = total + lowestPrice(chosen);
+          if (nextTotal > courseBudget) {
+            failed = true;
+            break;
+          }
+          if (picked.length > 0) {
+            const prev = picked[picked.length - 1]!;
+            routeDistance += distanceKm({ lat: prev.lat, lng: prev.lng }, { lat: chosen.lat, lng: chosen.lng });
+          }
+          picked.push(chosen);
+          usedIds.add(chosen.id);
+          total = nextTotal;
+        }
+
+        if (failed || picked.length !== courseStops.length) continue;
+        const score = radiusKm * 18 + routeDistance * 10 + total;
+        if (score < bestScore) {
+          bestScore = score;
+          bestPlan = picked;
+          bestRadius = radiusKm;
+        }
       }
 
-      const stop = courseStops[index];
-      for (const spot of by[stop.category]) {
-        if (usedIds.has(spot.id)) continue;
-        const nextTotal = total + lowestPrice(spot);
-        if (nextTotal > courseBudget || nextTotal >= bestTotal) continue;
-        usedIds.add(spot.id);
-        picked.push(spot);
-        walk(index + 1, picked, usedIds, nextTotal);
-        picked.pop();
-        usedIds.delete(spot.id);
-      }
-    };
+      if (bestPlan) break;
+    }
 
-    walk(0, [], new Set<string>(), 0);
-    setCourseResult(best || []);
+    setCourseResult(bestPlan || []);
+    setCourseResultRadiusKm(bestRadius);
   };
 
   const courseTotal =
@@ -1637,6 +1773,7 @@ export default function BudgetMapApp() {
           if (id === "all") {
             setActiveCats([]);
             setCourseResult(null);
+            setCourseResultRadiusKm(null);
             setSelectedId(null);
             return;
           }
@@ -1650,6 +1787,7 @@ export default function BudgetMapApp() {
             return CATEGORY_IDS.filter((cat) => [...prev, id].includes(cat));
           });
           setCourseResult(null);
+          setCourseResultRadiusKm(null);
           setSelectedId(null);
         }}
         className="flex min-h-[38px] min-w-0 max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full text-center transition-colors"
@@ -1681,11 +1819,48 @@ export default function BudgetMapApp() {
   const addCourseStop = (category: Category) => {
     setCourseStops((prev) => [...prev, { id: `course-${courseStopIdRef.current++}`, category }]);
     setCourseResult(null);
+    setCourseResultRadiusKm(null);
   };
 
   const removeCourseStop = (id: string) => {
     setCourseStops((prev) => (prev.length <= 1 ? prev : prev.filter((stop) => stop.id !== id)));
     setCourseResult(null);
+    setCourseResultRadiusKm(null);
+  };
+
+  const requestCourseStartPick = () => {
+    setCoursePickingStart(true);
+    setSelectedId(null);
+    setTab("map");
+    setToast("Tap the map to drop your crawl start pin.");
+    window.setTimeout(() => setToast(null), 4500);
+  };
+
+  const handleCourseStartPick = useCallback((coords: { lat: number; lng: number }) => {
+    setCourseStartPoint(coords);
+    setCoursePickingStart(false);
+    setCourseResult(null);
+    setCourseResultRadiusKm(null);
+    setFlyTo({ center: [coords.lat, coords.lng], zoom: 15 });
+    setTab("course");
+    setToast("Start point locked in. Build your crawl.");
+    window.setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  const moveCourseStop = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setCourseStops((prev) => {
+      const fromIndex = prev.findIndex((stop) => stop.id === fromId);
+      const toIndex = prev.findIndex((stop) => stop.id === toId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      if (!moved) return prev;
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    setCourseResult(null);
+    setCourseResultRadiusKm(null);
   };
 
   const voteIcon = (kind: "up" | "down", active: boolean) => {
@@ -1766,7 +1941,14 @@ export default function BudgetMapApp() {
       {/* Keep the same map instance mounted so returning to Map preserves the last viewport and selection. */}
       {mounted && (
         <div className="absolute inset-0 z-0">
-          <MapView spots={mapSpots} selectedId={selectedId} onSelect={handleSelect} flyTo={flyTo} />
+          <MapView
+            spots={mapSpots}
+            selectedId={selectedId}
+            onSelect={coursePickingStart ? () => undefined : handleSelect}
+            flyTo={flyTo}
+            pickedLocation={courseStartPoint}
+            onMapPick={coursePickingStart ? handleCourseStartPick : null}
+          />
         </div>
       )}
 
@@ -1979,6 +2161,27 @@ export default function BudgetMapApp() {
           className="pointer-events-none absolute left-3 right-3 top-[calc(262px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
         >
           {toast}
+        </div>
+      )}
+
+      {tab === "map" && coursePickingStart && (
+        <div className="absolute left-3 right-3 top-[calc(306px+env(safe-area-inset-top,0px))] z-[56] rounded-[18px] border border-budget-primary/20 bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-extrabold text-budget-primary">Pick your crawl start</p>
+              <p className="mt-1 text-[12px] text-budget-muted">Tap anywhere on the map to drop the start pin.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCoursePickingStart(false);
+                setTab("course");
+              }}
+              className="shrink-0 cursor-pointer rounded-full border border-budget-surface bg-budget-white px-3 py-1.5 text-[11px] font-extrabold text-budget-text"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
@@ -2329,12 +2532,6 @@ export default function BudgetMapApp() {
                                 value={contributionPrice}
                                 onChange={(e) => setContributionPrice(e.target.value)}
                                 placeholder={`Price up to ${formatBudgetCap(SUBMIT_PRICE_LIMITS[selected.category])}`}
-                                className="budget-input-sm w-full text-[13px]"
-                              />
-                              <input
-                                value={contributionComment}
-                                onChange={(e) => setContributionComment(e.target.value)}
-                                placeholder="Quick comment (optional)"
                                 className="budget-input-sm w-full text-[13px]"
                               />
                               {contributionPhoto ? (
@@ -2768,7 +2965,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "submit" &&
-        panelHero("Submit", Plus, "bg-budget-cta", "Snitch form")}
+        panelHero("Submit", Plus, "bg-budget-cta", "Share a find")}
 
       {tab === "submit" && (
         <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
@@ -2945,19 +3142,19 @@ export default function BudgetMapApp() {
               </button>
 
               <label className="mb-1.5 block text-xs font-semibold text-budget-muted">
-                Quick vibe (optional, up to {MAX_PLACE_REVIEW_TAGS_PER_USER} words)
+                Pick up to {MAX_PLACE_REVIEW_TAGS_PER_USER} words
               </label>
               <p className="mb-2 text-[11px] leading-snug text-budget-muted">
-                Tap to add or remove — same word list as map tags after approval.
+                Tap to add or remove the words that best match the spot.
               </p>
               {submitDescTags.length > 0 ? (
                 <div className="mb-2 flex flex-wrap gap-1.5">
-                  {submitDescTags.map((slug) => (
+                  {submitDescTags.map((tag) => (
                     <span
-                      key={slug}
+                      key={tag}
                       className="inline-flex items-center rounded-full bg-budget-primary/15 px-2.5 py-1 text-[11px] font-extrabold text-budget-text"
                     >
-                      {labelForPlaceReviewSlug(slug)}
+                      {tag}
                     </span>
                   ))}
                 </div>
@@ -2965,20 +3162,20 @@ export default function BudgetMapApp() {
                 <p className="mb-2 text-[11px] text-budget-muted">None selected yet.</p>
               )}
               <div className="mb-5 flex max-h-[22vh] flex-wrap gap-1.5 overflow-y-auto">
-                {PLACE_REVIEW_TAG_SLUGS.map((slug) => {
-                  const on = submitDescTags.includes(slug);
+                {SUBMIT_WORD_OPTIONS.map((tag) => {
+                  const on = submitDescTags.includes(tag);
                   return (
                     <button
-                      key={slug}
+                      key={tag}
                       type="button"
-                      onClick={() => toggleSubmitDescTag(slug)}
+                      onClick={() => toggleSubmitDescTag(tag)}
                       className={`cursor-pointer rounded-full border px-2.5 py-1 text-[11px] font-extrabold transition ${
                         on
                           ? "border-budget-primary bg-budget-primary/10 text-budget-text"
                           : "border-budget-surface/80 bg-budget-bg text-budget-text hover:border-budget-primary/40"
                       }`}
                     >
-                      {labelForPlaceReviewSlug(slug)}
+                      {tag}
                     </button>
                   );
                 })}
@@ -3062,7 +3259,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "profile" &&
-        panelHero("Profile", User, "bg-[#0D1F1A]", "Saved stash")}
+        panelHero("Profile", User, "bg-[#0D1F1A]", "Your account")}
 
       {tab === "profile" && (
         <div className="budget-tab-panel p-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
@@ -3217,26 +3414,66 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "course" &&
-        panelHero("Course", Route, "bg-[#165A47]", "Budget crawl")}
+        panelHero("Course", Route, "bg-[#165A47]", "Plan your round")}
 
       {tab === "course" && (
         <div className="budget-tab-panel p-4" style={{ top: "calc(108px + env(safe-area-inset-top, 0px))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <h2 className="mb-2 text-lg font-extrabold text-budget-text">Budget crawl</h2>
+            <div className="mb-4 rounded-2xl border border-budget-surface bg-budget-bg px-3.5 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[12px] font-extrabold text-budget-text">Course start</p>
+                  <p className="mt-1 text-[11px] leading-snug text-budget-muted">
+                    {courseStartPoint
+                      ? `Pinned at ${courseStartPoint.lat.toFixed(4)}, ${courseStartPoint.lng.toFixed(4)}`
+                      : "Drop a start pin first. We begin within 1 km and widen the search only when needed."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={requestCourseStartPick}
+                  className="shrink-0 cursor-pointer rounded-full border border-budget-surface bg-budget-white px-3.5 py-2 text-[12px] font-extrabold text-budget-text"
+                >
+                  {courseStartPoint ? "Move start pin" : "Set start on map"}
+                </button>
+              </div>
+            </div>
             <div className="mb-4">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-budget-text">Stops</span>
                 <span className="text-[12px] font-semibold text-budget-muted">{courseStops.length}</span>
               </div>
+              <p className="mb-2 text-[11px] font-semibold text-budget-primary">
+                Drag the stop cards to change the order before you plan the route.
+              </p>
               <div className="space-y-2">
                 {courseStops.map((stop, index) => {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
                   return (
                     <div
                       key={stop.id}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-budget-surface bg-budget-bg px-3 py-2.5"
+                      draggable
+                      onDragStart={() => setDraggingCourseStopId(stop.id)}
+                      onDragEnd={() => setDraggingCourseStopId(null)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={() => {
+                        if (draggingCourseStopId) moveCourseStop(draggingCourseStopId, stop.id);
+                        setDraggingCourseStopId(null);
+                      }}
+                      className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
+                        draggingCourseStopId === stop.id
+                          ? "border-budget-primary/50 shadow-[0_0_0_2px_rgb(0_168_120_/0.08)]"
+                          : "border-budget-surface"
+                      }`}
                     >
                       <div className="min-w-0 flex items-center gap-2.5">
+                        <span
+                          className="grid size-8 shrink-0 place-items-center rounded-full border border-budget-surface bg-budget-white text-budget-muted"
+                          aria-hidden
+                        >
+                          <GripVertical size={15} />
+                        </span>
                         <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
                           Stop {index + 1}
                         </span>
@@ -3288,6 +3525,7 @@ export default function BudgetMapApp() {
               onChange={(e) => {
                 setCourseBudget(parseInt(e.target.value, 10));
                 setCourseResult(null);
+                setCourseResultRadiusKm(null);
               }}
               className="mb-4 w-full accent-budget-primary"
             />
@@ -3304,11 +3542,18 @@ export default function BudgetMapApp() {
             <div className="mt-4">
               {courseResult.length === 0 ? (
                 <div className="rounded-2xl bg-budget-surface p-5 text-center text-sm text-budget-text">
-                  No crawl fits under £{courseBudget} for this line-up. Try removing a stop or bumping the budget.
+                  {courseStartPoint
+                    ? `No crawl fits within the current search around your start point under £${courseBudget}. Try another pin, fewer stops, or a bigger budget.`
+                    : "Set a start pin first, then plan your crawl."}
                 </div>
               ) : (
                 <div className="mt-2 rounded-[20px] border border-budget-surface bg-budget-white p-4">
-                  <div className="mb-3 text-xs font-extrabold text-budget-primary">Total £{courseTotal.toFixed(2)}</div>
+                  <div className="mb-1 text-xs font-extrabold text-budget-primary">Total £{courseTotal.toFixed(2)}</div>
+                  {courseResultRadiusKm ? (
+                    <div className="mb-3 text-[11px] font-semibold text-budget-muted">
+                      Picked within {courseResultRadiusKm} km of your start pin.
+                    </div>
+                  ) : null}
                   {courseResult.map((spot, index) => {
                     const stop = courseStops[index];
                     const stopLabel = stop ? CATS.find((c) => c.id === stop.category)?.label ?? "Stop" : "Stop";
