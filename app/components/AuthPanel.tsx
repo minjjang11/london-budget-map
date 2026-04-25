@@ -72,8 +72,28 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                   setMsg(error.message);
                 }
               }}
-              className="flex w-full cursor-pointer items-center justify-center rounded-xl border-0 bg-budget-primary px-3 py-3 text-[13px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-budget-surface bg-white px-3 py-3 text-[13px] font-extrabold text-budget-text shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
+              <span className="grid size-5 place-items-center rounded-full bg-white" aria-hidden>
+                <svg viewBox="0 0 24 24" width="16" height="16">
+                  <path
+                    d="M23.49 12.27c0-.79-.07-1.55-.2-2.27H12v4.3h6.45a5.52 5.52 0 0 1-2.4 3.62v3.01h3.88c2.27-2.09 3.56-5.17 3.56-8.66z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 24c3.24 0 5.96-1.07 7.95-2.9l-3.88-3.01c-1.07.72-2.44 1.15-4.07 1.15-3.13 0-5.78-2.11-6.72-4.95H1.27v3.11A12 12 0 0 0 12 24z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.28 14.29A7.2 7.2 0 0 1 4.9 12c0-.79.14-1.55.38-2.29V6.6H1.27A12 12 0 0 0 0 12c0 1.94.46 3.77 1.27 5.4l4.01-3.11z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 4.77c1.76 0 3.34.61 4.58 1.8l3.44-3.44C17.96 1.19 15.24 0 12 0A12 12 0 0 0 1.27 6.6l4.01 3.11c.94-2.84 3.59-4.94 6.72-4.94z"
+                    fill="#EA4335"
+                  />
+                </svg>
+              </span>
               {busy ? "Connecting…" : "Continue with Google"}
             </button>
             <button
