@@ -2023,7 +2023,7 @@ export default function BudgetMapApp() {
                 }`}
                 style={
                   placeDetailExpanded
-                    ? { height: "calc(100dvh - 8.5rem - env(safe-area-inset-top, 0px))" }
+                    ? { top: "calc(56px + env(safe-area-inset-top, 0px))" }
                     : { maxHeight: "calc(100dvh - 220px - env(safe-area-inset-top, 0px))" }
                 }
               >
