@@ -2372,10 +2372,10 @@ export default function BudgetMapApp() {
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
                 onClick={(e) => e.stopPropagation()}
-                className={`absolute bottom-0 left-0 right-0 border border-budget-surface/80 bg-budget-white px-4 pt-3 shadow-budget-sheet animate-slide-up ${
+                className={`absolute bottom-0 left-0 right-0 border border-budget-surface/80 bg-budget-white shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
-                    ? "rounded-t-[26px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(62vh,520px)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] pb-4"
+                    ? "rounded-t-[26px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-0 pt-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
+                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(62vh,520px)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-4 pt-3 pb-4"
                 }`}
                 style={
                   placeDetailExpanded
@@ -2466,16 +2466,7 @@ export default function BudgetMapApp() {
                 ) : (
                   <div style={{ animation: "detailPushIn 0.24s cubic-bezier(0.22, 1, 0.36, 1)" }}>
                     <div
-                      className="sticky top-0 z-10 mb-3 flex items-center border-b border-budget-surface/60 pb-2.5"
-                      style={{
-                        backgroundColor: "#ffffff",
-                        marginTop: "-0.75rem",
-                        marginLeft: "-1rem",
-                        marginRight: "-1rem",
-                        paddingLeft: "1rem",
-                        paddingRight: "1rem",
-                        paddingTop: "0.75rem",
-                      }}
+                      className="sticky top-0 z-10 mb-3 flex items-center border-b border-budget-surface/60 bg-budget-white px-4 pb-2.5 pt-3"
                     >
                       <button
                         type="button"
@@ -2490,6 +2481,7 @@ export default function BudgetMapApp() {
                       </button>
                     </div>
 
+                    <div className="px-4">
                     <div className="flex gap-3.5">
                   <div
                     className="grid size-[52px] shrink-0 place-items-center rounded-2xl bg-budget-surface text-[26px] leading-none shadow-[inset_0_1px_0_rgb(255_255_255_/0.65)]"
@@ -2748,6 +2740,7 @@ export default function BudgetMapApp() {
                         )}
                       </div>
                     ) : null}
+                  </div>
                   </div>
 
                 <div className="mt-5">
