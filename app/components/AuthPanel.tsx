@@ -164,7 +164,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
       ) : (
         <>
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold text-budget-muted">Enter the 6-digit code</p>
+            <p className="text-[11px] font-semibold text-budget-muted">Enter the code from your email</p>
             <button
               type="button"
               disabled={busy}
@@ -183,17 +183,17 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               type="text"
               value={code}
               onChange={(e) => {
-                setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 8));
                 setMsg(null);
               }}
-              placeholder="123456"
+              placeholder="12345678"
               inputMode="numeric"
               autoComplete="one-time-code"
               className="budget-input-sm min-w-0 flex-1 text-center text-[15px] font-extrabold tracking-[0.3em]"
             />
             <button
               type="button"
-              disabled={busy || code.trim().length !== 6 || !email.trim()}
+              disabled={busy || code.trim().length < 6 || !email.trim()}
               onClick={async () => {
                 setBusy(true);
                 setMsg(null);
