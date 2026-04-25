@@ -1818,6 +1818,37 @@ export default function BudgetMapApp() {
     );
   };
 
+  const rankingCatChip = (id: Category | "all", label: string) => {
+    const allSelected = activeCats.length === 0;
+    const active = id === "all" ? allSelected : activeCats.includes(id);
+    return (
+      <button
+        key={`ranking-${String(id)}`}
+        type="button"
+        onClick={() => {
+          if (id === "all") {
+            setActiveCats([]);
+            return;
+          }
+          setActiveCats((prev) => {
+            if (prev.length === 0) return [id];
+            const has = prev.includes(id);
+            if (has) {
+              const next = prev.filter((cat) => cat !== id);
+              return CATEGORY_IDS.filter((cat) => next.includes(cat));
+            }
+            return CATEGORY_IDS.filter((cat) => [...prev, id].includes(cat));
+          });
+        }}
+        className={`min-w-0 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-center text-[11px] font-extrabold leading-none transition ${
+          active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text/70"
+        }`}
+      >
+        <span className="block truncate">{label}</span>
+      </button>
+    );
+  };
+
   const addCourseStop = (category: Category) => {
     setCourseStops((prev) => [...prev, { id: `course-${courseStopIdRef.current++}`, category }]);
     setCourseResult(null);
@@ -2032,7 +2063,6 @@ export default function BudgetMapApp() {
             selectedId={selectedId}
             onSelect={handleSelect}
             flyTo={flyTo}
-            pickedLocation={courseStartPoint}
           />
         </div>
       )}
@@ -2190,13 +2220,13 @@ export default function BudgetMapApp() {
 
       {tab === "ranking" && (
         <section
-          className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
+          className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-3 pt-3 shadow-budget-header"
           style={{ top: "max(20px, env(safe-area-inset-top))" }}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="grid size-11 shrink-0 place-items-center rounded-2xl bg-budget-primary text-white shadow-[0_8px_18px_rgb(0_168_120_/0.22)]">
-                <Crown size={22} strokeWidth={2.1} />
+              <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-budget-primary text-white shadow-[0_8px_18px_rgb(0_168_120_/0.22)]">
+                <Crown size={20} strokeWidth={2.1} />
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">Leaderboard</p>
@@ -2205,12 +2235,9 @@ export default function BudgetMapApp() {
                 </h2>
               </div>
             </div>
-            <div className="shrink-0 rounded-full border border-budget-surface bg-budget-bg px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-muted">
-              Crown picks
-            </div>
           </div>
           <div
-            className="mt-3 flex rounded-[16px] bg-budget-surface/90 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
+            className="mt-2.5 flex rounded-[16px] bg-budget-surface/90 p-1 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
             role="tablist"
             aria-label="Ranking sections"
           >
@@ -2237,8 +2264,8 @@ export default function BudgetMapApp() {
               );
             })}
           </div>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
+          <div className="mt-2 flex gap-1">
+            {CATS.map((c) => rankingCatChip(c.id as Category | "all", c.label))}
           </div>
         </section>
       )}
@@ -2795,7 +2822,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(182px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(208px + env(safe-area-inset-top, 0px))" }}>
           {communitySeg === "review" ? (
             <>
               {isSupabaseConfigured() && getBrowserSupabase() ? (
