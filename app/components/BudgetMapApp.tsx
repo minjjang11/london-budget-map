@@ -3597,6 +3597,7 @@ export default function BudgetMapApp() {
                       }}
                       onPointerDown={(e) => {
                         if (e.pointerType === "mouse" && e.button !== 0) return;
+                        e.preventDefault();
                         const rect = e.currentTarget.getBoundingClientRect();
                         coursePressInfoRef.current = { id: stop.id, startX: e.clientX, startY: e.clientY };
                         if (coursePressTimerRef.current !== null) window.clearTimeout(coursePressTimerRef.current);
@@ -3629,6 +3630,12 @@ export default function BudgetMapApp() {
                           ? "border-dashed border-budget-primary/35 opacity-[0.45]"
                           : "border-budget-surface"
                       }`}
+                      style={{
+                        touchAction: "none",
+                        userSelect: "none",
+                        WebkitUserSelect: "none",
+                        WebkitTouchCallout: "none",
+                      }}
                     >
                       <div className="min-w-0 flex items-center gap-2.5">
                         <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
@@ -3641,6 +3648,7 @@ export default function BudgetMapApp() {
                       </div>
                       <button
                         type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={() => removeCourseStop(stop.id)}
                         disabled={courseStops.length <= 1}
                         className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full border border-budget-surface bg-budget-white text-budget-muted disabled:cursor-not-allowed disabled:opacity-40"
@@ -3659,6 +3667,9 @@ export default function BudgetMapApp() {
                     left: courseDragState.left,
                     top: courseDragState.pointerY - courseDragState.offsetY,
                     width: courseDragState.width,
+                    userSelect: "none",
+                    WebkitUserSelect: "none",
+                    WebkitTouchCallout: "none",
                   }}
                 >
                   {(() => {
