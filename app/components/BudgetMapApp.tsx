@@ -2011,6 +2011,7 @@ export default function BudgetMapApp() {
               onClick={() => setSelectedId(null)}
             >
               <div
+                key={`${selected.id}-${placeDetailExpanded ? "full" : "summary"}`}
                 ref={placeDetailSheetRef}
                 role="dialog"
                 aria-label={placeDetailExpanded ? "Place details" : "Place preview"}
@@ -2094,6 +2095,7 @@ export default function BudgetMapApp() {
                         <button
                           type="button"
                           onClick={() => {
+                            placeDetailSheetRef.current?.scrollTo({ top: 0, behavior: "auto" });
                             setPlaceDetailTransition("forward");
                             setPlaceDetailExpanded(true);
                           }}
@@ -2111,6 +2113,7 @@ export default function BudgetMapApp() {
                       <button
                         type="button"
                         onClick={() => {
+                          placeDetailSheetRef.current?.scrollTo({ top: 0, behavior: "auto" });
                           setPlaceDetailTransition("backward");
                           setPlaceDetailExpanded(false);
                         }}
