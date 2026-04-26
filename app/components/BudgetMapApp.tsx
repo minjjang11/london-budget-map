@@ -382,6 +382,11 @@ function formatSubmissionDate(value: string): string {
   });
 }
 
+function cleanDisplayNote(value: string | null | undefined): string {
+  if (!value) return "";
+  return value.replace(/^\[manual_add\]\s*/i, "").trim();
+}
+
 function formatBudgetCap(value: number): string {
   return `£${value.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1")}`;
 }
@@ -2538,7 +2543,7 @@ export default function BudgetMapApp() {
                         className="rounded-2xl bg-[#e8f2ed] px-3.5 py-3.5 shadow-[inset_0_1px_0_rgb(255_255_255_/0.5)]"
                       >
                         <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">
-                          Report · {formatSubmissionDate(sub.date)}
+                          {formatSubmissionDate(sub.date)}
                         </div>
                         {sub.photo ? (
                           <img
@@ -2558,10 +2563,10 @@ export default function BudgetMapApp() {
                             </span>
                           </div>
                         ))}
-                        {sub.review && (
+                        {cleanDisplayNote(sub.review) && (
                           <div className="mt-3 rounded-xl border-l-[4px] border-budget-primary bg-emerald-50/95 px-3 py-2.5 text-[13px] font-medium leading-snug text-budget-text">
                             <span className="text-budget-primary/80">&ldquo;</span>
-                            {sub.review}
+                            {cleanDisplayNote(sub.review)}
                             <span className="text-budget-primary/80">&rdquo;</span>
                           </div>
                         )}
@@ -2873,7 +2878,7 @@ export default function BudgetMapApp() {
                 pendingRows.map((row) => {
               const catLabel = CATS.find((c) => c.id === row.category)?.label ?? "Spot";
               const priceNum = Number(row.price_gbp);
-              const desc = row.description?.trim();
+              const desc = cleanDisplayNote(row.description);
               const pendingSpotId = `pending-${row.id}`;
               const pendingSaved = savedIds.has(pendingSpotId);
               return (

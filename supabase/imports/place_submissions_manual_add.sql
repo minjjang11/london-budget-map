@@ -1,0 +1,71 @@
+-- Auto-generated manual_add inserts for place_submissions
+-- Dedupe checks are case-insensitive by place name across submissions + approved places.
+with seed_rows (
+  place_name,
+  address,
+  lat,
+  lng,
+  category,
+  menu_item_name,
+  price_gbp,
+  description,
+  area,
+  photo,
+  google_place_id
+) as (
+values
+  ('Ngon Ngon', '144 Clerkenwell Rd, London EC1R 5DP, United Kingdom', 51.52216, -0.109744, 'restaurant', 'Pho', 11.5, '[manual_add] Vietnamese mains usually under twelve pounds.', 'Soho', null, 'ChIJ1eoA5k4bdkgRlWOixgRdKHE'),
+  ('Mr Wu', '28 Wardour St, London W1D 6QN, United Kingdom', 51.5113164, -0.1319498, 'restaurant', 'Roast duck rice', 9.5, '[manual_add] Quick Chinese rice plates at student-friendly prices.', 'Soho', null, 'ChIJsXB_TNIEdkgRWhsXRdwGQVQ'),
+  ('3 Mien', '64 Middlesex St, London E1 7EZ, United Kingdom', 51.5161323, -0.0760682, 'restaurant', 'Bun bo hue', 11, '[manual_add] Casual noodle soups with straightforward portions.', 'Shoreditch', null, 'ChIJud1qFxMddkgRDGkeIkSC76g'),
+  ('My Old Place', '88-90 Middlesex St, London E1 7EZ, United Kingdom', 51.516886, -0.0768991, 'restaurant', 'Hand-pulled noodles', 10.5, '[manual_add] Simple Chinese comfort dishes and noodle bowls.', 'Shoreditch', null, 'ChIJgxrNerMcdkgRAUyWWN4Apzs'),
+  ('Wok The Pho', '8 Cable St, London E1 8JG, United Kingdom', 51.5107791, -0.0680572, 'restaurant', 'Beef pho', 11.5, '[manual_add] Solid pho and wok dishes with low-key pricing.', 'Borough', null, 'ChIJvXHHmzMDdkgR5QyzGP4iWi8'),
+  ('Bento Bab', '13 Bowling Green Ln, London EC1R 0BD, United Kingdom', 51.5243253, -0.1077902, 'restaurant', 'Bibimbap', 9.9, '[manual_add] Korean rice bowls and bento style mains.', 'Soho', null, 'ChIJHU57D20bdkgR2OX_gipG1TQ'),
+  ('On The Bab', '305 Old St, London EC1V 9LA, United Kingdom', 51.5268491, -0.08158, 'restaurant', 'Chicken rice bowl', 11.9, '[manual_add] Fast Korean bowls and fried options under budget.', 'Shoreditch', null, 'ChIJ810XyLocdkgR0v3coqVTjNc'),
+  ('Marie''s Cafe', '90 Lower Marsh, London SE1 7AB, United Kingdom', 51.5014839, -0.1114616, 'restaurant', 'Full English', 9.5, '[manual_add] Classic cafe plates with predictable value.', 'Borough', null, 'ChIJRw8qfLkEdkgR6_et2uOEqu4'),
+  ('Dan Dan', '34-36 Southwark St, London SE1 1UN, United Kingdom', 51.5048439, -0.09309229999999999, 'restaurant', 'Dan dan noodles', 11.5, '[manual_add] Noodle-focused menu with reliable mid-range portions.', 'Borough', null, 'ChIJzX8xVOIDdkgR6jhwTEw0y8I'),
+  ('KoKoDoo', '54 Paul St, London EC2A 4LN, United Kingdom', 51.5240789, -0.08408639999999999, 'restaurant', 'Korean chicken over rice', 10.9, '[manual_add] Korean comfort meals that usually stay affordable.', 'Shoreditch', null, 'ChIJ6-q_25kddkgRLex7YpGnX4Y')
+)
+insert into public.place_submissions (
+  status,
+  submitted_at,
+  review_ends_at,
+  submitted_by,
+  place_name,
+  address,
+  lat,
+  lng,
+  category,
+  menu_item_name,
+  price_gbp,
+  description,
+  area,
+  photo,
+  google_place_id
+)
+select
+  'pending',
+  now(),
+  now() + interval '7 days',
+  null,
+  s.place_name,
+  s.address,
+  s.lat,
+  s.lng,
+  s.category,
+  s.menu_item_name,
+  s.price_gbp,
+  s.description,
+  s.area,
+  s.photo,
+  s.google_place_id
+from seed_rows s
+where not exists (
+  select 1
+  from public.place_submissions ps
+  where lower(trim(ps.place_name)) = lower(trim(s.place_name))
+)
+and not exists (
+  select 1
+  from public.places p
+  where lower(trim(p.name)) = lower(trim(s.place_name))
+);
