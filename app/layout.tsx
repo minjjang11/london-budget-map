@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Budget Map — London prices, actually",
+  title: "mappetite — London prices, actually",
   description:
     "Crowdsourced cheap eats, pints & coffee in London. Built for students and young professionals who still read the menu prices.",
 };

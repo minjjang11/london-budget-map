@@ -2087,7 +2087,7 @@ export default function BudgetMapApp() {
             style={{ fontSize: "19px", fontWeight: 700, color: "#0D1F1A" }}
           >
             <Link href="/home" className="hover:text-budget-primary/90" style={{ color: "inherit" }}>
-              Budget Map
+              mappetite
             </Link>
           </h1>
           <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
