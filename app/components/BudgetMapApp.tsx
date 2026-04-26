@@ -2754,7 +2754,7 @@ export default function BudgetMapApp() {
                       type="button"
                       disabled={savePlaceBusy && remoteIds.has(selected.id)}
                       onClick={() => void toggleSave(selected.id)}
-                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface bg-budget-white py-3.5 text-[13px] font-extrabold text-budget-text transition disabled:cursor-wait disabled:opacity-60"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface bg-budget-white py-3 text-[12.5px] font-extrabold text-budget-text transition disabled:cursor-wait disabled:opacity-60"
                     >
                       {saveIcon(savedIds.has(selected.id))}
                       {savePlaceBusy && remoteIds.has(selected.id)
@@ -2771,7 +2771,7 @@ export default function BudgetMapApp() {
                           "_blank",
                         );
                       }}
-                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-3.5 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
+                      className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-3 text-[12.5px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
                     >
                       <Navigation size={18} strokeWidth={2.25} />
                       Directions
