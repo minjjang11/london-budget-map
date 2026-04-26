@@ -2749,7 +2749,7 @@ export default function BudgetMapApp() {
                   </div>
 
                 <div className="mt-5">
-                  <div className="flex gap-3 px-2">
+                  <div className="flex gap-3 px-3">
                     <button
                       type="button"
                       disabled={savePlaceBusy && remoteIds.has(selected.id)}
@@ -2778,7 +2778,7 @@ export default function BudgetMapApp() {
                     </button>
                   </div>
                   {selectedIsPending ? (
-                    <div className="mt-2 flex justify-end">
+                    <div className="mt-2 flex justify-end px-3">
                       <button
                         type="button"
                         onClick={() => handleReportTap(selectedPendingRow!.id)}
