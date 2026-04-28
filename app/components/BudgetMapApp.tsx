@@ -2214,11 +2214,11 @@ export default function BudgetMapApp() {
               <img
                 src="/brand/mappetite-wordmark.png"
                 alt="Mappetite"
-                className="h-[23px] w-auto max-w-[165px] object-contain select-none"
+                className="h-[20px] w-auto max-w-[150px] object-contain select-none"
                 draggable={false}
               />
             </h1>
-            <p className="shrink-0 text-[11px] font-semibold tracking-[-0.01em]" style={{ color: "#496059" }}>
+            <p className="shrink-0 text-[10px] font-semibold tracking-[-0.01em]" style={{ color: "#496059" }}>
               Eat well. Spend less.
             </p>
           </div>

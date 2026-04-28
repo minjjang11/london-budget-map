@@ -33,7 +33,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src="/brand/mappetite-loading-text.png"
             alt="Loading budget-friendly spots..."
-            className="absolute left-1/2 top-[67%] w-[min(56vw,300px)] -translate-x-1/2 object-contain opacity-90"
+            className="absolute left-1/2 top-[67%] w-[min(50vw,260px)] -translate-x-1/2 object-contain opacity-90"
             draggable={false}
           />
         </div>
