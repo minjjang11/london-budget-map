@@ -639,7 +639,9 @@ export default function BudgetMapApp() {
   const [courseDragState, setCourseDragState] = useState<{
     activeId: string;
     overIndex: number;
+    pointerX: number;
     pointerY: number;
+    offsetX: number;
     offsetY: number;
     left: number;
     width: number;
@@ -2046,6 +2048,7 @@ export default function BudgetMapApp() {
         prev
           ? {
               ...prev,
+              pointerX: event.clientX,
               pointerY: event.clientY,
               overIndex: insertIndex,
             }
@@ -3773,7 +3776,9 @@ export default function BudgetMapApp() {
                           setCourseDragState({
                             activeId: stop.id,
                             overIndex: index,
+                            pointerX: e.clientX,
                             pointerY: e.clientY,
+                            offsetX: e.clientX - rect.left,
                             offsetY: e.clientY - rect.top,
                             left: rect.left,
                             width: rect.width,
@@ -3835,7 +3840,7 @@ export default function BudgetMapApp() {
                 <div
                   className="pointer-events-none fixed z-[400] rounded-2xl border-2 border-budget-primary bg-white px-3 py-2.5 shadow-[0_28px_60px_rgb(13_31_26_/0.34)]"
                   style={{
-                    left: courseDragState.left,
+                    left: courseDragState.pointerX - courseDragState.offsetX,
                     top: courseDragState.pointerY - courseDragState.offsetY,
                     width: courseDragState.width,
                     transform: "scale(1.025)",
