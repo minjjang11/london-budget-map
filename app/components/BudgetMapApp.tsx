@@ -2209,11 +2209,11 @@ export default function BudgetMapApp() {
             paddingBottom: "13px",
           }}
         >
-          <h1 className="mb-2">
+          <h1 className="mb-2.5">
             <img
               src="/brand/mappitite-wordmark.png"
               alt="Mappitite"
-              className="h-[29px] w-auto max-w-[170px] object-contain select-none"
+              className="h-[38px] w-auto max-w-[230px] object-contain select-none mix-blend-multiply"
               draggable={false}
             />
           </h1>
