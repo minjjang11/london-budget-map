@@ -23,14 +23,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#edf2f2] px-6"
           style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <div className="w-full max-w-[156px]">
+          <div className="w-full max-w-[168px]">
             <img
-              src="/brand/mappitite-wordmark.png"
+              src="/brand/mappitite-logo.png"
               alt="Mappitite"
-              className="h-auto w-full object-contain drop-shadow-[0_6px_12px_rgb(13_31_26_/0.12)]"
+              className="h-auto w-full object-contain drop-shadow-[0_8px_18px_rgb(13_31_26_/0.14)]"
             />
           </div>
-          <div className="budget-app-splash-spinner mt-10" aria-hidden />
         </div>
       ) : null}
 
