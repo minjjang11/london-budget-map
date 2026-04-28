@@ -655,9 +655,6 @@ export default function BudgetMapApp() {
     [remoteApprovedSpots],
   );
 
-  const remoteIdsRef = useRef(remoteIds);
-  remoteIdsRef.current = remoteIds;
-
   const pendingQueueSpots = useMemo(
     () =>
       pendingRows.map((row) => {
@@ -1586,12 +1583,12 @@ export default function BudgetMapApp() {
 
   useEffect(() => {
     if (!selectedId || !isSupabaseConfigured() || !getBrowserSupabase()) return;
-    if (!remoteIdsRef.current.has(selectedId)) return;
+    if (!remoteIds.has(selectedId)) return;
     void refreshPlaceVoteDisplay(selectedId);
-  }, [selectedId, session?.user?.id, refreshPlaceVoteDisplay]);
+  }, [selectedId, session?.user?.id, refreshPlaceVoteDisplay, remoteIds]);
 
   useEffect(() => {
-    if (!selectedId || !remoteIdsRef.current.has(selectedId)) {
+    if (!selectedId || !remoteIds.has(selectedId)) {
       setMyPlaceReviewDraft([]);
       return;
     }
@@ -1616,7 +1613,7 @@ export default function BudgetMapApp() {
     return () => {
       cancelled = true;
     };
-  }, [selectedId, session?.user?.id]);
+  }, [selectedId, session?.user?.id, remoteIds]);
 
   const runModerationEvaluate = useCallback(async () => {
     setModerationBusyId("__eval__");

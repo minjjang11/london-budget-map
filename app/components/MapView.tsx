@@ -224,17 +224,7 @@ function MapViewLeaflet({
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const pickedMarkerRef = useRef<L.CircleMarker | null>(null);
-  const onSelectRef = useRef(onSelect);
-  const onCenterChangeRef = useRef(onCenterChange);
   const lastFlyRef = useRef<string>("");
-
-  useEffect(() => {
-    onSelectRef.current = onSelect;
-  }, [onSelect]);
-
-  useEffect(() => {
-    onCenterChangeRef.current = onCenterChange;
-  }, [onCenterChange]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -251,7 +241,7 @@ function MapViewLeaflet({
     addBasemap(map);
     map.on("moveend", () => {
       const center = map.getCenter();
-      onCenterChangeRef.current?.({ lat: center.lat, lng: center.lng });
+      onCenterChange?.({ lat: center.lat, lng: center.lng });
     });
 
     mapRef.current = map;
@@ -260,7 +250,7 @@ function MapViewLeaflet({
       map.remove();
       mapRef.current = null;
     };
-  }, []);
+  }, [onCenterChange]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -274,10 +264,10 @@ function MapViewLeaflet({
       const isSelected = spot.id === selectedId;
       const icon = makeLeafletIcon(spot, isSelected);
       const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(map);
-      marker.on("click", () => onSelectRef.current(spot.id));
+      marker.on("click", () => onSelect(spot.id));
       markersRef.current.push(marker);
     });
-  }, [spots, selectedId]);
+  }, [spots, selectedId, onSelect, onCenterChange]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -303,7 +293,7 @@ function MapViewLeaflet({
       fillColor: "#00a878",
       fillOpacity: 0.95,
     }).addTo(map);
-  }, [pickedLocation]);
+  }, [pickedLocation, centerPinMode]);
 
   return (
     <div
@@ -448,7 +438,7 @@ function MapViewGoogle({
                 y: -h,
               })}
             >
-              <SpotPill spot={spot} selected={selected} onSelect={() => onSelectRef.current(spot.id)} />
+              <SpotPill spot={spot} selected={selected} onSelect={() => onSelect(spot.id)} />
             </OverlayViewF>
           );
         })}

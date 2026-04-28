@@ -35,7 +35,9 @@ function SubmitPlacesAutocompleteInner({ onPick, googleMapsApiKey }: Props & { g
   const inputRef = useRef<HTMLInputElement>(null);
   const acRef = useRef<google.maps.places.Autocomplete | null>(null);
   const onPickRef = useRef(onPick);
-  onPickRef.current = onPick;
+  useEffect(() => {
+    onPickRef.current = onPick;
+  }, [onPick]);
 
   const { isLoaded, loadError } = useJsApiLoader({
     id: BUDGET_MAP_GOOGLE_LOADER_ID,
