@@ -3756,6 +3756,7 @@ export default function BudgetMapApp() {
                       translateY = rowStep;
                     }
                   }
+                  const movingSibling = !activeDrag && translateY !== 0;
                   return (
                     <div
                       key={stop.id}
@@ -3794,14 +3795,16 @@ export default function BudgetMapApp() {
                       }}
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
                         activeDrag
-                          ? "border-dashed border-budget-primary/60 bg-budget-white"
+                          ? "border-dashed border-budget-primary/45 bg-budget-white/75"
                           : "border-budget-surface"
                       }`}
                       style={{
                         transform: `translate3d(0, ${translateY}px, 0)`,
                         transition: "transform 140ms cubic-bezier(0.2, 0.9, 0.25, 1), border-color 140ms ease, opacity 120ms ease",
                         willChange: "transform",
-                        opacity: 1,
+                        opacity: activeDrag ? 0.24 : 1,
+                        position: "relative",
+                        zIndex: activeDrag ? 1 : movingSibling ? 30 : 10,
                         visibility: "visible",
                         touchAction: "none",
                         userSelect: "none",
@@ -3834,12 +3837,12 @@ export default function BudgetMapApp() {
               </div>
               {courseDragState ? (
                 <div
-                  className="pointer-events-none fixed z-[160] rounded-2xl border border-budget-primary/60 bg-budget-white px-3 py-2.5 shadow-[0_22px_46px_rgb(13_31_26_/0.24)]"
+                  className="pointer-events-none fixed z-[250] rounded-2xl border border-budget-primary/70 bg-budget-white px-3 py-2.5 shadow-[0_24px_52px_rgb(13_31_26_/0.28)]"
                   style={{
                     left: courseDragState.left,
                     top: courseDragState.pointerY - courseDragState.offsetY,
                     width: courseDragState.width,
-                    transform: "scale(1.015)",
+                    transform: "scale(1.02)",
                     userSelect: "none",
                     WebkitUserSelect: "none",
                     WebkitTouchCallout: "none",
