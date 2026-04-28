@@ -3801,6 +3801,8 @@ export default function BudgetMapApp() {
                         transform: `translate3d(0, ${translateY}px, 0)`,
                         transition: "transform 140ms cubic-bezier(0.2, 0.9, 0.25, 1), border-color 140ms ease, opacity 120ms ease",
                         willChange: "transform",
+                        opacity: activeDrag ? 0 : 1,
+                        visibility: activeDrag ? "hidden" : "visible",
                         touchAction: "none",
                         userSelect: "none",
                         WebkitUserSelect: "none",
