@@ -2209,11 +2209,13 @@ export default function BudgetMapApp() {
             paddingBottom: "13px",
           }}
         >
-          <h1
-            className="mb-2.5 select-none leading-none tracking-[-0.03em] text-[#08b894] drop-shadow-[0_2px_6px_rgb(13_31_26_/0.10)]"
-            style={{ fontSize: "38px", fontWeight: 800 }}
-          >
-            Mappitite
+          <h1 className="mb-2.5">
+            <img
+              src="/brand/mappitite-wordmark.png"
+              alt="Mappitite"
+              className="h-[26px] w-auto max-w-[170px] object-contain select-none"
+              draggable={false}
+            />
           </h1>
           <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-0 flex-1 flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
