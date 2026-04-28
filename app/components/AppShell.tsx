@@ -42,10 +42,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 d="
                   M 50 2
                   C 77 2 98 23 98 50
-                  C 98 64 92 76 84 86
-                  L 50 140
-                  L 16 86
-                  C 8 76 2 64 2 50
+                  C 98 67 90 82 50 140
+                  C 10 82 2 67 2 50
                   C 2 23 23 2 50 2
                   Z
                 "
