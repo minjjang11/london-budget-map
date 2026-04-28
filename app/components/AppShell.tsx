@@ -37,13 +37,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <stop offset="100%" stopColor="#4A47E0" />
                 </linearGradient>
               </defs>
-              {/* Apex (cx,cy)=(50,53), r=40; tangents intersect at apex; dome is a single circular arc */}
+              {/* Pin head is the LONG circular arc between the two tangent points (large-arc=1).
+                  Circle (cx,cy)=(50,53), r=40 → tangents intersect at apex (50, 53 + 40/sin(63.434°)) */}
               <path
                 fill="url(#splash-pin-gradient)"
                 d="
-                  M 50 131.71281225
-                  L 65.52786405 93.93428587
-                  A 40 40 0 0 1 34.47213595 93.93428587
+                  M 50 131.712812254
+                  L 65.527864045 93.934285873
+                  A 40 40 0 1 1 34.472135955 93.934285873
                   Z
                 "
               />
