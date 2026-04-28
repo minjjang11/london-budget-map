@@ -32,12 +32,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <defs>
                 <linearGradient id="splash-pin-gradient" x1="56" y1="0" x2="56" y2="140" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#00EDC6" />
-                  <stop offset="62%" stopColor="#00C899" />
+                  <stop offset="70%" stopColor="#00C899" />
                   <stop offset="100%" stopColor="#6A71FF" />
                 </linearGradient>
               </defs>
               <path
-                d="M56 2C86 2 108 25 108 55C108 63 105 71 100 78L56 140L12 78C7 71 4 63 4 55C4 25 26 2 56 2Z"
+                d="M56 2C84 2 106 24 106 52C106 58 104 64 100 70L56 140L12 70C8 64 6 58 6 52C6 24 28 2 56 2Z"
                 fill="url(#splash-pin-gradient)"
               />
             </svg>
