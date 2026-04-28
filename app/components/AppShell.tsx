@@ -20,15 +20,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       {!showApp ? (
         <div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#f5f3ee] px-6"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#edf2f2] px-6"
           style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
         >
-          <div className="text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-budget-muted">London</p>
-            <h1 className="mt-1.5 text-[2rem] font-extrabold tracking-[-0.04em] text-budget-text">Mappetite</h1>
-            <p className="mt-2 text-[13px] font-medium text-budget-muted">Loading your map…</p>
+          <div className="w-full max-w-[220px]">
+            <img src="/brand/mappitite-splash.png" alt="Mappitite" className="h-auto w-full drop-shadow-[0_8px_20px_rgb(13_31_26_/0.12)]" />
           </div>
-          <div className="budget-app-splash-spinner mt-10" aria-hidden />
+          <div className="budget-app-splash-spinner mt-8" aria-hidden />
         </div>
       ) : null}
 

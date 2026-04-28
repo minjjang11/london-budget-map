@@ -408,7 +408,7 @@ function buildMappetiteShareText(spot: Spot): string {
   const area = titleCaseWords(spot.area || "London");
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://london-budget-map.vercel.app").replace(/\/+$/, "");
   return [
-    "Mappetite 🍽️",
+    "Mappitite 🍽️",
     "",
     `${spot.name} · ${priceStr}`,
     `${area}, London`,
@@ -1459,7 +1459,7 @@ export default function BudgetMapApp() {
     const text = buildMappetiteShareText(selected);
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: "Mappetite", text });
+        await navigator.share({ title: "Mappitite", text });
         setToast("Share sheet opened");
         window.setTimeout(() => setToast(null), 2500);
         return;
@@ -2215,7 +2215,7 @@ export default function BudgetMapApp() {
             style={{ fontSize: "19px", fontWeight: 700, color: "#0D1F1A" }}
           >
             <Link href="/home" className="hover:text-budget-primary/90" style={{ color: "inherit" }}>
-              Mappetite
+              Mappitite
             </Link>
           </h1>
           <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
