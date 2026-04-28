@@ -18,6 +18,14 @@ function parseMenuItems(raw: unknown): SpotMenuItem[] {
   return out;
 }
 
+function stripManualAddPrefix(text: string): string {
+  let s = text.trim();
+  while (/^\[manual_add\]\s*/i.test(s)) {
+    s = s.replace(/^\[manual_add\]\s*/i, "").trim();
+  }
+  return s;
+}
+
 function parseSubmissions(raw: unknown): SpotSubmissionRecord[] {
   if (!Array.isArray(raw)) return [];
   const out: SpotSubmissionRecord[] = [];
@@ -26,10 +34,15 @@ function parseSubmissions(raw: unknown): SpotSubmissionRecord[] {
     const id = typeof entry.id === "string" ? entry.id : "";
     const date = typeof entry.date === "string" ? entry.date : "";
     const review = typeof entry.review === "string" ? entry.review : undefined;
+    const photo = typeof entry.photo === "string" ? entry.photo : undefined;
     const items = parseMenuItems(entry.items);
     if (!id || !date || items.length === 0) continue;
     const rec: SpotSubmissionRecord = { id, items, date };
-    if (review?.trim()) rec.review = review.trim();
+    if (review?.trim()) {
+      const cleaned = stripManualAddPrefix(review);
+      if (cleaned) rec.review = cleaned;
+    }
+    if (photo?.trim()) rec.photo = photo.trim();
     out.push(rec);
   }
   return out;
@@ -95,6 +108,9 @@ export function mapPlaceRowToSpot(row: PlaceRow): Spot {
     (first?.date?.includes("T") ? first.date : first?.date ? `${first.date}T12:00:00.000Z` : undefined) ||
     new Date().toISOString();
 
+  const descRaw = row.description?.trim();
+  const descClean = descRaw ? stripManualAddPrefix(descRaw) : undefined;
+
   return {
     id: row.id,
     name: row.name,
@@ -103,7 +119,7 @@ export function mapPlaceRowToSpot(row: PlaceRow): Spot {
     lat: row.lat,
     lng: row.lng,
     address: row.address?.trim() || `${row.area}, London`,
-    description: row.description?.trim() || undefined,
+    description: descClean || undefined,
     submissions,
     registeredAt: fallbackReg,
     upvotes: row.upvotes ?? 0,

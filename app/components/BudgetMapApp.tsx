@@ -180,6 +180,8 @@ function normalizeDupText(value: string | null | undefined): string {
 }
 
 function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
+  const descRaw = row.description?.trim() || undefined;
+  const descClean = descRaw ? cleanDisplayNote(descRaw) : undefined;
   return normalizeSpot({
     id: `pending-${row.id}`,
     name: row.place_name,
@@ -188,7 +190,7 @@ function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
     lat: row.lat,
     lng: row.lng,
     address: row.address?.trim() || "London",
-    description: row.description?.trim() || undefined,
+    description: descClean || undefined,
     registeredAt: row.submitted_at,
     upvotes: 0,
     downvotes: 0,
@@ -197,7 +199,7 @@ function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
       {
         id: row.id,
         items: [{ name: row.menu_item_name, price: row.price_gbp }],
-        review: row.description?.trim() || undefined,
+        review: descClean || undefined,
         photo: row.photo?.trim() || undefined,
         date: row.submitted_at,
       },
@@ -208,11 +210,46 @@ function pendingRowToSpot(row: PlaceSubmissionRow): Spot {
 /** Short text for compact marker preview: DB description, else first review, else default. */
 function spotPreviewBlurb(spot: Spot): string {
   const fromDb = spot.description?.trim();
-  if (fromDb) return fromDb;
+  if (fromDb) return cleanDisplayNote(fromDb);
   for (const sub of spot.submissions) {
-    if (sub.review?.trim()) return sub.review.trim();
+    if (sub.review?.trim()) return cleanDisplayNote(sub.review.trim());
   }
   return "Crowdsourced prices — open full details for the menu breakdown.";
+}
+
+function collectSubmissionPhotoUrls(spot: Spot): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const sub of spot.submissions) {
+    const u = sub.photo?.trim();
+    if (u && !seen.has(u)) {
+      seen.add(u);
+      out.push(u);
+    }
+  }
+  return out;
+}
+
+function SubmissionPhotoStrip({ urls }: { urls: string[] }) {
+  if (urls.length === 0) return null;
+  return (
+    <div
+      className="mt-2 flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      aria-label="Place photos"
+    >
+      {urls.map((src) => (
+        <button
+          key={src}
+          type="button"
+          onClick={() => window.open(src, "_blank", "noopener,noreferrer")}
+          className="relative h-[4.25rem] w-[5.75rem] shrink-0 overflow-hidden rounded-xl shadow-[0_2px_8px_rgb(13_31_26_/0.08)] ring-1 ring-budget-surface/70 transition active:scale-[0.98]"
+          aria-label="Open photo"
+        >
+          <img src={src} alt="" loading="lazy" className="h-full w-full object-cover" />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /** New spots stay “on trial” for 7 days for community scrutiny (local UX until backend). */
@@ -384,7 +421,11 @@ function formatSubmissionDate(value: string): string {
 
 function cleanDisplayNote(value: string | null | undefined): string {
   if (!value) return "";
-  return value.replace(/^\[manual_add\]\s*/i, "").trim();
+  let s = value.trim();
+  while (/^\[manual_add\]\s*/i.test(s)) {
+    s = s.replace(/^\[manual_add\]\s*/i, "").trim();
+  }
+  return s;
 }
 
 function formatBudgetCap(value: number): string {
@@ -2466,6 +2507,7 @@ export default function BudgetMapApp() {
                       <p className="mt-1.5 line-clamp-4 text-[13px] leading-snug text-budget-text/75">
                         {spotPreviewBlurb(selected)}
                       </p>
+                      <SubmissionPhotoStrip urls={collectSubmissionPhotoUrls(selected)} />
                       {remoteIds.has(selected.id) || selectedIsPending ? (
                         <p className="mt-1.5 text-[11px] font-semibold text-budget-muted">
                           👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
@@ -2560,6 +2602,7 @@ export default function BudgetMapApp() {
                       ) : null}
                     </div>
                     <p className="mt-1.5 text-[11px] leading-snug text-budget-text/45">{selected.address}</p>
+                    <SubmissionPhotoStrip urls={collectSubmissionPhotoUrls(selected)} />
                   </div>
                 </div>
 
