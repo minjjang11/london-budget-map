@@ -22,28 +22,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]">
           <div className="absolute inset-0 bg-[#FCFFFF]" />
           <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
+            {/* Teardrop map pin — circle cap + straight sides to sharp tip (matches brand reference silhouette) */}
             <svg
               aria-hidden
-              viewBox="0 0 112 140"
-              className="h-[82px] w-auto select-none"
+              viewBox="0 0 100 138"
+              className="h-[88px] w-auto select-none"
               shapeRendering="geometricPrecision"
               preserveAspectRatio="xMidYMid meet"
             >
               <defs>
-                <linearGradient id="splash-pin-gradient" x1="56" y1="0" x2="56" y2="140" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#00EDC6" />
-                  <stop offset="70%" stopColor="#00C899" />
-                  <stop offset="100%" stopColor="#6A71FF" />
+                <linearGradient id="splash-pin-gradient" x1="50" y1="0" x2="50" y2="138" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stopColor="#00D18E" />
+                  <stop offset="66%" stopColor="#00BA9A" />
+                  <stop offset="100%" stopColor="#4A47E0" />
                 </linearGradient>
               </defs>
+              {/* Apex (cx,cy)=(50,53), r=40; tangents intersect at apex; dome is a single circular arc */}
               <path
-                d="M22 63C15 47 18 26 33 11C46 -1 66 -1 79 11C94 26 97 47 90 63L56 140L22 63Z"
                 fill="url(#splash-pin-gradient)"
+                d="
+                  M 50 131.71281225
+                  L 65.52786405 93.93428587
+                  A 40 40 0 0 1 34.47213595 93.93428587
+                  Z
+                "
               />
             </svg>
+            {/* Wordmark: bright mint/teal aligned with gradient top */}
             <h1
-              className="mt-3 text-[clamp(1.75rem,8.2vw,2.9rem)] font-extrabold leading-none tracking-[-0.03em]"
-              style={{ color: "#00A883" }}
+              className="mt-4 text-[clamp(1.75rem,8.2vw,2.9rem)] font-extrabold leading-none tracking-[-0.03em]"
+              style={{ color: "#00C896", letterSpacing: "-0.04em" }}
             >
               Mappetite
             </h1>
