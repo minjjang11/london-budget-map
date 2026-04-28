@@ -3725,9 +3725,36 @@ export default function BudgetMapApp() {
                 Hold, then drag a stop card to change the order.
               </p>
               <div className="space-y-2">
-                {coursePreviewStops.map((stop, index) => {
+                {courseStops.map((stop, index) => {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
                   const activeDrag = courseDragState?.activeId === stop.id;
+                  const sourceActiveIndex = courseDragState
+                    ? courseStops.findIndex((x) => x.id === courseDragState.activeId)
+                    : -1;
+                  const previewIndex = coursePreviewStops.findIndex((x) => x.id === stop.id);
+                  const visualIndex = previewIndex >= 0 ? previewIndex : index;
+                  const rowStep = (courseDragState?.height ?? 0) + 8; // card height + `space-y-2` gap
+                  let translateY = 0;
+                  if (
+                    courseDragState &&
+                    !activeDrag &&
+                    sourceActiveIndex >= 0 &&
+                    rowStep > 8
+                  ) {
+                    if (
+                      sourceActiveIndex < courseDragState.overIndex &&
+                      index > sourceActiveIndex &&
+                      index <= courseDragState.overIndex
+                    ) {
+                      translateY = -rowStep;
+                    } else if (
+                      sourceActiveIndex > courseDragState.overIndex &&
+                      index >= courseDragState.overIndex &&
+                      index < sourceActiveIndex
+                    ) {
+                      translateY = rowStep;
+                    }
+                  }
                   return (
                     <div
                       key={stop.id}
@@ -3770,6 +3797,9 @@ export default function BudgetMapApp() {
                           : "border-budget-surface"
                       }`}
                       style={{
+                        transform: `translate3d(0, ${translateY}px, 0)`,
+                        transition: "transform 240ms cubic-bezier(0.22, 1, 0.36, 1), border-color 200ms ease, opacity 200ms ease",
+                        willChange: "transform",
                         touchAction: "none",
                         userSelect: "none",
                         WebkitUserSelect: "none",
@@ -3778,7 +3808,7 @@ export default function BudgetMapApp() {
                     >
                       <div className="min-w-0 flex items-center gap-2.5">
                         <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
-                          Stop {index + 1}
+                          Stop {visualIndex + 1}
                         </span>
                         <span className="text-lg leading-none" aria-hidden>
                           {catEmoji(stop.category)}
