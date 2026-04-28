@@ -1,9 +1,9 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.londonbudgetmap.app',
-  appName: 'LondonBudgetMap',
-  webDir: 'public',
+  appId: 'com.mappetite.app',
+  appName: 'Mappetite',
+  webDir: 'out',
   plugins: {
     SplashScreen: {
       backgroundColor: '#FCFFFF',
