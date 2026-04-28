@@ -3793,11 +3793,7 @@ export default function BudgetMapApp() {
                       onContextMenu={(e) => {
                         if (courseDragState?.activeId === stop.id) e.preventDefault();
                       }}
-                      className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
-                        activeDrag
-                          ? "border-dashed border-budget-primary/60 bg-budget-white"
-                          : "border-budget-surface"
-                      }`}
+                      className="flex items-center justify-between gap-3 rounded-2xl border border-budget-surface bg-budget-bg px-3 py-2.5"
                       style={{
                         transform: `translate3d(0, ${translateY}px, 0)`,
                         transition: "transform 110ms cubic-bezier(0.2, 0.9, 0.25, 1), border-color 120ms ease, opacity 90ms ease",
@@ -3837,13 +3833,14 @@ export default function BudgetMapApp() {
               </div>
               {courseDragState ? (
                 <div
-                  className="pointer-events-none fixed z-[300] rounded-2xl border-2 border-budget-primary/75 bg-budget-white px-3 py-2.5 shadow-[0_26px_56px_rgb(13_31_26_/0.3)]"
+                  className="pointer-events-none fixed z-[400] rounded-2xl border-2 border-budget-primary bg-white px-3 py-2.5 shadow-[0_28px_60px_rgb(13_31_26_/0.34)]"
                   style={{
                     left: courseDragState.left,
                     top: courseDragState.pointerY - courseDragState.offsetY,
                     width: courseDragState.width,
                     transform: "scale(1.025)",
                     opacity: 1,
+                    backgroundColor: "#ffffff",
                     userSelect: "none",
                     WebkitUserSelect: "none",
                     WebkitTouchCallout: "none",
