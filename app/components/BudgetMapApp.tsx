@@ -2039,8 +2039,8 @@ export default function BudgetMapApp() {
       for (const stop of otherStops) {
         const rect = courseStopRefs.current[stop.id]?.getBoundingClientRect();
         if (!rect) continue;
-        // React a bit earlier than midpoint so surrounding cards feel more "magnetic".
-        if (event.clientY > rect.top + rect.height * 0.35) insertIndex += 1;
+        // Trigger reordering once pointer crosses one-third of each card.
+        if (event.clientY > rect.top + rect.height / 3) insertIndex += 1;
       }
       setCourseDragState((prev) =>
         prev
