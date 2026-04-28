@@ -402,36 +402,18 @@ function titleCaseWords(value: string): string {
     .join(" ");
 }
 
-function shareFoundNoun(category: Category): string {
-  if (category === "cafe") return "coffee";
-  if (category === "pub") return "pint";
-  return "meal";
-}
-
-/** “Typical pay” hook for share copy — category-aware, always above the floor price. */
-function shareTypicalPayLabel(category: Category, floor: number): string {
-  const cap = SUBMIT_PRICE_LIMITS[category];
-  const bump = category === "restaurant" ? 4 : category === "pub" ? 2.5 : 1.5;
-  const raw = Math.max(cap * 0.92, floor + bump, cap * 0.65);
-  const rounded = Math.ceil(raw * 2) / 2;
-  return `${formatMapPriceLabel(rounded)}+`;
-}
-
 function buildMappetiteShareText(spot: Spot): string {
   const low = lowestPrice(spot);
   const priceStr = formatMapPriceLabel(Math.max(low, 0.01));
   const area = titleCaseWords(spot.area || "London");
-  const noun = shareFoundNoun(spot.category);
-  const typical = shareTypicalPayLabel(spot.category, Math.max(low, 0.01));
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://london-budget-map.vercel.app").replace(/\/+$/, "");
   return [
     "Mappetite 🍽️",
     "",
-    `Found a ${priceStr} ${noun} in ${area}`,
-    `Most people pay ${typical}`,
+    `${spot.name} · ${priceStr}`,
+    `${area}, London`,
     "",
-    "You're overpaying.",
-    "",
-    "📍 London",
+    `🌐 ${siteUrl}`,
   ].join("\n");
 }
 
@@ -2661,7 +2643,7 @@ export default function BudgetMapApp() {
                         from {formatMapPriceLabel(lowestPrice(selected))}
                       </span>
                       {remoteIds.has(selected.id) || selectedIsPending ? (
-                        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                        <>
                           <span className="text-[12px] font-semibold text-budget-muted">
                             👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
                             {selectedIsPending ? selectedPendingTallies.down : selected.downvotes ?? 0}
@@ -2669,13 +2651,13 @@ export default function BudgetMapApp() {
                           <button
                             type="button"
                             onClick={() => void handleShareSelectedSpot()}
-                            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-2.5 py-1.5 text-[11px] font-extrabold text-budget-primary shadow-sm transition active:scale-[0.97]"
+                            className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-2.5 py-1.5 text-[11px] font-extrabold text-budget-primary shadow-sm transition active:scale-[0.97]"
                             aria-label="Share this spot"
                           >
                             <Share2 size={14} strokeWidth={2.25} aria-hidden />
                             Share
                           </button>
-                        </div>
+                        </>
                       ) : (
                         <button
                           type="button"
