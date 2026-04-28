@@ -3,7 +3,7 @@ import "./globals.css";
 import { AppShell } from "./components/AppShell";
 
 export const metadata: Metadata = {
-  title: "Mappitite — London prices, actually",
+  title: "Mappetite — London prices, actually",
   description:
     "Crowdsourced cheap eats, pints & coffee in London. Built for students and young professionals who still read the menu prices.",
 };

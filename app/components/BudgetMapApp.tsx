@@ -407,7 +407,7 @@ function buildMappetiteShareText(spot: Spot): string {
   const area = titleCaseWords(spot.area || "London");
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://london-budget-map.vercel.app").replace(/\/+$/, "");
   return [
-    "Mappitite 🍽️",
+    "Mappetite 🍽️",
     "",
     `${spot.name} · ${priceStr}`,
     `${area}, London`,
@@ -1458,7 +1458,7 @@ export default function BudgetMapApp() {
     const text = buildMappetiteShareText(selected);
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: "Mappitite", text });
+        await navigator.share({ title: "Mappetite", text });
         setToast("Share sheet opened");
         window.setTimeout(() => setToast(null), 2500);
         return;
@@ -2210,10 +2210,14 @@ export default function BudgetMapApp() {
           }}
         >
           <h1
-            className="mb-2.5 select-none leading-none tracking-[-0.03em] text-[#08b894] drop-shadow-[0_2px_6px_rgb(13_31_26_/0.10)]"
-            style={{ fontSize: "28px", fontWeight: 800 }}
+            className="mb-2.5"
           >
-            Mappitite
+            <img
+              src="/brand/mappetite-wordmark.png"
+              alt="Mappetite"
+              className="h-[26px] w-auto max-w-[180px] object-contain select-none"
+              draggable={false}
+            />
           </h1>
           <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-0 flex-1 flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
