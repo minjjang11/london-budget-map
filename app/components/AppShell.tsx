@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <div className="absolute inset-0 bg-[#FCFFFF]" />
           <img
-            src="/brand/mappetite-splash-hq.png"
+            src="/brand/mappitite-splash-full.png"
             alt="Mappetite splash"
             className="absolute left-1/2 top-1/2 w-[min(72vw,380px)] -translate-x-1/2 -translate-y-1/2 object-contain"
             style={{ imageRendering: "auto" }}

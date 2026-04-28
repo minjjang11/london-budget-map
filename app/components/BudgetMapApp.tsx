@@ -640,6 +640,7 @@ export default function BudgetMapApp() {
     activeId: string;
     overIndex: number;
   } | null>(null);
+  const [coursePressingId, setCoursePressingId] = useState<string | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
   /** First approved-places fetch only — avoids full-screen flash on background refresh. */
   const initialRemoteApprovedLoadRef = useRef(true);
@@ -2016,6 +2017,7 @@ export default function BudgetMapApp() {
         coursePressTimerRef.current = null;
       }
       coursePressInfoRef.current = null;
+      setCoursePressingId(null);
     };
 
     const onPointerMove = (event: PointerEvent) => {
@@ -3717,12 +3719,13 @@ export default function BudgetMapApp() {
                 <span className="text-[12px] font-semibold text-budget-muted">{courseStops.length}</span>
               </div>
               <p className="mb-2 text-[11px] font-semibold text-budget-primary">
-                Hold, then drag a stop card to change the order.
+                Hold briefly, then drag a stop card to change the order.
               </p>
               <div className="space-y-2">
                 {coursePreviewStops.map((stop, index) => {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
                   const activeDrag = courseDragState?.activeId === stop.id;
+                  const pressing = coursePressingId === stop.id && !activeDrag;
                   return (
                     <div
                       key={stop.id}
@@ -3732,6 +3735,7 @@ export default function BudgetMapApp() {
                       onPointerDown={(e) => {
                         if (e.pointerType === "mouse" && e.button !== 0) return;
                         e.preventDefault();
+                        setCoursePressingId(stop.id);
                         coursePressInfoRef.current = { id: stop.id, startX: e.clientX, startY: e.clientY };
                         if (coursePressTimerRef.current !== null) window.clearTimeout(coursePressTimerRef.current);
                         coursePressTimerRef.current = window.setTimeout(() => {
@@ -3739,9 +3743,10 @@ export default function BudgetMapApp() {
                             activeId: stop.id,
                             overIndex: index,
                           });
+                          setCoursePressingId(null);
                           coursePressTimerRef.current = null;
                           coursePressInfoRef.current = null;
-                        }, 1000);
+                        }, 320);
                       }}
                       onPointerUp={() => {
                         if (coursePressTimerRef.current !== null) {
@@ -3756,10 +3761,12 @@ export default function BudgetMapApp() {
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
                         activeDrag
                           ? "border-budget-primary/60 bg-budget-white shadow-[0_8px_20px_rgb(13_31_26_/0.14)]"
-                          : "border-budget-surface"
+                          : pressing
+                            ? "border-budget-primary/35 bg-budget-white shadow-[0_4px_14px_rgb(13_31_26_/0.10)]"
+                            : "border-budget-surface"
                       }`}
                       style={{
-                        transform: activeDrag ? "scale(0.985)" : "scale(1)",
+                        transform: activeDrag ? "scale(0.985)" : pressing ? "scale(0.992)" : "scale(1)",
                         transition: "transform 120ms ease, box-shadow 140ms ease, border-color 140ms ease, background-color 140ms ease",
                         touchAction: "none",
                         userSelect: "none",
