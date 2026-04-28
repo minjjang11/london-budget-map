@@ -23,7 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-[#FCFFFF]" />
           <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
             <img
-              src="/brand/mappetite-splash-logo.png"
+              src="/brand/mappetite-pin-ref.png"
               alt=""
               aria-hidden
               className="h-[84px] w-auto object-contain select-none"
