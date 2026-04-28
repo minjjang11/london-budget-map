@@ -26,7 +26,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <img
             src="/brand/mappitite-splash-full.png"
             alt="Mappetite splash"
-            className="absolute left-1/2 top-[46%] w-[min(56vw,260px)] -translate-x-1/2 -translate-y-1/2 object-contain"
+            className="absolute inset-0 h-full w-full object-cover"
             style={{ imageRendering: "auto" }}
             draggable={false}
           />
