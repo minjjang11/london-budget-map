@@ -639,13 +639,6 @@ export default function BudgetMapApp() {
   const [courseDragState, setCourseDragState] = useState<{
     activeId: string;
     overIndex: number;
-    pointerX: number;
-    pointerY: number;
-    offsetX: number;
-    offsetY: number;
-    left: number;
-    width: number;
-    height: number;
   } | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
   /** First approved-places fetch only — avoids full-screen flash on background refresh. */
@@ -2048,8 +2041,6 @@ export default function BudgetMapApp() {
         prev
           ? {
               ...prev,
-              pointerX: event.clientX,
-              pointerY: event.clientY,
               overIndex: insertIndex,
             }
           : prev,
@@ -3729,37 +3720,9 @@ export default function BudgetMapApp() {
                 Hold, then drag a stop card to change the order.
               </p>
               <div className="space-y-2">
-                {courseStops.map((stop, index) => {
+                {coursePreviewStops.map((stop, index) => {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
                   const activeDrag = courseDragState?.activeId === stop.id;
-                  const sourceActiveIndex = courseDragState
-                    ? courseStops.findIndex((x) => x.id === courseDragState.activeId)
-                    : -1;
-                  const previewIndex = coursePreviewStops.findIndex((x) => x.id === stop.id);
-                  const visualIndex = previewIndex >= 0 ? previewIndex : index;
-                  const rowStep = (courseDragState?.height ?? 0) + 8; // card height + `space-y-2` gap
-                  let translateY = 0;
-                  if (
-                    courseDragState &&
-                    !activeDrag &&
-                    sourceActiveIndex >= 0 &&
-                    rowStep > 8
-                  ) {
-                    if (
-                      sourceActiveIndex < courseDragState.overIndex &&
-                      index > sourceActiveIndex &&
-                      index <= courseDragState.overIndex
-                    ) {
-                      translateY = -rowStep;
-                    } else if (
-                      sourceActiveIndex > courseDragState.overIndex &&
-                      index >= courseDragState.overIndex &&
-                      index < sourceActiveIndex
-                    ) {
-                      translateY = rowStep;
-                    }
-                  }
-                  const movingSibling = !activeDrag && translateY !== 0;
                   return (
                     <div
                       key={stop.id}
@@ -3769,20 +3732,12 @@ export default function BudgetMapApp() {
                       onPointerDown={(e) => {
                         if (e.pointerType === "mouse" && e.button !== 0) return;
                         e.preventDefault();
-                        const rect = e.currentTarget.getBoundingClientRect();
                         coursePressInfoRef.current = { id: stop.id, startX: e.clientX, startY: e.clientY };
                         if (coursePressTimerRef.current !== null) window.clearTimeout(coursePressTimerRef.current);
                         coursePressTimerRef.current = window.setTimeout(() => {
                           setCourseDragState({
                             activeId: stop.id,
                             overIndex: index,
-                            pointerX: e.clientX,
-                            pointerY: e.clientY,
-                            offsetX: e.clientX - rect.left,
-                            offsetY: e.clientY - rect.top,
-                            left: rect.left,
-                            width: rect.width,
-                            height: rect.height,
                           });
                           coursePressTimerRef.current = null;
                           coursePressInfoRef.current = null;
@@ -3798,15 +3753,12 @@ export default function BudgetMapApp() {
                       onContextMenu={(e) => {
                         if (courseDragState?.activeId === stop.id) e.preventDefault();
                       }}
-                      className="flex items-center justify-between gap-3 rounded-2xl border border-budget-surface bg-budget-bg px-3 py-2.5"
+                      className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
+                        activeDrag
+                          ? "border-dashed border-budget-primary/35 opacity-[0.45]"
+                          : "border-budget-surface"
+                      }`}
                       style={{
-                        transform: `translate3d(0, ${translateY}px, 0)`,
-                        transition: "transform 110ms cubic-bezier(0.2, 0.9, 0.25, 1), border-color 120ms ease, opacity 90ms ease",
-                        willChange: "transform",
-                        opacity: 1,
-                        position: "relative",
-                        zIndex: movingSibling ? 30 : 10,
-                        visibility: "visible",
                         touchAction: "none",
                         userSelect: "none",
                         WebkitUserSelect: "none",
@@ -3815,7 +3767,7 @@ export default function BudgetMapApp() {
                     >
                       <div className="min-w-0 flex items-center gap-2.5">
                         <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
-                          Stop {visualIndex + 1}
+                          Stop {index + 1}
                         </span>
                         <span className="text-lg leading-none" aria-hidden>
                           {catEmoji(stop.category)}
@@ -3836,40 +3788,6 @@ export default function BudgetMapApp() {
                   );
                 })}
               </div>
-              {courseDragState ? (
-                <div
-                  className="pointer-events-none fixed z-[400] rounded-2xl border-2 border-budget-primary bg-white px-3 py-2.5 shadow-[0_28px_60px_rgb(13_31_26_/0.34)]"
-                  style={{
-                    left: courseDragState.pointerX - courseDragState.offsetX,
-                    top: courseDragState.pointerY - courseDragState.offsetY,
-                    width: courseDragState.width,
-                    transform: "scale(1.025)",
-                    opacity: 1,
-                    backgroundColor: "#ffffff",
-                    userSelect: "none",
-                    WebkitUserSelect: "none",
-                    WebkitTouchCallout: "none",
-                  }}
-                >
-                  {(() => {
-                    const activeStop = courseStops.find((stop) => stop.id === courseDragState.activeId);
-                    if (!activeStop) return null;
-                    const activeLabel = CATS.find((c) => c.id === activeStop.category)?.label ?? "Stop";
-                    const activeIndex = coursePreviewStops.findIndex((stop) => stop.id === activeStop.id);
-                    return (
-                      <div className="min-w-0 flex items-center gap-2.5">
-                        <span className="text-[11px] font-extrabold uppercase tracking-[0.08em] text-budget-faint">
-                          Stop {activeIndex + 1}
-                        </span>
-                        <span className="text-lg leading-none" aria-hidden>
-                          {catEmoji(activeStop.category)}
-                        </span>
-                        <span className="text-[13px] font-bold text-budget-text">{activeLabel}</span>
-                      </div>
-                    );
-                  })()}
-                </div>
-              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {CATEGORY_IDS.map((category) => {
                   const label = CATS.find((c) => c.id === category)?.label ?? "Stop";
