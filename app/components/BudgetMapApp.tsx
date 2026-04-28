@@ -639,8 +639,6 @@ export default function BudgetMapApp() {
   const [courseDragState, setCourseDragState] = useState<{
     activeId: string;
     overIndex: number;
-    pointerY: number;
-    startY: number;
   } | null>(null);
   const [coursePressingId, setCoursePressingId] = useState<string | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
@@ -2046,7 +2044,6 @@ export default function BudgetMapApp() {
           ? {
               ...prev,
               overIndex: insertIndex,
-              pointerY: event.clientY,
             }
           : prev,
       );
@@ -3729,7 +3726,6 @@ export default function BudgetMapApp() {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
                   const activeDrag = courseDragState?.activeId === stop.id;
                   const pressing = coursePressingId === stop.id && !activeDrag;
-                  const dragOffsetY = activeDrag && courseDragState ? courseDragState.pointerY - courseDragState.startY : 0;
                   return (
                     <div
                       key={stop.id}
@@ -3746,8 +3742,6 @@ export default function BudgetMapApp() {
                           setCourseDragState({
                             activeId: stop.id,
                             overIndex: index,
-                            pointerY: e.clientY,
-                            startY: e.clientY,
                           });
                           setCoursePressingId(null);
                           coursePressTimerRef.current = null;
@@ -3772,11 +3766,7 @@ export default function BudgetMapApp() {
                             : "border-budget-surface"
                       }`}
                       style={{
-                        transform: activeDrag
-                          ? `translateY(${dragOffsetY}px) scale(0.988)`
-                          : pressing
-                            ? "scale(0.992)"
-                            : "scale(1)",
+                        transform: activeDrag ? "scale(0.988)" : pressing ? "scale(0.992)" : "scale(1)",
                         transition: activeDrag
                           ? "none"
                           : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease",
