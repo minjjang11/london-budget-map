@@ -640,12 +640,10 @@ export default function BudgetMapApp() {
     activeId: string;
     overIndex: number;
     pointerY: number;
-    startPointerY: number;
     offsetY: number;
     left: number;
     width: number;
     height: number;
-    hasMoved: boolean;
   } | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
   /** First approved-places fetch only — avoids full-screen flash on background refresh. */
@@ -2041,8 +2039,8 @@ export default function BudgetMapApp() {
       for (const stop of otherStops) {
         const rect = courseStopRefs.current[stop.id]?.getBoundingClientRect();
         if (!rect) continue;
-        // Trigger almost immediately when touching a row while dragging.
-        if (event.clientY > rect.top + rect.height * 0.01) insertIndex += 1;
+        // Trigger immediately when pointer enters a row.
+        if (event.clientY >= rect.top) insertIndex += 1;
       }
       setCourseDragState((prev) =>
         prev
@@ -2050,7 +2048,6 @@ export default function BudgetMapApp() {
               ...prev,
               pointerY: event.clientY,
               overIndex: insertIndex,
-              hasMoved: prev.hasMoved || Math.abs(event.clientY - prev.startPointerY) > 2,
             }
           : prev,
       );
@@ -3732,7 +3729,6 @@ export default function BudgetMapApp() {
                 {courseStops.map((stop, index) => {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
                   const activeDrag = courseDragState?.activeId === stop.id;
-                  const hideSourceCard = activeDrag && Boolean(courseDragState?.hasMoved);
                   const sourceActiveIndex = courseDragState
                     ? courseStops.findIndex((x) => x.id === courseDragState.activeId)
                     : -1;
@@ -3778,12 +3774,10 @@ export default function BudgetMapApp() {
                             activeId: stop.id,
                             overIndex: index,
                             pointerY: e.clientY,
-                            startPointerY: e.clientY,
                             offsetY: e.clientY - rect.top,
                             left: rect.left,
                             width: rect.width,
                             height: rect.height,
-                            hasMoved: false,
                           });
                           coursePressTimerRef.current = null;
                           coursePressInfoRef.current = null;
@@ -3808,10 +3802,10 @@ export default function BudgetMapApp() {
                         transform: `translate3d(0, ${translateY}px, 0)`,
                         transition: "transform 110ms cubic-bezier(0.2, 0.9, 0.25, 1), border-color 120ms ease, opacity 90ms ease",
                         willChange: "transform",
-                        opacity: hideSourceCard ? 0 : 1,
+                        opacity: 1,
                         position: "relative",
                         zIndex: movingSibling ? 30 : 10,
-                        visibility: hideSourceCard ? "hidden" : "visible",
+                        visibility: "visible",
                         touchAction: "none",
                         userSelect: "none",
                         WebkitUserSelect: "none",
