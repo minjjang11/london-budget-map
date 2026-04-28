@@ -2039,8 +2039,8 @@ export default function BudgetMapApp() {
       for (const stop of otherStops) {
         const rect = courseStopRefs.current[stop.id]?.getBoundingClientRect();
         if (!rect) continue;
-        // Trigger very early so slots react on slight overlap.
-        if (event.clientY > rect.top + rect.height * 0.08) insertIndex += 1;
+        // Trigger almost immediately when touching a row while dragging.
+        if (event.clientY > rect.top + rect.height * 0.01) insertIndex += 1;
       }
       setCourseDragState((prev) =>
         prev
@@ -3794,14 +3794,14 @@ export default function BudgetMapApp() {
                       }}
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
                         activeDrag
-                          ? "border-dashed border-budget-primary/50 bg-budget-white/85"
+                          ? "border-dashed border-budget-primary/60 bg-budget-white"
                           : "border-budget-surface"
                       }`}
                       style={{
                         transform: `translate3d(0, ${translateY}px, 0)`,
                         transition: "transform 140ms cubic-bezier(0.2, 0.9, 0.25, 1), border-color 140ms ease, opacity 120ms ease",
                         willChange: "transform",
-                        opacity: activeDrag ? 0.45 : 1,
+                        opacity: 1,
                         visibility: "visible",
                         touchAction: "none",
                         userSelect: "none",
