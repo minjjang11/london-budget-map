@@ -22,7 +22,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]">
           <div className="absolute inset-0 bg-[#FCFFFF]" />
           <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-            <svg aria-hidden viewBox="0 0 112 140" className="h-[82px] w-auto select-none">
+            <svg
+              aria-hidden
+              viewBox="0 0 112 140"
+              className="h-[82px] w-auto select-none"
+              shapeRendering="geometricPrecision"
+              preserveAspectRatio="xMidYMid meet"
+            >
               <defs>
                 <linearGradient id="splash-pin-gradient" x1="56" y1="0" x2="56" y2="140" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#00EDC6" />
@@ -31,7 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </linearGradient>
               </defs>
               <path
-                d="M56 2C85 2 107 25 107 55C107 72 100 84 90 95L56 140L22 95C12 84 5 72 5 55C5 25 27 2 56 2Z"
+                d="M56 2C86 2 108 25 108 55C108 70 102 82 92 94L56 140L20 94C10 82 4 70 4 55C4 25 26 2 56 2Z"
                 fill="url(#splash-pin-gradient)"
               />
             </svg>
