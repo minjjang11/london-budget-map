@@ -20,20 +20,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       {!showApp ? (
         <div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#ffffff] px-6"
+          className="fixed inset-0 z-[9999] overflow-hidden bg-[#ffffff]"
           style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <img
             src="/brand/mappitite-splash-full.png"
             alt="Mappetite splash"
-            className="w-[min(62vw,280px)] object-contain"
+            className="absolute inset-0 h-full w-full object-cover"
             style={{ imageRendering: "auto" }}
             draggable={false}
           />
           <img
             src="/brand/mappetite-loading-text.png"
             alt="Loading budget-friendly spots..."
-            className="mt-7 w-[min(72vw,420px)] object-contain opacity-90"
+            className="absolute left-1/2 top-[68%] w-[min(64vw,360px)] -translate-x-1/2 object-contain opacity-90"
             draggable={false}
           />
         </div>
