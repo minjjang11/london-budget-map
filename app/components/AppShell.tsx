@@ -24,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
             <div
               aria-hidden
-              className="h-[120px] w-[92px]"
+              className="h-[108px] w-[82px]"
               style={{
                 background:
                   "linear-gradient(180deg, rgb(0 237 198) 0%, rgb(0 200 153) 64%, rgb(106 113 255) 100%)",
@@ -33,14 +33,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               }}
             />
             <h1
-              className="mt-5 text-[clamp(2.5rem,11vw,4.25rem)] font-extrabold leading-none tracking-[-0.03em]"
+              className="mt-4 text-[clamp(2.2rem,10vw,3.8rem)] font-extrabold leading-none tracking-[-0.03em]"
               style={{ color: "#00A883" }}
             >
               Mappetite
             </h1>
           </div>
           <p
-            className="absolute left-1/2 top-[80%] -translate-x-1/2 text-[clamp(1rem,3.4vw,1.35rem)] font-semibold tracking-[-0.01em] text-budget-muted/90"
+            className="absolute left-1/2 top-[84%] -translate-x-1/2 whitespace-nowrap text-[clamp(0.9rem,3vw,1.15rem)] font-semibold tracking-[-0.01em] text-budget-muted/90"
             aria-label="Loading budget-friendly spots..."
           >
             Loading budget-friendly spots...
