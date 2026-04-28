@@ -639,6 +639,8 @@ export default function BudgetMapApp() {
   const [courseDragState, setCourseDragState] = useState<{
     activeId: string;
     overIndex: number;
+    pointerY: number;
+    startY: number;
   } | null>(null);
   const [coursePressingId, setCoursePressingId] = useState<string | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
@@ -2044,6 +2046,7 @@ export default function BudgetMapApp() {
           ? {
               ...prev,
               overIndex: insertIndex,
+              pointerY: event.clientY,
             }
           : prev,
       );
@@ -3726,6 +3729,7 @@ export default function BudgetMapApp() {
                   const stopLabel = CATS.find((c) => c.id === stop.category)?.label ?? "Stop";
                   const activeDrag = courseDragState?.activeId === stop.id;
                   const pressing = coursePressingId === stop.id && !activeDrag;
+                  const dragOffsetY = activeDrag && courseDragState ? courseDragState.pointerY - courseDragState.startY : 0;
                   return (
                     <div
                       key={stop.id}
@@ -3742,6 +3746,8 @@ export default function BudgetMapApp() {
                           setCourseDragState({
                             activeId: stop.id,
                             overIndex: index,
+                            pointerY: e.clientY,
+                            startY: e.clientY,
                           });
                           setCoursePressingId(null);
                           coursePressTimerRef.current = null;
@@ -3760,14 +3766,21 @@ export default function BudgetMapApp() {
                       }}
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
                         activeDrag
-                          ? "border-budget-primary/60 bg-budget-white shadow-[0_8px_20px_rgb(13_31_26_/0.14)]"
+                          ? "z-20 border-budget-primary/60 bg-budget-white shadow-[0_14px_28px_rgb(13_31_26_/0.2)]"
                           : pressing
                             ? "border-budget-primary/35 bg-budget-white shadow-[0_4px_14px_rgb(13_31_26_/0.10)]"
                             : "border-budget-surface"
                       }`}
                       style={{
-                        transform: activeDrag ? "scale(0.985)" : pressing ? "scale(0.992)" : "scale(1)",
-                        transition: "transform 120ms ease, box-shadow 140ms ease, border-color 140ms ease, background-color 140ms ease",
+                        transform: activeDrag
+                          ? `translateY(${dragOffsetY}px) scale(0.988)`
+                          : pressing
+                            ? "scale(0.992)"
+                            : "scale(1)",
+                        transition: activeDrag
+                          ? "none"
+                          : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease",
+                        willChange: "transform",
                         touchAction: "none",
                         userSelect: "none",
                         WebkitUserSelect: "none",
