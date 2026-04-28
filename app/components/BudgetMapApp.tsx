@@ -2214,7 +2214,7 @@ export default function BudgetMapApp() {
               <img
                 src="/brand/mappetite-wordmark.png"
                 alt="Mappetite"
-                className="h-[18px] w-auto max-w-[140px] object-contain select-none"
+                className="h-[16px] w-auto max-w-[128px] object-contain select-none"
                 draggable={false}
               />
             </h1>
