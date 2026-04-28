@@ -3795,7 +3795,7 @@ export default function BudgetMapApp() {
                       }}
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
                         activeDrag
-                          ? "border-transparent bg-transparent"
+                          ? "border-dashed border-budget-primary/60 bg-budget-white"
                           : "border-budget-surface"
                       }`}
                       style={{
