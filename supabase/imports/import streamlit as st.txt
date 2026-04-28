@@ -1,0 +1,30 @@
+import streamlit as st
+import hashlib
+import json
+import secrets
+import sqlite3
+from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+
+DB_PATH = "gameledger.db"
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+def generate_address_like_id() -> str:
+    return "0x" + secrets.token_hex(20)
+
+def generate_secret_code() -> str:
+    return f"{secrets.randbelow(9000) + 1000}"
+
+def generate_match_id() -> str:
+    return secrets.token_hex(4).upper()
+
+def payoff(choice1: str, choice2: str) -> Tuple[int, int]:
+    matrix = {
+        ("Cooperate", "Cooperate"): (3, 3),
+        ("Cooperate", "Defect"): (0, 5),
+        ("Defect", "Cooperate"): (5, 0),
+        ("Defect", "Defect"): (1, 1),
+    }
+    return matrix[(choice1, choice2)]

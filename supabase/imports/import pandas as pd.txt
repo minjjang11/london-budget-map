@@ -1,0 +1,56 @@
+import pandas as pd
+import numpy as np
+
+# === 파일 경로 (너 업로드 경로 그대로) ===
+CSV_PATH = r"/mnt/data/전략3,_MNQ_45s_OneSignal_+_RegimeGate_+_ExitOnlyWhenOff_(SL_fixed)_v1_+_TimeBlocks_CME_MINI_MNQ1!_2026-02-11.csv"
+
+# === MNQ 스펙 ===
+MNQ_DOLLARS_PER_POINT = 2.0  # 1 contract 기준
+
+df = pd.read_csv(CSV_PATH)
+
+# TradingView trade list는 같은 trade#가 진입/청산으로 2줄씩 있는 경우가 많아서
+# trade# 기준으로 첫 행만 남겨도(혹은 마지막) 핵심 지표가 동일하게 들어있음.
+# 여기선 안전하게 trade#별 "첫 행" 사용
+g = df.sort_values("날짜 및 시간").groupby("거래 #", as_index=False).first()
+
+# 숫자 컬럼 안전 변환
+num_cols = ["가격 USD", "포지션 크기 (수량)", "순손익 USD", "유리한 변동 USD", "불리한 변동 USD"]
+for c in num_cols:
+    g[c] = pd.to_numeric(g[c], errors="coerce")
+
+# MFE/MAE를 포인트로 변환 (계약수 고려)
+qty = g["포지션 크기 (수량)"].replace(0, np.nan)
+g["MFE_pts"] = g["유리한 변동 USD"] / (MNQ_DOLLARS_PER_POINT * qty)
+g["MAE_pts"] = g["불리한 변동 USD"].abs() / (MNQ_DOLLARS_PER_POINT * qty)
+
+# 승/패 분리
+wins = g[g["순손익 USD"] > 0].copy()
+loss = g[g["순손익 USD"] <= 0].copy()
+
+print("=== Trades ===")
+print("Total:", len(g), "Wins:", len(wins), "Loss:", len(loss))
+
+def q(series, qs=(0.1, 0.2, 0.3, 0.4, 0.5)):
+    return {f"q{int(p*100)}": float(series.quantile(p)) for p in qs}
+
+print("\n=== MFE_pts quantiles (WINS) ===")
+print(q(wins["MFE_pts"].dropna()))
+
+print("\n=== MFE_pts quantiles (ALL) ===")
+print(q(g["MFE_pts"].dropna()))
+
+# Abort 임계값 추천:
+# "승리 트레이드 중 MFE_pts 하위 20% 분위" 정도를 후보로 잡는 게 보통 안전함
+cand = float(wins["MFE_pts"].dropna().quantile(0.2))
+print("\n>>> Suggested AbortMinMovePts (candidate) = ", round(cand, 2), "pts")
+
+# 참고로 MAE도 같이 보면
+print("\n=== MAE_pts quantiles (LOSS) ===")
+print(q(loss["MAE_pts"].dropna()))
+
+# 결과 CSV 저장 (원하면)
+out = g[["거래 #","타입","날짜 및 시간","신호","순손익 USD","유리한 변동 USD","불리한 변동 USD","MFE_pts","MAE_pts"]].copy()
+OUT_PATH = "/mnt/data/mnq45s_trades_mfe_mae_points.csv"
+out.to_csv(OUT_PATH, index=False, encoding="utf-8-sig")
+print("\nSaved:", OUT_PATH)

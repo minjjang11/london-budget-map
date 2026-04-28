@@ -581,6 +581,9 @@ export default function BudgetMapApp() {
     height: number;
   } | null>(null);
   const [remoteApprovedSpots, setRemoteApprovedSpots] = useState<Spot[]>([]);
+  /** First approved-places fetch only — avoids full-screen flash on background refresh. */
+  const initialRemoteApprovedLoadRef = useRef(true);
+  const [remoteApprovedLoading, setRemoteApprovedLoading] = useState(true);
   const placeDetailSheetRef = useRef<HTMLDivElement | null>(null);
   const courseStopRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const coursePressTimerRef = useRef<number | null>(null);
@@ -663,16 +666,29 @@ export default function BudgetMapApp() {
 
   useEffect(() => {
     const client = getBrowserSupabase();
-    if (!client) return;
+    if (!client) {
+      setRemoteApprovedLoading(false);
+      initialRemoteApprovedLoadRef.current = false;
+      return;
+    }
     let cancelled = false;
+    const isFirst = initialRemoteApprovedLoadRef.current;
+    if (isFirst) setRemoteApprovedLoading(true);
     void (async () => {
-      const res = await fetchApprovedPlaces(client);
-      if (cancelled) return;
-      if (!res.ok) {
-        console.warn("[budget-map] Could not load approved places:", res.message);
-        return;
+      try {
+        const res = await fetchApprovedPlaces(client);
+        if (cancelled) return;
+        if (!res.ok) {
+          console.warn("[budget-map] Could not load approved places:", res.message);
+        } else {
+          setRemoteApprovedSpots(res.spots);
+        }
+      } finally {
+        if (isFirst) {
+          initialRemoteApprovedLoadRef.current = false;
+          if (!cancelled) setRemoteApprovedLoading(false);
+        }
       }
-      setRemoteApprovedSpots(res.spots);
     })();
     return () => {
       cancelled = true;
@@ -2075,11 +2091,29 @@ export default function BudgetMapApp() {
         </div>
       )}
 
+      {tab === "map" && mounted && remoteApprovedLoading ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-[15] flex flex-col items-center justify-center bg-budget-bg/45 px-6 backdrop-blur-[3px]"
+          aria-busy
+          aria-label="Loading map data"
+        >
+          <div className="w-full max-w-[280px] space-y-3 rounded-[22px] border border-budget-surface/80 bg-budget-white/92 p-4 shadow-budget-float">
+            <div className="budget-map-skeleton-bar h-3 w-[55%] rounded-full bg-budget-surface" />
+            <div className="budget-map-skeleton-bar h-3 w-[78%] rounded-full bg-budget-surface/80" />
+            <div className="budget-map-skeleton-bar h-3 w-[42%] rounded-full bg-budget-surface/70" />
+            <div className="mt-4 flex items-center justify-center gap-2">
+              <div className="budget-app-splash-spinner" style={{ width: 22, height: 22, borderWidth: 2.5 }} aria-hidden />
+              <span className="text-[12px] font-semibold text-budget-muted">Loading spots…</span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {tab !== "map" && <div className="absolute inset-0 z-[5] bg-budget-bg" aria-hidden />}
 
       {tab === "map" && (
         <header
-          className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-budget-header"
+          className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
           style={{
             top: "max(29px, env(safe-area-inset-top))",
             paddingLeft: "15.6px",
@@ -2865,7 +2899,11 @@ export default function BudgetMapApp() {
                   to see the shared queue here.
                 </div>
               ) : pendingLoading ? (
-                <p className="py-12 text-center text-sm text-budget-muted">Loading queue…</p>
+                <div className="space-y-3 px-1 py-10" aria-busy aria-label="Loading queue">
+                  <div className="budget-map-skeleton-bar h-14 w-full rounded-2xl bg-budget-white shadow-sm ring-1 ring-budget-surface/70" />
+                  <div className="budget-map-skeleton-bar h-14 w-full rounded-2xl bg-budget-white shadow-sm ring-1 ring-budget-surface/70" />
+                  <div className="budget-map-skeleton-bar h-14 w-[88%] rounded-2xl bg-budget-white/90 shadow-sm ring-1 ring-budget-surface/60" />
+                </div>
               ) : pendingError ? (
                 <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-900">
                   {pendingError}

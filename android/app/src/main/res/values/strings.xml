@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">LondonBudgetMap</string>
+    <string name="title_activity_main">LondonBudgetMap</string>
+    <string name="package_name">com.londonbudgetmap.app</string>
+    <string name="custom_url_scheme">com.londonbudgetmap.app</string>
+</resources>
