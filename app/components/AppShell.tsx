@@ -20,9 +20,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       {!showApp ? (
         <div
-          className="fixed inset-0 z-[9999] overflow-hidden bg-[#F7FDFB]"
+          className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]"
         >
-          <div className="absolute inset-0 bg-[#F7FDFB]" />
+          <div className="absolute inset-0 bg-[#FCFFFF]" />
           <img
             src="/brand/mappitite-splash-full.png"
             alt="Mappetite splash"
