@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const SPLASH_MS = 1600;
+const SPLASH_MS = 1800;
 
 /**
  * Capacitor / mobile: show a branded splash before mounting the main tree
@@ -20,13 +20,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <>
       {!showApp ? (
         <div
-          className="fixed inset-0 z-[9999] overflow-hidden bg-[#edf2f2]"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#F7FDFB] px-6"
           style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <img
-            src="/brand/mappitite-splash-full.png"
+            src="/brand/mappetite-splash-logo.png"
             alt="Mappetite splash"
-            className="h-full w-full object-cover"
+            className="w-full max-w-[320px] object-contain mix-blend-screen drop-shadow-[0_10px_24px_rgb(13_31_26_/0.16)]"
+            draggable={false}
+          />
+          <img
+            src="/brand/mappetite-loading-text.png"
+            alt="Loading budget-friendly spots..."
+            className="mt-7 w-full max-w-[360px] object-contain opacity-90"
             draggable={false}
           />
         </div>
