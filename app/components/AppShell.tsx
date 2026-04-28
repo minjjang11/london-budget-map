@@ -24,9 +24,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <img
-            src="/brand/mappetite-splash-logo.png"
+            src="/brand/mappitite-splash-full.png"
             alt="Mappetite splash"
-            className="w-full max-w-[320px] object-contain mix-blend-screen drop-shadow-[0_10px_24px_rgb(13_31_26_/0.16)]"
+            className="w-full max-w-[300px] object-contain drop-shadow-[0_10px_24px_rgb(13_31_26_/0.16)]"
             draggable={false}
           />
           <img
