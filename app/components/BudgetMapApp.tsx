@@ -2209,7 +2209,7 @@ export default function BudgetMapApp() {
             paddingBottom: "13px",
           }}
         >
-          <div className="mb-2.5">
+          <div className="mb-2.5 flex items-end justify-between gap-2">
             <h1>
               <img
                 src="/brand/mappetite-wordmark.png"
@@ -2218,10 +2218,7 @@ export default function BudgetMapApp() {
                 draggable={false}
               />
             </h1>
-            <p
-              className="mt-1 inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold tracking-[0.01em]"
-              style={{ color: "#496059", backgroundColor: "#F0FAF6" }}
-            >
+            <p className="shrink-0 text-[11px] font-semibold tracking-[-0.01em]" style={{ color: "#496059" }}>
               Eat well. Spend less.
             </p>
           </div>
