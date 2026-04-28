@@ -22,6 +22,7 @@ import {
   ChevronDown,
   SlidersHorizontal,
   Flag,
+  Share2,
   Trash2,
 } from "lucide-react";
 import type { Category, Spot, SpotComment, SpotMenuItem } from "@/lib/types/spot";
@@ -390,6 +391,48 @@ function formatMapPriceLabel(lowest: number): string {
     ? Math.round(r).toString()
     : r.toFixed(1).replace(/\.0$/, "");
   return `£${body}`;
+}
+
+function titleCaseWords(value: string): string {
+  const t = value.trim();
+  if (!t) return "";
+  return t
+    .split(/\s+/)
+    .map((w) => (w.length <= 2 ? w.toUpperCase() : w.slice(0, 1).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(" ");
+}
+
+function shareFoundNoun(category: Category): string {
+  if (category === "cafe") return "coffee";
+  if (category === "pub") return "pint";
+  return "meal";
+}
+
+/** “Typical pay” hook for share copy — category-aware, always above the floor price. */
+function shareTypicalPayLabel(category: Category, floor: number): string {
+  const cap = SUBMIT_PRICE_LIMITS[category];
+  const bump = category === "restaurant" ? 4 : category === "pub" ? 2.5 : 1.5;
+  const raw = Math.max(cap * 0.92, floor + bump, cap * 0.65);
+  const rounded = Math.ceil(raw * 2) / 2;
+  return `${formatMapPriceLabel(rounded)}+`;
+}
+
+function buildMappetiteShareText(spot: Spot): string {
+  const low = lowestPrice(spot);
+  const priceStr = formatMapPriceLabel(Math.max(low, 0.01));
+  const area = titleCaseWords(spot.area || "London");
+  const noun = shareFoundNoun(spot.category);
+  const typical = shareTypicalPayLabel(spot.category, Math.max(low, 0.01));
+  return [
+    "Mappetite 🍽️",
+    "",
+    `Found a ${priceStr} ${noun} in ${area}`,
+    `Most people pay ${typical}`,
+    "",
+    "You're overpaying.",
+    "",
+    "📍 London",
+  ].join("\n");
 }
 
 function catEmoji(c: Category) {
@@ -1428,6 +1471,29 @@ export default function BudgetMapApp() {
     setToast("Report sent — thanks for helping keep the queue honest.");
     window.setTimeout(() => setToast(null), 4000);
   }, [reportTargetId, reportText, session?.user?.id]);
+
+  const handleShareSelectedSpot = useCallback(async () => {
+    if (!selected) return;
+    const text = buildMappetiteShareText(selected);
+    try {
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        await navigator.share({ title: "Mappetite", text });
+        setToast("Share sheet opened");
+        window.setTimeout(() => setToast(null), 2500);
+        return;
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast("Share text copied");
+      window.setTimeout(() => setToast(null), 3000);
+    } catch {
+      setToast("Could not copy — try again");
+      window.setTimeout(() => setToast(null), 4000);
+    }
+  }, [selected]);
 
   const handleReportTap = useCallback(
     (submissionId: string) => {
@@ -2595,11 +2661,32 @@ export default function BudgetMapApp() {
                         from {formatMapPriceLabel(lowestPrice(selected))}
                       </span>
                       {remoteIds.has(selected.id) || selectedIsPending ? (
-                        <span className="text-[12px] font-semibold text-budget-muted">
-                          👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
-                          {selectedIsPending ? selectedPendingTallies.down : selected.downvotes ?? 0}
-                        </span>
-                      ) : null}
+                        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
+                          <span className="text-[12px] font-semibold text-budget-muted">
+                            👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
+                            {selectedIsPending ? selectedPendingTallies.down : selected.downvotes ?? 0}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => void handleShareSelectedSpot()}
+                            className="inline-flex shrink-0 items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-2.5 py-1.5 text-[11px] font-extrabold text-budget-primary shadow-sm transition active:scale-[0.97]"
+                            aria-label="Share this spot"
+                          >
+                            <Share2 size={14} strokeWidth={2.25} aria-hidden />
+                            Share
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void handleShareSelectedSpot()}
+                          className="ml-auto inline-flex shrink-0 items-center gap-1 rounded-full border border-budget-surface bg-budget-white px-2.5 py-1.5 text-[11px] font-extrabold text-budget-primary shadow-sm transition active:scale-[0.97]"
+                          aria-label="Share this spot"
+                        >
+                          <Share2 size={14} strokeWidth={2.25} aria-hidden />
+                          Share
+                        </button>
+                      )}
                     </div>
                     <p className="mt-1.5 text-[11px] leading-snug text-budget-text/45">{selected.address}</p>
                     <SubmissionPhotoStrip urls={collectSubmissionPhotoUrls(selected)} />
