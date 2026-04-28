@@ -21,41 +21,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!showApp ? (
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]">
           <div className="absolute inset-0 bg-[#FCFFFF]" />
-          <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-            {/* Teardrop map pin — circle cap + straight sides to sharp tip (matches brand reference silhouette) */}
-            <svg
-              aria-hidden
-              viewBox="0 0 100 138"
-              className="h-[88px] w-auto select-none"
-              shapeRendering="geometricPrecision"
-              preserveAspectRatio="xMidYMid meet"
-            >
-              <defs>
-                <linearGradient id="splash-pin-gradient" x1="50" y1="0" x2="50" y2="138" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stopColor="#00D18E" />
-                  <stop offset="66%" stopColor="#00BA9A" />
-                  <stop offset="100%" stopColor="#4A47E0" />
-                </linearGradient>
-              </defs>
-              <path
-                fill="url(#splash-pin-gradient)"
-                d="
-                  M 50 2
-                  C 77 2 98 23 98 50
-                  C 98 67 90 82 50 140
-                  C 10 82 2 67 2 50
-                  C 2 23 23 2 50 2
-                  Z
-                "
-              />
-            </svg>
-            {/* Wordmark: bright mint/teal aligned with gradient top */}
-            <h1
-              className="mt-4 text-[clamp(1.75rem,8.2vw,2.9rem)] font-extrabold leading-none tracking-[-0.03em]"
-              style={{ color: "#00C896", letterSpacing: "-0.04em" }}
-            >
-              Mappetite
-            </h1>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            {/* Use the brand lockup asset directly so pin shape + wordmark match exactly. */}
+            <img
+              src="/brand/mappetite-splash-transparent.png"
+              alt="Mappetite"
+              className="w-[min(74vw,360px)] object-contain select-none"
+              style={{ imageRendering: "auto" }}
+              draggable={false}
+            />
           </div>
           <p
             className="absolute left-1/2 top-[84%] -translate-x-1/2 whitespace-nowrap text-[clamp(0.9rem,3vw,1.15rem)] font-semibold tracking-[-0.01em] text-budget-muted/90"
