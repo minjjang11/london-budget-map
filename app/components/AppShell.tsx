@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]">
           <div className="absolute inset-0 bg-[#FCFFFF]" />
           <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
-            <svg aria-hidden viewBox="0 0 112 140" className="h-[88px] w-auto select-none">
+            <svg aria-hidden viewBox="0 0 112 140" className="h-[82px] w-auto select-none">
               <defs>
                 <linearGradient id="splash-pin-gradient" x1="56" y1="0" x2="56" y2="140" gradientUnits="userSpaceOnUse">
                   <stop offset="0%" stopColor="#00EDC6" />
@@ -31,12 +31,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </linearGradient>
               </defs>
               <path
-                d="M56 2C86 2 110 26 110 56C110 70 104 82 94 94L56 140L18 94C8 82 2 70 2 56C2 26 26 2 56 2Z"
+                d="M56 2C84 2 106 25 106 55C106 72 100 84 91 95C82 106 74 117 56 140C38 117 30 106 21 95C12 84 6 72 6 55C6 25 28 2 56 2Z"
                 fill="url(#splash-pin-gradient)"
               />
             </svg>
             <h1
-              className="mt-3 text-[clamp(1.9rem,8.8vw,3.2rem)] font-extrabold leading-none tracking-[-0.03em]"
+              className="mt-3 text-[clamp(1.75rem,8.2vw,2.9rem)] font-extrabold leading-none tracking-[-0.03em]"
               style={{ color: "#00A883" }}
             >
               Mappetite
