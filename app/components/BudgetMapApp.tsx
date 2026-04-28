@@ -2463,7 +2463,7 @@ export default function BudgetMapApp() {
         </div>
       )}
 
-      {tab === "map" && mounted && allSpots.length === 0 && (
+      {tab === "map" && mounted && !remoteApprovedLoading && !pendingLoading && allSpots.length === 0 && (
         <div className="absolute left-3 right-3 top-[calc(306px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
           Open <strong>Submit</strong> to add a cheap eat, or connect Supabase to show verified spots from the database.
