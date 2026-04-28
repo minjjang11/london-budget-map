@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
@@ -2210,13 +2209,13 @@ export default function BudgetMapApp() {
             paddingBottom: "13px",
           }}
         >
-          <h1
-            className="mb-2 leading-tight tracking-[-0.035em]"
-            style={{ fontSize: "19px", fontWeight: 700, color: "#0D1F1A" }}
-          >
-            <Link href="/home" className="hover:text-budget-primary/90" style={{ color: "inherit" }}>
-              Mappitite
-            </Link>
+          <h1 className="mb-2">
+            <img
+              src="/brand/mappitite-wordmark.png"
+              alt="Mappitite"
+              className="h-[29px] w-auto max-w-[170px] object-contain select-none"
+              draggable={false}
+            />
           </h1>
           <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-0 flex-1 flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
