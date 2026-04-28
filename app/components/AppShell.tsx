@@ -27,13 +27,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             src="/brand/mappetite-splash-transparent.png"
             alt="Mappetite splash"
             className="absolute left-1/2 top-[45%] w-[min(58vw,300px)] -translate-x-1/2 -translate-y-1/2 object-contain"
-            style={{ imageRendering: "auto" }}
+            style={{ imageRendering: "auto", mixBlendMode: "screen" }}
             draggable={false}
           />
           <img
             src="/brand/mappetite-loading-transparent.png"
             alt="Loading budget-friendly spots..."
             className="absolute left-1/2 top-[67%] w-[min(54vw,290px)] -translate-x-1/2 object-contain opacity-90"
+            style={{ mixBlendMode: "screen" }}
             draggable={false}
           />
         </div>
