@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </linearGradient>
               </defs>
               <path
-                d="M50 0C78 0 100 22 100 50C100 74 83 90 68 108L50 140L32 108C17 90 0 74 0 50C0 22 22 0 50 0Z"
+                d="M50 0C78 0 100 22 100 50C100 68 92 82 80 96L50 140L20 96C8 82 0 68 0 50C0 22 22 0 50 0Z"
                 fill="url(#splash-pin-gradient)"
               />
             </svg>
