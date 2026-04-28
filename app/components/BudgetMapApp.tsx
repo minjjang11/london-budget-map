@@ -2209,16 +2209,19 @@ export default function BudgetMapApp() {
             paddingBottom: "13px",
           }}
         >
-          <h1
-            className="mb-2.5"
-          >
-            <img
-              src="/brand/mappetite-wordmark.png"
-              alt="Mappetite"
-              className="h-[23px] w-auto max-w-[165px] object-contain select-none"
-              draggable={false}
-            />
-          </h1>
+          <div className="mb-2.5 flex items-end justify-between gap-2">
+            <h1>
+              <img
+                src="/brand/mappetite-wordmark.png"
+                alt="Mappetite"
+                className="h-[23px] w-auto max-w-[165px] object-contain select-none"
+                draggable={false}
+              />
+            </h1>
+            <p className="shrink-0 text-[11px] font-semibold tracking-[-0.01em]" style={{ color: "#496059" }}>
+              Eat well. Spend less.
+            </p>
+          </div>
           <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <div className="flex min-w-0 flex-1 flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
