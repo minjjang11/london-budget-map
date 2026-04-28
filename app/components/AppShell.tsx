@@ -24,16 +24,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <div className="absolute inset-0 bg-[#FCFFFF]" />
           <img
-            src="/brand/mappitite-splash-full.png"
+            src="/brand/mappetite-splash-hq.png"
             alt="Mappetite splash"
-            className="absolute left-1/2 top-[45%] w-[min(58vw,300px)] -translate-x-1/2 -translate-y-1/2 object-contain"
+            className="absolute left-1/2 top-1/2 w-[min(72vw,380px)] -translate-x-1/2 -translate-y-1/2 object-contain"
             style={{ imageRendering: "auto" }}
             draggable={false}
           />
           <img
             src="/brand/mappetite-loading-text.png"
             alt="Loading budget-friendly spots..."
-            className="absolute left-1/2 top-[67%] w-[min(54vw,290px)] -translate-x-1/2 object-contain opacity-90"
+            className="absolute left-1/2 top-[80%] w-[min(56vw,310px)] -translate-x-1/2 object-contain opacity-90"
             draggable={false}
           />
         </div>
