@@ -21,12 +21,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!showApp ? (
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]">
           <div className="absolute inset-0 bg-[#FCFFFF]" />
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            {/* Use the brand lockup asset directly so pin shape + wordmark match exactly. */}
+          <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center">
             <img
-              src="/brand/mappetite-splash-transparent.png"
+              src="/brand/mappetite-pin-hq.png"
+              alt=""
+              aria-hidden
+              className="h-[84px] w-auto object-contain select-none"
+              style={{ imageRendering: "auto" }}
+              draggable={false}
+            />
+            <img
+              src="/brand/mappetite-wordmark.png"
               alt="Mappetite"
-              className="w-[min(74vw,360px)] object-contain select-none"
+              className="mt-3 w-[min(62vw,300px)] object-contain select-none"
               style={{ imageRendering: "auto" }}
               draggable={false}
             />
