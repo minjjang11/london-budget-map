@@ -2211,7 +2211,7 @@ export default function BudgetMapApp() {
         >
           <h1
             className="mb-2.5 select-none leading-none tracking-[-0.03em] text-[#08b894] drop-shadow-[0_2px_6px_rgb(13_31_26_/0.10)]"
-            style={{ fontSize: "32px", fontWeight: 800 }}
+            style={{ fontSize: "28px", fontWeight: 800 }}
           >
             Mappitite
           </h1>
