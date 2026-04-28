@@ -3760,13 +3760,13 @@ export default function BudgetMapApp() {
                       }}
                       className={`flex items-center justify-between gap-3 rounded-2xl border bg-budget-bg px-3 py-2.5 ${
                         activeDrag
-                          ? "z-20 border-budget-primary/60 bg-budget-white shadow-[0_14px_28px_rgb(13_31_26_/0.2)]"
+                          ? "budget-course-drag-active z-20 border-budget-primary/60 bg-budget-white shadow-[0_14px_28px_rgb(13_31_26_/0.2)]"
                           : pressing
                             ? "border-budget-primary/35 bg-budget-white shadow-[0_4px_14px_rgb(13_31_26_/0.10)]"
                             : "border-budget-surface"
                       }`}
                       style={{
-                        transform: activeDrag ? "scale(0.988)" : pressing ? "scale(0.992)" : "scale(1)",
+                        transform: activeDrag ? undefined : pressing ? "scale(0.992)" : "scale(1)",
                         transition: activeDrag
                           ? "none"
                           : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease",

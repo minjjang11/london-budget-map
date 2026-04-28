@@ -307,3 +307,16 @@
     transform: translateX(0);
   }
 }
+
+@keyframes budgetCourseDragFloat {
+  0% {
+    transform: translateY(0) scale(0.988);
+  }
+  100% {
+    transform: translateY(-1.5px) scale(0.994);
+  }
+}
+
+.budget-course-drag-active {
+  animation: budgetCourseDragFloat 420ms ease-in-out infinite alternate;
+}
