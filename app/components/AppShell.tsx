@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!showApp ? (
         <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]">
           <div className="absolute inset-0 bg-[#FCFFFF]" />
-          <div className="absolute left-1/2 top-1/2 w-[min(72vw,320px)] -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute left-1/2 top-1/2 w-[min(43.2vw,192px)] -translate-x-1/2 -translate-y-1/2">
             <img
               src="/brand/mappetite-lockup-native-2048.png"
               alt="Mappetite"
