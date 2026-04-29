@@ -1,13 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 138" fill="none">
   <defs>
-    <linearGradient id="pinGradient" x1="50" y1="0" x2="50" y2="140" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#00EDC6" />
-      <stop offset="66%" stop-color="#00C899" />
-      <stop offset="100%" stop-color="#6A71FF" />
+    <linearGradient id="pinGradient" x1="50" y1="0" x2="50" y2="138" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00D18E" />
+      <stop offset="38%" stop-color="#00EDC6" />
+      <stop offset="72%" stop-color="#00C899" />
+      <stop offset="100%" stop-color="#4A47E0" />
     </linearGradient>
   </defs>
+  <!-- Single smooth spline outline (avoid piecewise tangent breaks that read as a diagonal band inside the gradient). -->
   <path
-    d="M50 2C78 2 100 24 100 52C100 66 94 78 84 90L50 140L16 90C6 78 0 66 0 52C0 24 22 2 50 2Z"
+    d="M50 138
+       C72 118 93 93 93 61
+       C93 31 73 11 50 11
+       C27 11 7 31 7 61
+       C7 93 28 118 50 138Z"
     fill="url(#pinGradient)"
   />
 </svg>

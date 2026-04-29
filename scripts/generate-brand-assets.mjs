@@ -23,10 +23,15 @@ async function ensureParent(filePath) {
 
 async function renderPin(size) {
   const svg = await fs.readFile(paths.pinSvg);
-  return sharp(svg)
-    .png()
-    .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
-    .toBuffer();
+  return sharp(svg).resize(size, size, {
+    fit: "contain",
+    background: { r: 0, g: 0, b: 0, alpha: 0 },
+    kernel: sharp.kernel.lanczos3,
+  }).png({
+    compressionLevel: 9,
+    adaptiveFiltering: true,
+    effort: 9,
+  }).toBuffer();
 }
 
 async function makeIconSquare(size, outPath) {
