@@ -23,7 +23,10 @@ async function ensureParent(filePath) {
 
 async function renderPin(size) {
   const svg = await fs.readFile(paths.pinSvg);
-  return sharp(svg).png().resize(size, size, { fit: "contain" }).toBuffer();
+  return sharp(svg)
+    .png()
+    .resize(size, size, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .toBuffer();
 }
 
 async function makeIconSquare(size, outPath) {
@@ -46,7 +49,10 @@ async function makeLockupSquare(size, outPath) {
 
   const pin = await renderPin(pinHeight);
   const wordmark = await sharp(paths.wordmarkPng)
-    .resize(wordmarkWidth, Math.round(size * 0.16), { fit: "contain" })
+    .resize(wordmarkWidth, Math.round(size * 0.16), {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
     .png()
     .toBuffer();
 
