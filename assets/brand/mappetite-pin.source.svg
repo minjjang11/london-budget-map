@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 140" fill="none">
+  <defs>
+    <linearGradient id="pinGradient" x1="50" y1="0" x2="50" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00EDC6" />
+      <stop offset="66%" stop-color="#00C899" />
+      <stop offset="100%" stop-color="#6A71FF" />
+    </linearGradient>
+  </defs>
+  <path
+    d="M50 2C78 2 100 24 100 52C100 66 94 78 84 90L50 140L16 90C6 78 0 66 0 52C0 24 22 2 50 2Z"
+    fill="url(#pinGradient)"
+  />
+</svg>

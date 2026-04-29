@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "assets:brand": "node scripts/generate-brand-assets.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.1",
