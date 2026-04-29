@@ -5,10 +5,10 @@ import sharp from "sharp";
 const root = process.cwd();
 
 const paths = {
-  pinSvg: path.join(root, "assets/brand/mappetite-pin.source.svg"),
-  wordmarkPng: path.join(root, "public/brand/mappetite-wordmark.png"),
-  webPin: path.join(root, "public/brand/mappetite-pin-native-1024.png"),
+  /** Full brand lockup exported from design (pin + wordmark + gradients). */
+  lockupSvg: path.join(root, "assets/brand/mappetite-pin.source.svg"),
   webLockup: path.join(root, "public/brand/mappetite-lockup-native-2048.png"),
+  webPin: path.join(root, "public/brand/mappetite-pin-native-1024.png"),
   iosSplash1x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-2.png"),
   iosSplash2x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-1.png"),
   iosSplash3x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png"),
@@ -21,76 +21,81 @@ async function ensureParent(filePath) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
 }
 
-async function renderPin(size) {
-  const svg = await fs.readFile(paths.pinSvg);
-  return sharp(svg).resize(size, size, {
-    fit: "contain",
-    background: { r: 0, g: 0, b: 0, alpha: 0 },
-    kernel: sharp.kernel.lanczos3,
-  }).png({
-    compressionLevel: 9,
-    adaptiveFiltering: true,
-    effort: 9,
-  }).toBuffer();
-}
-
-async function makeIconSquare(size, outPath) {
-  // Keep generous safety padding for Android/iOS masks.
-  const inner = Math.round(size * 0.68);
-  const pin = await renderPin(inner);
-  const top = Math.round((size - inner) / 2);
-  const left = top;
-  const canvas = sharp({
-    create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-  }).composite([{ input: pin, left, top }]);
-  await ensureParent(outPath);
-  await canvas.png({ compressionLevel: 9 }).toFile(outPath);
-}
-
-async function makeLockupSquare(size, outPath) {
-  const pinHeight = Math.round(size * 0.44);
-  const wordmarkWidth = Math.round(size * 0.62);
-  const gap = Math.round(size * 0.045);
-
-  const pin = await renderPin(pinHeight);
-  const wordmark = await sharp(paths.wordmarkPng)
-    .resize(wordmarkWidth, Math.round(size * 0.16), {
+async function renderLockupPng(size) {
+  const svg = await fs.readFile(paths.lockupSvg);
+  return sharp(svg)
+    .resize(size, size, {
       fit: "contain",
       background: { r: 0, g: 0, b: 0, alpha: 0 },
+      kernel: sharp.kernel.lanczos3,
+    })
+    .png({
+      compressionLevel: 9,
+      adaptiveFiltering: true,
+      effort: 9,
+    })
+    .toBuffer();
+}
+
+/**
+ * App icon should be mostly the pin (not the full wordmark).
+ * The provided SVG is a large artboard; the pin lives in the upper area.
+ * This crop is intentionally conservative and padded to survive Android masks.
+ */
+async function renderPinIconPng(size) {
+  const svg = await fs.readFile(paths.lockupSvg);
+  const hi = 4096;
+  const raster = await sharp(svg)
+    .resize(hi, hi, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      kernel: sharp.kernel.lanczos3,
     })
     .png()
     .toBuffer();
 
-  const pinMeta = await sharp(pin).metadata();
-  const wordMeta = await sharp(wordmark).metadata();
-  const contentHeight = (pinMeta.height ?? 0) + gap + (wordMeta.height ?? 0);
-  const y = Math.round((size - contentHeight) / 2);
-  const pinX = Math.round((size - (pinMeta.width ?? 0)) / 2);
-  const wordX = Math.round((size - (wordMeta.width ?? 0)) / 2);
+  // Crop to pin region in the hi-res raster (based on the Group 40.svg layout).
+  const extracted = await sharp(raster)
+    .extract({
+      left: Math.round(hi * 0.22),
+      top: Math.round(hi * 0.02),
+      width: Math.round(hi * 0.56),
+      height: Math.round(hi * 0.62),
+    })
+    .resize(size, size, {
+      fit: "contain",
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      kernel: sharp.kernel.lanczos3,
+    })
+    .png({
+      compressionLevel: 9,
+      adaptiveFiltering: true,
+      effort: 9,
+    })
+    .toBuffer();
 
-  const canvas = sharp({
-    create: { width: size, height: size, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-  }).composite([
-    { input: pin, left: pinX, top: y },
-    { input: wordmark, left: wordX, top: y + (pinMeta.height ?? 0) + gap },
-  ]);
+  return extracted;
+}
+
+async function writePng(buf, outPath) {
   await ensureParent(outPath);
-  await canvas.png({ compressionLevel: 9 }).toFile(outPath);
+  await sharp(buf).png({ compressionLevel: 9 }).toFile(outPath);
 }
 
 async function run() {
-  await makeIconSquare(1024, paths.webPin);
-  await makeLockupSquare(2048, paths.webLockup);
+  await writePng(await renderLockupPng(2048), paths.webLockup);
+  await writePng(await renderPinIconPng(1024), paths.webPin);
 
-  // Native splash/icon assets are PNG derivatives from the SVG source.
-  await makeLockupSquare(2732, paths.iosSplash1x);
-  await makeLockupSquare(2732, paths.iosSplash2x);
-  await makeLockupSquare(2732, paths.iosSplash3x);
-  await makeIconSquare(1024, paths.iosIcon1024);
-  await makeLockupSquare(2732, paths.androidSplash);
-  await makeIconSquare(432, paths.androidForeground);
+  await writePng(await renderLockupPng(2732), paths.iosSplash1x);
+  await writePng(await renderLockupPng(2732), paths.iosSplash2x);
+  await writePng(await renderLockupPng(2732), paths.iosSplash3x);
 
-  console.log("Brand assets generated.");
+  await writePng(await renderPinIconPng(1024), paths.iosIcon1024);
+
+  await writePng(await renderLockupPng(2732), paths.androidSplash);
+  await writePng(await renderPinIconPng(432), paths.androidForeground);
+
+  console.log("Brand assets generated from lockup SVG.");
 }
 
 run().catch((err) => {
