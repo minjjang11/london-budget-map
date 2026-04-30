@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import { GoogleMap, OverlayViewF, OVERLAY_MOUSE_TARGET, useJsApiLoader } from "@react-google-maps/api";
 import {
@@ -327,6 +327,7 @@ function MapViewGoogle({
   const lastFlyRef = useRef<string>("");
   const onSelectRef = useRef(onSelect);
   const onCenterChangeRef = useRef(onCenterChange);
+  const [renderError, setRenderError] = useState<boolean>(false);
 
   useEffect(() => {
     onSelectRef.current = onSelect;
@@ -360,9 +361,14 @@ function MapViewGoogle({
   }, []);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    const center = map.getCenter();
-    if (center) onCenterChangeRef.current?.({ lat: center.lat(), lng: center.lng() });
+    try {
+      mapRef.current = map;
+      const center = map.getCenter();
+      if (center) onCenterChangeRef.current?.({ lat: center.lat(), lng: center.lng() });
+    } catch (err) {
+      console.error("[MapView] Error in onMapLoad:", err);
+      setRenderError(true);
+    }
   }, []);
 
   const onMapUnmount = useCallback(() => {
@@ -370,16 +376,34 @@ function MapViewGoogle({
   }, []);
 
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !flyTo) return;
-    const { center, zoom } = flyTo;
-    if (!isFinite(center[0]) || !isFinite(center[1])) return;
-    const key = `${center[0]},${center[1]},${zoom}`;
-    if (key === lastFlyRef.current) return;
-    lastFlyRef.current = key;
-    map.panTo({ lat: center[0], lng: center[1] });
-    map.setZoom(zoom);
+    try {
+      const map = mapRef.current;
+      if (!map || !flyTo) return;
+      const { center, zoom } = flyTo;
+      if (!isFinite(center[0]) || !isFinite(center[1])) return;
+      const key = `${center[0]},${center[1]},${zoom}`;
+      if (key === lastFlyRef.current) return;
+      lastFlyRef.current = key;
+      map.panTo({ lat: center[0], lng: center[1] });
+      map.setZoom(zoom);
+    } catch (err) {
+      console.error("[MapView] Error in flyTo effect:", err);
+    }
   }, [flyTo]);
+
+  if (renderError) {
+    return (
+      <div
+        className="map-fill flex flex-col items-center justify-center gap-2 bg-[#e8eaed] p-6 text-center text-sm text-red-900"
+        style={{ position: "absolute", inset: 0 }}
+      >
+        <p className="font-semibold">Map rendering error.</p>
+        <p className="max-w-[280px] text-xs leading-relaxed text-red-950/80">
+          An unexpected error occurred while rendering the map. Please refresh or try again.
+        </p>
+      </div>
+    );
+  }
 
   if (loadError) {
     return (
@@ -408,22 +432,27 @@ function MapViewGoogle({
     );
   }
 
-  return (
-    <div className="map-fill" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}>
-      <GoogleMap
-        mapContainerStyle={{ width: "100%", height: "100%" }}
-        mapContainerClassName="google-map-root"
-        center={DEFAULT_CENTER_LATLNG}
-        zoom={DEFAULT_ZOOM}
-        onLoad={onMapLoad}
-        onUnmount={onMapUnmount}
-        onIdle={() => {
-          const center = mapRef.current?.getCenter();
-          if (!center) return;
-          onCenterChangeRef.current?.({ lat: center.lat(), lng: center.lng() });
-        }}
-        options={mapOptions}
-      >
+  try {
+    return (
+      <div className="map-fill" style={{ width: "100%", height: "100%", position: "absolute", inset: 0 }}>
+        <GoogleMap
+          mapContainerStyle={{ width: "100%", height: "100%" }}
+          mapContainerClassName="google-map-root"
+          center={DEFAULT_CENTER_LATLNG}
+          zoom={DEFAULT_ZOOM}
+          onLoad={onMapLoad}
+          onUnmount={onMapUnmount}
+          onIdle={() => {
+            try {
+              const center = mapRef.current?.getCenter();
+              if (!center) return;
+              onCenterChangeRef.current?.({ lat: center.lat(), lng: center.lng() });
+            } catch (err) {
+              console.error("[MapView] Error in onIdle:", err);
+            }
+          }}
+          options={mapOptions}
+        >
         {spots.map((spot) => {
           if (!isFinite(spot.lat) || !isFinite(spot.lng)) return null;
           const selected = spot.id === selectedId;
@@ -460,9 +489,24 @@ function MapViewGoogle({
             </div>
           </OverlayViewF>
         ) : null}
-      </GoogleMap>
-    </div>
-  );
+        </GoogleMap>
+      </div>
+    );
+  } catch (err) {
+    console.error("[MapView] Fatal render error:", err);
+    setRenderError(true);
+    return (
+      <div
+        className="map-fill flex flex-col items-center justify-center gap-2 bg-[#e8eaed] p-6 text-center text-sm text-red-900"
+        style={{ position: "absolute", inset: 0 }}
+      >
+        <p className="font-semibold">Map rendering error.</p>
+        <p className="max-w-[280px] text-xs leading-relaxed text-red-950/80">
+          An unexpected error occurred while rendering the map. Please refresh or try again.
+        </p>
+      </div>
+    );
+  }
 }
 
 /** Google Maps when `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` is set; otherwise Leaflet + MapTiler/Carto. */
