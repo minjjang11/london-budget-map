@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-const SPLASH_MS = 1800;
+const SPLASH_MS = 800;
 
 /**
  * Capacitor / mobile: show a branded splash before mounting the main tree

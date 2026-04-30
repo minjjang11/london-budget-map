@@ -2127,7 +2127,7 @@ export default function BudgetMapApp() {
   ) => (
     <section
       className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
-      style={{ top: "max(20px, env(safe-area-inset-top))" }}
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 66px)" }}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -2197,7 +2197,7 @@ export default function BudgetMapApp() {
         <header
           className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
           style={{
-            top: "max(29px, env(safe-area-inset-top))",
+            top: "calc(env(safe-area-inset-top, 0px) + 70px)",
             paddingLeft: "15.6px",
             paddingRight: "15.6px",
             paddingBottom: "13px",
@@ -2231,7 +2231,7 @@ export default function BudgetMapApp() {
             left: "12px",
             right: "12px",
             zIndex: 49,
-            top: "calc(max(29px, env(safe-area-inset-top)) + 97px)",
+            top: "calc(env(safe-area-inset-top, 0px) + 180px)",
           }}
         >
           <div
@@ -2350,7 +2350,7 @@ export default function BudgetMapApp() {
       {tab === "ranking" && (
         <section
           className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-3 pt-3 shadow-budget-header"
-          style={{ top: "max(20px, env(safe-area-inset-top))" }}
+          style={{ top: "calc(env(safe-area-inset-top, 0px) + 66px)" }}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
