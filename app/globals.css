@@ -61,7 +61,7 @@
 
   .budget-tab-panel {
     @apply absolute left-0 right-0 z-20 overflow-y-auto bg-budget-bg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
-    top: calc(14px + env(safe-area-inset-top, 0px));
+    top: calc(14px + var(--bm-safe-top, env(safe-area-inset-top, 0px)));
     bottom: calc(100px + env(safe-area-inset-bottom, 0px));
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
@@ -94,6 +94,10 @@
   --radius-pill: 999px;
 }
 
+/**
+ * Map shell: platform-tuned safe-area + stacked header height.
+ * `data-bm-host` is set client-side in BudgetMapApp (Capacitor + UA).
+ */
 .budget-app {
   --primary: var(--color-primary);
   --accent: var(--color-accent);
@@ -101,6 +105,60 @@
   --bg: var(--color-bg);
   --text: var(--color-text);
   --cta: var(--color-cta);
+
+  /* Default / mobile web: cap inset so Android Chrome odd values do not stack with offset */
+  --bm-safe-top: min(env(safe-area-inset-top, 0px), 22px);
+  --bm-header-offset: 50px;
+  --bm-map-header-top: calc(var(--bm-safe-top) + var(--bm-header-offset));
+  --bm-map-header-pt: 10px;
+  --bm-map-header-pb: 11px;
+  /* Distance from header card top to budget tools row (overlaps lower header) */
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 120px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 200px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 244px);
+}
+
+.budget-app[data-bm-host="ios"] {
+  --bm-safe-top: env(safe-area-inset-top, 0px);
+  --bm-header-offset: 54px;
+  --bm-map-header-pt: 12px;
+  --bm-map-header-pb: 12px;
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 124px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 204px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 248px);
+}
+
+.budget-app[data-bm-host="android"] {
+  --bm-safe-top: min(env(safe-area-inset-top, 0px), 28px);
+  --bm-header-offset: 42px;
+  --bm-map-header-pt: 8px;
+  --bm-map-header-pb: 10px;
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 118px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 196px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 240px);
+}
+
+.budget-map-chip-scroll {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding-left: 2px;
+  padding-right: 18px;
+  margin-left: -2px;
+  margin-right: -2px;
+  min-width: 0;
+  touch-action: pan-x;
+  scrollbar-width: none;
+}
+
+.budget-map-chip-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 ::-webkit-scrollbar {

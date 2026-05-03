@@ -58,6 +58,17 @@ import type { PlaceContributionRow } from "@/lib/types/placeContributions";
 import AuthPanel from "./AuthPanel";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 
+type BudgetMapHost = "ios" | "android" | "web";
+
+function detectBudgetMapHostFromUA(): BudgetMapHost {
+  if (typeof window === "undefined") return "web";
+  const ua = window.navigator.userAgent;
+  const iOSDevice = /iPhone|iPod/i.test(ua);
+  const iPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+  if (iOSDevice || iPadOS) return "ios";
+  return "web";
+}
+
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
 const HAS_GOOGLE_MAPS_KEY = Boolean((process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "").replace(/\s/g, ""));
@@ -519,6 +530,7 @@ export default function BudgetMapApp() {
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [mapBudget, setMapBudget] = useState(15);
   const [mounted, setMounted] = useState(false);
+  const [budgetMapHost, setBudgetMapHost] = useState<BudgetMapHost>("web");
 
   const [submitName, setSubmitName] = useState("");
   const [submitAddress, setSubmitAddress] = useState("");
@@ -720,6 +732,26 @@ export default function BudgetMapApp() {
     setSpots(loadSpots());
     setSavedLocalIds(loadSaved());
     setPendingSubmissionPhotos(loadPendingSubmissionPhotos());
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { Capacitor } = await import("@capacitor/core");
+        if (cancelled) return;
+        if (Capacitor.isNativePlatform()) {
+          setBudgetMapHost(Capacitor.getPlatform() === "ios" ? "ios" : "android");
+          return;
+        }
+      } catch {
+        /* web build / missing native bridge */
+      }
+      if (!cancelled) setBudgetMapHost(detectBudgetMapHostFromUA());
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -1898,7 +1930,7 @@ export default function BudgetMapApp() {
           setCourseResultRadiusKm(null);
           setSelectedId(null);
         }}
-        className="flex min-h-[38px] min-w-0 max-w-full shrink-0 cursor-pointer items-center justify-center gap-1 rounded-full text-center transition-colors"
+        className="flex min-h-[38px] shrink-0 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-full text-center transition-colors"
         style={{
           border: "none",
           backgroundColor: active ? "#00A878" : "#E0F7F2",
@@ -1914,10 +1946,7 @@ export default function BudgetMapApp() {
             {emoji}
           </span>
         ) : null}
-        <span
-          className="truncate leading-none"
-          style={{ fontSize: "13px", fontWeight: 500 }}
-        >
+        <span className="whitespace-nowrap leading-none" style={{ fontSize: "13px", fontWeight: 500 }}>
           {label}
         </span>
       </button>
@@ -2127,7 +2156,7 @@ export default function BudgetMapApp() {
   ) => (
     <section
       className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 66px)" }}
+      style={{ top: "var(--bm-map-header-top)" }}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
@@ -2160,7 +2189,10 @@ export default function BudgetMapApp() {
   );
 
   return (
-    <div className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full">
+    <div
+      className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full"
+      data-bm-host={budgetMapHost}
+    >
       {/* Keep the same map instance mounted so returning to Map preserves the last viewport and selection. */}
       {mounted && (
         <div className="absolute inset-0 z-0">
@@ -2195,31 +2227,33 @@ export default function BudgetMapApp() {
 
       {tab === "map" && (
         <header
-          className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white pt-3 shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
+          className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
           style={{
-            top: "calc(env(safe-area-inset-top, 0px) + 70px)",
+            top: "var(--bm-map-header-top)",
             paddingLeft: "15.6px",
             paddingRight: "15.6px",
-            paddingBottom: "13px",
+            paddingTop: "var(--bm-map-header-pt)",
+            paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="mb-2.5 flex items-end justify-between gap-2">
-            <h1>
+          <div className="mb-2 flex min-w-0 flex-col gap-1 min-[340px]:mb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
+            <h1 className="min-w-0 shrink-0">
               <img
                 src="/brand/mappetite-wordmark.png"
                 alt="Mappetite"
-                className="h-[20px] w-auto max-w-[160px] object-contain select-none"
+                className="h-[20px] w-auto max-w-[min(200px,88vw)] object-contain object-left select-none"
                 draggable={false}
               />
             </h1>
-            <p className="shrink-0 text-[10px] font-semibold tracking-[-0.01em]" style={{ color: "#496059" }}>
+            <p
+              className="max-[300px]:hidden min-w-0 text-[10px] font-semibold leading-snug tracking-[-0.01em] min-[340px]:shrink-0 min-[340px]:text-right"
+              style={{ color: "#496059" }}
+            >
               Eat well. Spend less.
             </p>
           </div>
-          <div className="mt-0.5 flex min-w-0 flex-row gap-1.5 overflow-x-auto pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex min-w-0 flex-1 flex-row gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
-            </div>
+          <div className="budget-map-chip-scroll mt-0.5 min-w-0">
+            {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
         </header>
       )}
@@ -2231,7 +2265,7 @@ export default function BudgetMapApp() {
             left: "12px",
             right: "12px",
             zIndex: 49,
-            top: "calc(env(safe-area-inset-top, 0px) + 180px)",
+            top: "var(--bm-map-budget-tools-top)",
           }}
         >
           <div
@@ -2350,7 +2384,7 @@ export default function BudgetMapApp() {
       {tab === "ranking" && (
         <section
           className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-3 pt-3 shadow-budget-header"
-          style={{ top: "calc(env(safe-area-inset-top, 0px) + 66px)" }}
+          style={{ top: "var(--bm-map-header-top)" }}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
@@ -2402,7 +2436,8 @@ export default function BudgetMapApp() {
       {toast && tab === "map" && (
         <div
           role="status"
-          className="pointer-events-none absolute left-3 right-3 top-[calc(262px+env(safe-area-inset-top,0px))] z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
+          className="pointer-events-none absolute left-3 right-3 z-[55] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-2.5 text-center text-[13px] font-semibold text-budget-text shadow-budget-float backdrop-blur-sm"
+          style={{ top: "var(--bm-map-toast-top)" }}
         >
           {toast}
         </div>
@@ -2465,7 +2500,10 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "map" && mounted && !remoteApprovedLoading && !pendingLoading && allSpots.length === 0 && (
-        <div className="absolute left-3 right-3 top-[calc(306px+env(safe-area-inset-top,0px))] z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm">
+        <div
+          className="absolute left-3 right-3 z-40 rounded-[18px] border border-budget-surface bg-budget-white/95 px-3.5 py-3 text-[13px] leading-snug text-budget-text shadow-budget-float backdrop-blur-sm"
+          style={{ top: "var(--bm-map-hint-banner-top)" }}
+        >
           <span className="font-extrabold text-budget-primary">No spots yet.</span>{" "}
           Open <strong>Submit</strong> to add a cheap eat, or connect Supabase to show verified spots from the database.
         </div>
@@ -2505,8 +2543,8 @@ export default function BudgetMapApp() {
                 }`}
                 style={
                   placeDetailExpanded
-                    ? { top: "calc(56px + env(safe-area-inset-top, 0px))" }
-                    : { maxHeight: "calc(100dvh - 220px - env(safe-area-inset-top, 0px))" }
+                    ? { top: "calc(56px + var(--bm-safe-top))" }
+                    : { maxHeight: "calc(100dvh - 220px - var(--bm-safe-top))" }
                 }
               >
                 {!placeDetailExpanded ? (
@@ -2978,7 +3016,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(208px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(208px + var(--bm-safe-top))" }}>
           {communitySeg === "review" ? (
             <>
               {isSupabaseConfigured() && getBrowserSupabase() ? (
@@ -3277,7 +3315,7 @@ export default function BudgetMapApp() {
         panelHero("Submit", Plus, "bg-budget-cta", "Share a find")}
 
       {tab === "submit" && (
-        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(150px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(150px + var(--bm-safe-top))" }}>
           <>
             {HAS_GOOGLE_MAPS_KEY ? (
               <SubmitPlacesAutocomplete
@@ -3571,7 +3609,7 @@ export default function BudgetMapApp() {
         panelHero("Profile", User, "bg-[#0D1F1A]", "Your account")}
 
       {tab === "profile" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(150px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(150px + var(--bm-safe-top))" }}>
           {isSupabaseConfigured() && getBrowserSupabase() ? (
             <div className="mb-4">
               <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
@@ -3689,7 +3727,7 @@ export default function BudgetMapApp() {
         panelHero("Course", Route, "bg-[#165A47]", "Plan your round")}
 
       {tab === "course" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(150px + env(safe-area-inset-top, 0px))" }}>
+        <div className="budget-tab-panel p-4" style={{ top: "calc(150px + var(--bm-safe-top))" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <div className="mb-4 rounded-2xl border border-budget-surface bg-budget-bg px-3.5 py-3">
               <div className="flex items-center justify-between gap-3">
