@@ -554,6 +554,15 @@ export default function BudgetMapApp() {
   } | null>(null);
 
   const [pendingRows, setPendingRows] = useState<PlaceSubmissionRow[]>([]);
+  /** Submissions still inside the community vote window (Ranking → Newly-registered + map pins). */
+  const pendingRowsInVoteWindow = useMemo(
+    () =>
+      pendingRows.filter((row) => {
+        const end = new Date(row.review_ends_at).getTime();
+        return Number.isFinite(end) && Date.now() < end;
+      }),
+    [pendingRows],
+  );
   const [pendingSubmissionPhotos, setPendingSubmissionPhotos] = useState<Record<string, string>>({});
   const [pendingLoading, setPendingLoading] = useState(false);
   const [pendingError, setPendingError] = useState<string | null>(null);
@@ -594,8 +603,8 @@ export default function BudgetMapApp() {
 
   const reloadReviewVotes = useCallback(async () => {
     const c = getBrowserSupabase();
-    if (!c || pendingRows.length === 0) return;
-    const ids = pendingRows.map((r) => r.id);
+    if (!c || pendingRowsInVoteWindow.length === 0) return;
+    const ids = pendingRowsInVoteWindow.map((r) => r.id);
     const uid = session?.user?.id ?? null;
     const { tallies, myVote, error } = await fetchSubmissionVoteData(c, ids, uid);
     if (error) {
@@ -612,7 +621,7 @@ export default function BudgetMapApp() {
     });
     setVoteTallies(t);
     setMyVotes(m);
-  }, [pendingRows, session?.user?.id]);
+  }, [pendingRowsInVoteWindow, session?.user?.id]);
   const [toast, setToast] = useState<string | null>(null);
 
   const [rankingWindow, setRankingWindow] = useState<RankingWindow>("weekly");
@@ -670,7 +679,7 @@ export default function BudgetMapApp() {
 
   const pendingQueueSpots = useMemo(
     () =>
-      pendingRows.map((row) => {
+      pendingRowsInVoteWindow.map((row) => {
         if (isHiddenSpotName(row.place_name)) return null;
         const photo = pendingSubmissionPhotos[row.id];
         const spot = pendingRowToSpot(row);
@@ -682,7 +691,7 @@ export default function BudgetMapApp() {
           ),
         };
       }).filter((spot): spot is Spot => spot !== null),
-    [pendingRows, pendingSubmissionPhotos],
+    [pendingRowsInVoteWindow, pendingSubmissionPhotos],
   );
 
   const mergedRemoteApprovedSpots = useMemo(() => {
@@ -1050,7 +1059,7 @@ export default function BudgetMapApp() {
           lng: s.lng,
           lowestPrice: low,
           priceLabel: formatMapPriceLabel(low),
-          reviewStatus: remoteIds.has(s.id) ? "approved" : "under_review",
+          reviewStatus: s.id.startsWith("pending-") ? "under_review" : "approved",
         };
       }),
     [filtered, remoteIds],
@@ -3045,8 +3054,13 @@ export default function BudgetMapApp() {
                 <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-10 text-center text-[13px] text-budget-muted">
                   Nothing in the queue yet. Open <strong>Submit</strong> to add a cheap eat.
                 </div>
+              ) : pendingRowsInVoteWindow.length === 0 ? (
+                <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-10 text-center text-[13px] leading-relaxed text-budget-muted">
+                  Nothing here is still in its 7-day voting window. Older tips are processed automatically (approve / reject
+                  / moderators) and won&apos;t show up in this list.
+                </div>
               ) : (
-                pendingRows.map((row) => {
+                pendingRowsInVoteWindow.map((row) => {
               const catLabel = CATS.find((c) => c.id === row.category)?.label ?? "Spot";
               const priceNum = Number(row.price_gbp);
               const desc = cleanDisplayNote(row.description);
