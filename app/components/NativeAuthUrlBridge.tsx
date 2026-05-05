@@ -3,10 +3,42 @@
 import { useEffect } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { consumeAuthTokensFromUrl } from "@/lib/supabase/consumeAuthCallbackUrl";
+import { NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
+
+function isNativeOAuthReturn(url: string): boolean {
+  const scheme = NATIVE_OAUTH_REDIRECT.split("://")[0];
+  return Boolean(scheme && url.includes(`${scheme}://`) && (url.includes("code=") || url.includes("access_token=") || url.includes("error=")));
+}
+
+async function handleOAuthReturnUrl(
+  rawUrl: string,
+  onAuthApplied?: () => void,
+): Promise<void> {
+  if (!isNativeOAuthReturn(rawUrl)) return;
+  const supabase = getBrowserSupabase();
+  if (!supabase) return;
+
+  const { Browser } = await import("@capacitor/browser");
+  const { ok, error } = await consumeAuthTokensFromUrl(supabase, rawUrl);
+
+  try {
+    await Browser.close();
+  } catch {
+    /* already closed */
+  }
+
+  if (ok) {
+    onAuthApplied?.();
+    return;
+  }
+  if (error) {
+    window.dispatchEvent(new CustomEvent("mappetite-auth-error", { detail: error }));
+  }
+}
 
 /**
- * Capacitor: Google OAuth returns to `com.mappetite.app://auth/callback#access_token=…`
- * via an intent / universal link. Apply tokens inside the WebView and close the system browser.
+ * Capacitor: OAuth returns to `com.mappetite.app://...` with PKCE `code` or hash tokens.
+ * Must call `exchangeCodeForSession` — implicit hash-only handling was leaving users stuck in Chrome.
  */
 export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => void }) {
   useEffect(() => {
@@ -17,19 +49,14 @@ export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => v
         const { Capacitor } = await import("@capacitor/core");
         if (!Capacitor.isNativePlatform()) return;
         const { App } = await import("@capacitor/app");
-        const { Browser } = await import("@capacitor/browser");
+
+        const launch = await App.getLaunchUrl();
+        if (launch?.url) {
+          await handleOAuthReturnUrl(launch.url, onAuthApplied);
+        }
+
         const sub = await App.addListener("appUrlOpen", async (event) => {
-          const supabase = getBrowserSupabase();
-          if (!supabase) return;
-          const { ok } = await consumeAuthTokensFromUrl(supabase, event.url);
-          if (ok) {
-            try {
-              await Browser.close();
-            } catch {
-              /* already closed */
-            }
-            onAuthApplied?.();
-          }
+          await handleOAuthReturnUrl(event.url, onAuthApplied);
         });
         handle = sub;
       } catch {
