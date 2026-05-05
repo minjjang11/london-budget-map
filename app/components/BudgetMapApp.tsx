@@ -2274,7 +2274,7 @@ export default function BudgetMapApp() {
           <div
             style={{
               position: "relative",
-              minHeight: budgetOpen ? "54px" : "32px",
+              minHeight: budgetOpen ? "58px" : "30px",
             }}
           >
             <button
@@ -2283,7 +2283,7 @@ export default function BudgetMapApp() {
               style={{
                 position: "absolute",
                 right: "0",
-                top: "12px",
+                top: budgetOpen ? "14px" : "0",
                 background: "#F7FDFB",
                 border: "none",
                 borderRadius: "999px",
@@ -2307,12 +2307,12 @@ export default function BudgetMapApp() {
             style={{
               position: "absolute",
               right: "38px",
-              top: "4px",
+              top: "0",
               width: "calc(100% - 42px)",
               maxWidth: "326px",
               overflow: "hidden",
               borderRadius: "16px",
-              maxHeight: budgetOpen ? "50px" : "0px",
+              maxHeight: budgetOpen ? "64px" : "0px",
               opacity: budgetOpen ? 1 : 0,
               transition: "max-height 0.32s ease, opacity 0.22s ease",
             }}
@@ -2321,64 +2321,46 @@ export default function BudgetMapApp() {
               style={{
                 background: "#F7FDFB",
                 borderRadius: "16px",
-                padding: "4px 10px 5px",
+                padding: "8px 12px 10px",
                 boxShadow: "0 4px 20px rgba(13, 31, 26, 0.10)",
                 border: "none",
               }}
             >
               <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: "1px",
-                }}
+                className="mb-2 flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5"
+                style={{ fontFamily: "inherit" }}
               >
                 <span
-                  style={{
-                    fontSize: "9px",
-                    fontWeight: 800,
-                    color: "#00A878",
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                  }}
+                  className="shrink-0 text-[13px] font-semibold tracking-tight"
+                  style={{ color: "#0D1F1A" }}
                 >
-                  Map Budget
+                  Max budget :
                 </span>
-              </div>
-              <div style={{ position: "relative", padding: "7px 3px 0" }}>
                 <span
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: `calc(${mapBudgetPercent}% * 0.84 + 8%)`,
-                    transform: "translateX(-50%)",
-                    pointerEvents: "none",
-                    borderRadius: "999px",
-                    border: "1px solid #E0F7F2",
-                    background: "#FFFFFF",
-                    padding: "2px 8px",
-                    fontSize: "11px",
-                    fontWeight: 800,
-                    lineHeight: 1,
-                    color: "#0D1F1A",
-                    boxShadow: "0 2px 8px rgba(13,31,26,0.08)",
-                  }}
+                  className="min-w-0 font-extrabold tabular-nums tracking-tight text-budget-primary"
+                  style={{ fontSize: "14px" }}
+                  aria-live="polite"
                 >
                   {formatBudgetCap(mapBudget)}
                 </span>
-                <input
-                  type="range"
-                  min={mapBudgetMin}
-                  max={mapBudgetMax}
-                  step={0.5}
-                  value={mapBudget}
-                  onChange={(e) => setMapBudget(parseFloat(e.target.value))}
-                  className="budget-range w-full"
-                  style={{ ["--range-progress" as string]: `${mapBudgetPercent}%` }}
-                  aria-label="Maximum budget on map"
-                />
               </div>
+              <input
+                type="range"
+                min={mapBudgetMin}
+                max={mapBudgetMax}
+                step={0.5}
+                value={mapBudget}
+                onChange={(e) => setMapBudget(parseFloat(e.target.value))}
+                className="budget-range w-full"
+                style={{
+                  ["--range-progress" as string]: `${mapBudgetPercent}%`,
+                  display: "block",
+                  padding: 0,
+                  margin: 0,
+                }}
+                aria-valuetext={formatBudgetCap(mapBudget)}
+                aria-label="Maximum budget on map"
+              />
             </div>
           </div>
         </div>

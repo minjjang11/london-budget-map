@@ -113,9 +113,9 @@
   --bm-map-header-pt: 10px;
   --bm-map-header-pb: 11px;
   /* Distance from header card top to budget tools row (overlaps lower header) */
-  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 120px);
-  --bm-map-toast-top: calc(var(--bm-map-header-top) + 200px);
-  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 244px);
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 106px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 186px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 230px);
 }
 
 .budget-app[data-bm-host="ios"] {
@@ -123,9 +123,9 @@
   --bm-header-offset: 54px;
   --bm-map-header-pt: 12px;
   --bm-map-header-pb: 12px;
-  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 124px);
-  --bm-map-toast-top: calc(var(--bm-map-header-top) + 204px);
-  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 248px);
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 116px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 196px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 240px);
 }
 
 .budget-app[data-bm-host="android"] {
@@ -133,10 +133,10 @@
   --bm-header-offset: 42px;
   --bm-map-header-pt: 8px;
   --bm-map-header-pb: 10px;
-  /* Header card is shorter than iOS stack; pull budget row up so it hugs the card */
-  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 92px);
-  --bm-map-toast-top: calc(var(--bm-map-header-top) + 170px);
-  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 214px);
+  /* Tight under category chips — header card is shorter than iOS */
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 78px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 158px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 202px);
 }
 
 .budget-map-chip-scroll {
