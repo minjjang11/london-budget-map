@@ -603,8 +603,8 @@ export default function BudgetMapApp() {
 
   const reloadReviewVotes = useCallback(async () => {
     const c = getBrowserSupabase();
-    if (!c || pendingRowsInVoteWindow.length === 0) return;
-    const ids = pendingRowsInVoteWindow.map((r) => r.id);
+    if (!c || pendingRows.length === 0) return;
+    const ids = pendingRows.map((r) => r.id);
     const uid = session?.user?.id ?? null;
     const { tallies, myVote, error } = await fetchSubmissionVoteData(c, ids, uid);
     if (error) {
@@ -621,7 +621,7 @@ export default function BudgetMapApp() {
     });
     setVoteTallies(t);
     setMyVotes(m);
-  }, [pendingRowsInVoteWindow, session?.user?.id]);
+  }, [pendingRows, session?.user?.id]);
   const [toast, setToast] = useState<string | null>(null);
 
   const [rankingWindow, setRankingWindow] = useState<RankingWindow>("weekly");
@@ -677,9 +677,10 @@ export default function BudgetMapApp() {
     [remoteApprovedSpots],
   );
 
+  /** All queue rows from DB appear on the map; Ranking → Newly-registered still filters by vote window below. */
   const pendingQueueSpots = useMemo(
     () =>
-      pendingRowsInVoteWindow.map((row) => {
+      pendingRows.map((row) => {
         if (isHiddenSpotName(row.place_name)) return null;
         const photo = pendingSubmissionPhotos[row.id];
         const spot = pendingRowToSpot(row);
@@ -691,7 +692,7 @@ export default function BudgetMapApp() {
           ),
         };
       }).filter((spot): spot is Spot => spot !== null),
-    [pendingRowsInVoteWindow, pendingSubmissionPhotos],
+    [pendingRows, pendingSubmissionPhotos],
   );
 
   const mergedRemoteApprovedSpots = useMemo(() => {
@@ -1059,10 +1060,11 @@ export default function BudgetMapApp() {
           lng: s.lng,
           lowestPrice: low,
           priceLabel: formatMapPriceLabel(low),
-          reviewStatus: s.id.startsWith("pending-") ? "under_review" : "approved",
+          /* Seeded + DB entries are treated as registered on the map (green). Newly-registered voting is in Ranking. */
+          reviewStatus: "approved",
         };
       }),
-    [filtered, remoteIds],
+    [filtered],
   );
 
   const selected = allSpots.find((s) => s.id === selectedId) || null;
