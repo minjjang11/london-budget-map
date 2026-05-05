@@ -133,9 +133,10 @@
   --bm-header-offset: 42px;
   --bm-map-header-pt: 8px;
   --bm-map-header-pb: 10px;
-  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 118px);
-  --bm-map-toast-top: calc(var(--bm-map-header-top) + 196px);
-  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 240px);
+  /* Header card is shorter than iOS stack; pull budget row up so it hugs the card */
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 92px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 170px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 214px);
 }
 
 .budget-map-chip-scroll {
@@ -147,7 +148,7 @@
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   padding-left: 2px;
-  padding-right: 18px;
+  padding-right: 22px;
   margin-left: -2px;
   margin-right: -2px;
   min-width: 0;

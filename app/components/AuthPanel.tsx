@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { getBrowserAuthRedirectOrigin } from "@/lib/site/getBrowserAuthRedirectOrigin";
+import { getSupabaseOAuthRedirectTo } from "@/lib/site/getSupabaseOAuthRedirectTo";
+
+const AUTH_NETWORK_MS = 5000;
+/** Supabase email OTP length (project setting); we accept 6–8 so either template works. */
+const OTP_LEN_MIN = 6;
+const OTP_LEN_MAX = 8;
 
 type Props = {
   session: Session | null;
@@ -62,14 +68,46 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               onClick={async () => {
                 setBusy(true);
                 setMsg(null);
-                const origin = getBrowserAuthRedirectOrigin();
-                const { error } = await supabase.auth.signInWithOAuth({
-                  provider: "google",
-                  options: { redirectTo: origin ? `${origin}/map` : undefined },
-                });
-                if (error) {
+                try {
+                  const redirectTo = await getSupabaseOAuthRedirectTo();
+                  let native = false;
+                  try {
+                    const { Capacitor } = await import("@capacitor/core");
+                    native = Capacitor.isNativePlatform();
+                  } catch {
+                    native = false;
+                  }
+                  if (native) {
+                    const { data, error } = await withTimeout(
+                      supabase.auth.signInWithOAuth({
+                        provider: "google",
+                        options: {
+                          redirectTo: redirectTo || undefined,
+                          skipBrowserRedirect: true,
+                        },
+                      }),
+                      AUTH_NETWORK_MS,
+                      "Couldn’t start Google sign-in. Check your connection and try again.",
+                    );
+                    if (error) {
+                      setMsg(error.message);
+                      return;
+                    }
+                    if (data.url) {
+                      const { Browser } = await import("@capacitor/browser");
+                      await Browser.open({ url: data.url });
+                    }
+                    return;
+                  }
+                  const { error } = await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: { redirectTo: redirectTo || undefined },
+                  });
+                  if (error) setMsg(error.message);
+                } catch (e) {
+                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                } finally {
                   setBusy(false);
-                  setMsg(error.message);
                 }
               }}
               className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-budget-surface bg-white px-3 py-3 text-[13px] font-extrabold text-budget-text shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
@@ -112,7 +150,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
       ) : step === "email" ? (
         <>
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold text-budget-muted">Enter your email for a 6-digit code</p>
+            <p className="text-[11px] font-semibold text-budget-muted">Enter your email for a sign-in code</p>
             <button
               type="button"
               disabled={busy}
@@ -143,17 +181,26 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               onClick={async () => {
                 setBusy(true);
                 setMsg(null);
-                const { error } = await supabase.auth.signInWithOtp({
-                  email: email.trim(),
-                });
-                setBusy(false);
-                if (error) {
-                  setMsg(error.message);
-                  return;
+                try {
+                  const { error } = await withTimeout(
+                    supabase.auth.signInWithOtp({
+                      email: email.trim(),
+                    }),
+                    AUTH_NETWORK_MS,
+                    "Couldn’t send the code. Check your connection and try again.",
+                  );
+                  if (error) {
+                    setMsg(error.message);
+                    return;
+                  }
+                  setCode("");
+                  setStep("code");
+                  setMsg(`We sent a sign-in code (${OTP_LEN_MIN}–${OTP_LEN_MAX} digits) to your email.`);
+                } catch (e) {
+                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                } finally {
+                  setBusy(false);
                 }
-                setCode("");
-                setStep("code");
-                setMsg("We sent a 6-digit code to your email.");
               }}
               className="shrink-0 cursor-pointer rounded-xl border-0 bg-budget-primary px-3 py-2 text-[11px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -164,7 +211,9 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
       ) : (
         <>
           <div className="mb-2 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold text-budget-muted">Enter the code from your email</p>
+            <p className="text-[11px] font-semibold text-budget-muted">
+              Enter the code from your email ({OTP_LEN_MIN}–{OTP_LEN_MAX} digits)
+            </p>
             <button
               type="button"
               disabled={busy}
@@ -183,32 +232,41 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               type="text"
               value={code}
               onChange={(e) => {
-                setCode(e.target.value.replace(/\D/g, "").slice(0, 8));
+                setCode(e.target.value.replace(/\D/g, "").slice(0, OTP_LEN_MAX));
                 setMsg(null);
               }}
-              placeholder="12345678"
+              placeholder="00000000"
               inputMode="numeric"
               autoComplete="one-time-code"
-              className="budget-input-sm min-w-0 flex-1 text-center text-[15px] font-extrabold tracking-[0.3em]"
+              className="budget-input-sm min-w-0 flex-1 text-center text-[15px] font-extrabold tracking-[0.22em]"
             />
             <button
               type="button"
-              disabled={busy || code.trim().length < 6 || !email.trim()}
+              disabled={busy || code.trim().length < OTP_LEN_MIN || !email.trim()}
               onClick={async () => {
                 setBusy(true);
                 setMsg(null);
-                const { error } = await supabase.auth.verifyOtp({
-                  email: email.trim(),
-                  token: code.trim(),
-                  type: "email",
-                });
-                setBusy(false);
-                if (error) {
-                  setMsg(error.message);
-                  return;
+                try {
+                  const { error } = await withTimeout(
+                    supabase.auth.verifyOtp({
+                      email: email.trim(),
+                      token: code.trim(),
+                      type: "email",
+                    }),
+                    AUTH_NETWORK_MS,
+                    "Sign-in timed out or failed. Check the code and try again.",
+                  );
+                  if (error) {
+                    setMsg(error.message);
+                    return;
+                  }
+                  setMsg("Logged in.");
+                  onSessionChange();
+                } catch (e) {
+                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                } finally {
+                  setBusy(false);
                 }
-                setMsg("Logged in.");
-                onSessionChange();
               }}
               className="shrink-0 cursor-pointer rounded-xl border-0 bg-budget-primary px-3 py-2 text-[11px] font-extrabold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -221,11 +279,20 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
             onClick={async () => {
               setBusy(true);
               setMsg(null);
-              const { error } = await supabase.auth.signInWithOtp({
-                email: email.trim(),
-              });
-              setBusy(false);
-              setMsg(error ? error.message : "Sent a fresh 6-digit code.");
+              try {
+                const { error } = await withTimeout(
+                  supabase.auth.signInWithOtp({
+                    email: email.trim(),
+                  }),
+                  AUTH_NETWORK_MS,
+                    "Couldn’t resend the code. Check your connection and try again.",
+                );
+                setMsg(error ? error.message : "Sent a fresh sign-in code.");
+              } catch (e) {
+                setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+              } finally {
+                setBusy(false);
+              }
             }}
             className="mt-2 cursor-pointer rounded-full border border-budget-surface bg-budget-bg px-3 py-1.5 text-[11px] font-extrabold text-budget-text disabled:cursor-not-allowed disabled:opacity-50"
           >

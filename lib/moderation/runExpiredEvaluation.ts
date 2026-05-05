@@ -9,12 +9,12 @@ export type ExpiredEvaluationSummary = {
   scanned: number;
   autoApproved: number;
   movedToNeedsReview: number;
+  rejected: number;
   errors: string[];
 };
 
 /**
- * For each `pending` submission past `review_ends_at`, either auto-approve (creates `places` row)
- * or set status to `needs_review`.
+ * For each `pending` submission past `review_ends_at`, auto-approve, reject, or send to `needs_review`.
  */
 export async function runExpiredSubmissionEvaluation(
   admin: SupabaseClient<Database>,
@@ -23,6 +23,7 @@ export async function runExpiredSubmissionEvaluation(
     scanned: 0,
     autoApproved: 0,
     movedToNeedsReview: 0,
+    rejected: 0,
     errors: [],
   };
 
@@ -65,14 +66,26 @@ export async function runExpiredSubmissionEvaluation(
       continue;
     }
 
-    const { error: upErr } = await admin
+    if (outcome === "needs_review") {
+      const { error: upErr } = await admin
+        .from("place_submissions")
+        .update({ status: "needs_review" })
+        .eq("id", sub.id)
+        .eq("status", "pending");
+
+      if (upErr) summary.errors.push(`${sub.id}: ${upErr.message}`);
+      else summary.movedToNeedsReview += 1;
+      continue;
+    }
+
+    const { error: rejErr } = await admin
       .from("place_submissions")
-      .update({ status: "needs_review" })
+      .update({ status: "rejected" })
       .eq("id", sub.id)
       .eq("status", "pending");
 
-    if (upErr) summary.errors.push(`${sub.id}: ${upErr.message}`);
-    else summary.movedToNeedsReview += 1;
+    if (rejErr) summary.errors.push(`${sub.id}: ${rejErr.message}`);
+    else summary.rejected += 1;
   }
 
   return summary;

@@ -56,6 +56,7 @@ import { checkGooglePlaceDuplicate } from "@/lib/places/checkGooglePlaceDuplicat
 import { rankingNetScore, registeredWithinTrailingDays, RANKING_RULES } from "@/lib/ranking/rankingScores";
 import type { PlaceContributionRow } from "@/lib/types/placeContributions";
 import AuthPanel from "./AuthPanel";
+import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 
 type BudgetMapHost = "ios" | "android" | "web";
@@ -2189,10 +2190,12 @@ export default function BudgetMapApp() {
   );
 
   return (
-    <div
-      className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full"
-      data-bm-host={budgetMapHost}
-    >
+    <>
+      <NativeAuthUrlBridge onAuthApplied={() => void refreshSession()} />
+      <div
+        className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full"
+        data-bm-host={budgetMapHost}
+      >
       {/* Keep the same map instance mounted so returning to Map preserves the last viewport and selection. */}
       {mounted && (
         <div className="absolute inset-0 z-0">
@@ -2227,7 +2230,7 @@ export default function BudgetMapApp() {
 
       {tab === "map" && (
         <header
-          className="absolute left-3 right-3 z-50 min-w-0 max-w-full rounded-[20px] border border-budget-surface/90 bg-budget-white shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
+          className="absolute left-3 right-3 z-50 min-w-0 max-w-full overflow-visible rounded-[20px] border border-budget-surface/90 bg-budget-white shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
           style={{
             top: "var(--bm-map-header-top)",
             paddingLeft: "15.6px",
@@ -3979,5 +3982,6 @@ export default function BudgetMapApp() {
         })}
       </nav>
     </div>
+    </>
   );
 }

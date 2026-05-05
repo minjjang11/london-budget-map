@@ -1,0 +1,10 @@
+<!--
+  Paste into Supabase Dashboard → Authentication → Email templates → Magic link,
+  (or the template used for "OTP" / email sign-in codes).
+
+  Update the subject line to match your product name (e.g. Mappetite).
+-->
+<h2>Your login code</h2>
+<p>Use this <strong>8-digit code</strong> to finish signing in:</p>
+<p style="font-size: 28px; font-weight: 700; letter-spacing: 0.12em;">{{ .Token }}</p>
+<p>Enter the code in the app. If you didn’t request this, you can ignore this email.</p>
