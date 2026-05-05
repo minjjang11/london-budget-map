@@ -623,6 +623,8 @@ export default function BudgetMapApp() {
     setMyVotes(m);
   }, [pendingRows, session?.user?.id]);
   const [toast, setToast] = useState<string | null>(null);
+  /** Bottom snackbar after Submit — avoids huge banner toast for success */
+  const [submitFeedback, setSubmitFeedback] = useState<null | "queued" | "local">(null);
 
   const [rankingWindow, setRankingWindow] = useState<RankingWindow>("weekly");
   const [communitySeg, setCommunitySeg] = useState<CommunitySeg>("weekly");
@@ -904,6 +906,12 @@ export default function BudgetMapApp() {
   useEffect(() => {
     if (tab !== "submit") setSubmitSuccess(false);
   }, [tab]);
+
+  useEffect(() => {
+    if (!submitFeedback) return;
+    const t = window.setTimeout(() => setSubmitFeedback(null), 3200);
+    return () => window.clearTimeout(t);
+  }, [submitFeedback]);
 
   useEffect(() => {
     setSubmitDuplicateInfo(null);
@@ -1283,8 +1291,7 @@ export default function BudgetMapApp() {
       setTab("map");
       setSelectedId(submissionId ? `pending-${submissionId}` : null);
       setFlyTo({ center: [latFinal, lngFinal], zoom: 16 });
-      setToast("Spot submitted — it now appears on the map as under review.");
-      window.setTimeout(() => setToast(null), 4000);
+      setSubmitFeedback("queued");
       return;
     }
 
@@ -1327,8 +1334,7 @@ export default function BudgetMapApp() {
     setTab("map");
     setSelectedId(newId);
     setFlyTo({ center: [lat, lng], zoom: 16 });
-    setToast("Spot added — on trial for 7 days for community review.");
-    window.setTimeout(() => setToast(null), 4000);
+    setSubmitFeedback("local");
   };
 
   const handleAddPlaceContribution = useCallback(async () => {
@@ -3924,6 +3930,25 @@ export default function BudgetMapApp() {
           )}
         </div>
       )}
+
+      {submitFeedback ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] left-1/2 z-[85] w-[min(320px,calc(100%-2rem))] max-w-[calc(100%-2rem)] -translate-x-1/2 animate-fade-in"
+        >
+          <div className="rounded-2xl border border-white/10 bg-[#0d1f1a]/92 px-4 py-2.5 text-center shadow-[0_10px_40px_rgba(13,31,26,0.35)] backdrop-blur-md">
+            <p className="text-[13px] font-semibold tracking-tight text-white">
+              {submitFeedback === "queued" ? "Submitted successfully" : "Saved on this device"}
+            </p>
+            <p className="mt-0.5 text-[11px] font-medium leading-snug text-white/78">
+              {submitFeedback === "queued"
+                ? "Your tip is on the map for others to see."
+                : "Connect Supabase to share it with everyone."}
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <nav
         style={{
