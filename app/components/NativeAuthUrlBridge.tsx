@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { consumeAuthTokensFromUrl } from "@/lib/supabase/consumeAuthCallbackUrl";
-import { NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
+import { closeOAuthInAppBrowser } from "@/lib/native/oauthInAppBrowser";
+import { isCapacitorNativeShell, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
 
 function isNativeOAuthReturn(url: string): boolean {
   const scheme = NATIVE_OAUTH_REDIRECT.split("://")[0];
@@ -18,14 +19,9 @@ async function handleOAuthReturnUrl(
   const supabase = getBrowserSupabase();
   if (!supabase) return;
 
-  const { Browser } = await import("@capacitor/browser");
   const { ok, error } = await consumeAuthTokensFromUrl(supabase, rawUrl);
 
-  try {
-    await Browser.close();
-  } catch {
-    /* already closed */
-  }
+  await closeOAuthInAppBrowser();
 
   if (ok) {
     onAuthApplied?.();
@@ -46,8 +42,7 @@ export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => v
 
     void (async () => {
       try {
-        const { Capacitor } = await import("@capacitor/core");
-        if (!Capacitor.isNativePlatform()) return;
+        if (!(await isCapacitorNativeShell())) return;
         const { App } = await import("@capacitor/app");
 
         const launch = await App.getLaunchUrl();

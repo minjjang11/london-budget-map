@@ -4,7 +4,8 @@ import { useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { getSupabaseOAuthRedirectTo } from "@/lib/site/getSupabaseOAuthRedirectTo";
+import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
+import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
 
 const AUTH_NETWORK_MS = 5000;
 /** Supabase email OTP length (project setting); we accept 6–8 so either template works. */
@@ -70,14 +71,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setMsg(null);
                 try {
                   const redirectTo = await getSupabaseOAuthRedirectTo();
-                  let native = false;
-                  try {
-                    const { Capacitor } = await import("@capacitor/core");
-                    native = Capacitor.isNativePlatform();
-                  } catch {
-                    native = false;
-                  }
-                  if (native) {
+                  if (redirectTo === NATIVE_OAUTH_REDIRECT) {
                     const { data, error } = await withTimeout(
                       supabase.auth.signInWithOAuth({
                         provider: "google",
@@ -94,8 +88,8 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                       return;
                     }
                     if (data.url) {
-                      const { Browser } = await import("@capacitor/browser");
-                      await Browser.open({ url: data.url });
+                      const { openOAuthInAppBrowser } = await import("@/lib/native/oauthInAppBrowser");
+                      await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url));
                     }
                     return;
                   }

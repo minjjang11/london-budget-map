@@ -2173,7 +2173,7 @@ export default function BudgetMapApp() {
     rightBadge?: string,
   ) => (
     <section
-      className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-4 pt-3 shadow-budget-header"
+      className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-2 pt-2.5 shadow-budget-header"
       style={{ top: "var(--bm-map-header-top)" }}
     >
       <div className="flex items-center justify-between gap-3">
@@ -3322,7 +3322,7 @@ export default function BudgetMapApp() {
         panelHero("Submit", Plus, "bg-budget-cta", "Share a find")}
 
       {tab === "submit" && (
-        <div className="budget-tab-panel px-4 pb-28 pt-4" style={{ top: "calc(150px + var(--bm-safe-top))" }}>
+        <div className="budget-tab-panel px-4 pb-28 pt-0" style={{ top: "var(--bm-tab-scroll-top)" }}>
           <>
             {HAS_GOOGLE_MAPS_KEY ? (
               <SubmitPlacesAutocomplete
@@ -3616,7 +3616,7 @@ export default function BudgetMapApp() {
         panelHero("Profile", User, "bg-[#0D1F1A]", "Your account")}
 
       {tab === "profile" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(150px + var(--bm-safe-top))" }}>
+        <div className="budget-tab-panel px-4 pb-4 pt-0" style={{ top: "var(--bm-tab-scroll-top)" }}>
           {isSupabaseConfigured() && getBrowserSupabase() ? (
             <div className="mb-4">
               <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
@@ -3734,7 +3734,7 @@ export default function BudgetMapApp() {
         panelHero("Course", Route, "bg-[#165A47]", "Plan your round")}
 
       {tab === "course" && (
-        <div className="budget-tab-panel p-4" style={{ top: "calc(150px + var(--bm-safe-top))" }}>
+        <div className="budget-tab-panel px-4 pb-4 pt-0" style={{ top: "var(--bm-tab-scroll-top)" }}>
           <div className="rounded-[20px] border border-budget-surface bg-budget-white p-[18px] shadow-[0_4px_20px_rgb(13_31_26_/0.06)]">
             <div className="mb-4 rounded-2xl border border-budget-surface bg-budget-bg px-3.5 py-3">
               <div className="flex items-center justify-between gap-3">
