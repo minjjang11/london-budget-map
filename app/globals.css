@@ -120,7 +120,7 @@
    * Profile / Course / Submit: scroll panel starts under panelHero only once —
    * do not add safe-area again (was inflating gap on iPhone vs Galaxy).
    */
-  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 62px);
+  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 72px);
 }
 
 .budget-app[data-bm-host="ios"] {
@@ -131,7 +131,7 @@
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 116px);
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 196px);
   --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 240px);
-  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 64px);
+  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 74px);
 }
 
 .budget-app[data-bm-host="android"] {
@@ -143,7 +143,7 @@
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 78px);
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 158px);
   --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 202px);
-  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 58px);
+  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 68px);
 }
 
 .budget-map-chip-scroll {
