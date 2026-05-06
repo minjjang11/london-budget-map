@@ -156,11 +156,23 @@ html.cap-native .budget-root-inner {
   --bm-header-offset: 42px;
   --bm-map-header-pt: 8px;
   --bm-map-header-pb: 10px;
-  /* Tight under category chips — header card is shorter than iOS */
-  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 78px);
-  --bm-map-toast-top: calc(var(--bm-map-header-top) + 158px);
-  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 202px);
+  /*
+   * Budget slider sits below the header stack (z-49 vs header z-50). Too small an offset
+   * places it under the category card — iOS uses a larger increment; keep Android separate.
+   */
+  --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 106px);
+  /* +28px vs old budget anchor — keep toast/hint spacing similar */
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 186px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 230px);
   --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 68px);
+}
+
+/**
+ * Map tab: BudgetMapApp measures the live header box; slider/toasts follow real height (any phone).
+ */
+.budget-app[data-bm-dynamic-map-stack="true"] {
+  --bm-map-toast-top: calc(var(--bm-map-budget-tools-top) + 72px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-toast-top) + 54px);
 }
 
 .budget-map-chip-scroll {
