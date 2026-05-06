@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
 import type { MapSpot } from "./MapView";
@@ -68,6 +68,17 @@ function detectBudgetMapHostFromUA(): BudgetMapHost {
   const iPadOS = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
   if (iOSDevice || iPadOS) return "ios";
   return "web";
+}
+
+/** Capacitor bridge is on `window` before first paint — avoid async import so `data-bm-host` matches CSS on iOS. */
+function detectBudgetMapHostSync(): BudgetMapHost {
+  if (typeof window === "undefined") return "web";
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } })
+    .Capacitor;
+  if (cap?.isNativePlatform?.()) {
+    return cap.getPlatform?.() === "android" ? "android" : "ios";
+  }
+  return detectBudgetMapHostFromUA();
 }
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
@@ -747,24 +758,8 @@ export default function BudgetMapApp() {
     setPendingSubmissionPhotos(loadPendingSubmissionPhotos());
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const { Capacitor } = await import("@capacitor/core");
-        if (cancelled) return;
-        if (Capacitor.isNativePlatform()) {
-          setBudgetMapHost(Capacitor.getPlatform() === "ios" ? "ios" : "android");
-          return;
-        }
-      } catch {
-        /* web build / missing native bridge */
-      }
-      if (!cancelled) setBudgetMapHost(detectBudgetMapHostFromUA());
-    })();
-    return () => {
-      cancelled = true;
-    };
+  useLayoutEffect(() => {
+    setBudgetMapHost(detectBudgetMapHostSync());
   }, []);
 
   useEffect(() => {
@@ -2291,7 +2286,7 @@ export default function BudgetMapApp() {
           <div
             style={{
               position: "relative",
-              minHeight: budgetOpen ? "58px" : "30px",
+              minHeight: "30px",
             }}
           >
             <button
@@ -2300,7 +2295,7 @@ export default function BudgetMapApp() {
               style={{
                 position: "absolute",
                 right: "0",
-                top: budgetOpen ? "14px" : "0",
+                top: "0",
                 background: "#F7FDFB",
                 border: "none",
                 borderRadius: "999px",
@@ -3018,7 +3013,7 @@ export default function BudgetMapApp() {
       )}
 
       {tab === "ranking" && (
-        <div className="budget-tab-panel px-3 pb-3" style={{ top: "calc(208px + var(--bm-safe-top))" }}>
+        <div className="budget-tab-panel px-3 pb-3" style={{ top: "var(--bm-ranking-tab-panel-top)" }}>
           {communitySeg === "review" ? (
             <>
               {isSupabaseConfigured() && getBrowserSupabase() ? (

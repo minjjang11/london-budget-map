@@ -37,6 +37,16 @@
   }
 }
 
+/* Capacitor iOS/Android: layout uses max-w-[390px] for browser “phone frame”; native shell fills the viewport. */
+html.cap-native .budget-root-outer {
+  background-color: var(--color-bg);
+}
+
+html.cap-native .budget-root-inner {
+  max-width: none;
+  width: 100%;
+}
+
 @layer components {
   .budget-chip-row {
     @apply -mx-1 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
@@ -121,17 +131,24 @@
    * do not add safe-area again (was inflating gap on iPhone vs Galaxy).
    */
   --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 72px);
+  /* Ranking tab: tall hero (segments + chips). Default matches legacy calc(208px + --bm-safe-top). */
+  --bm-ranking-tab-panel-top: calc(208px + var(--bm-safe-top));
 }
 
 .budget-app[data-bm-host="ios"] {
-  --bm-safe-top: env(safe-area-inset-top, 0px);
-  --bm-header-offset: 54px;
-  --bm-map-header-pt: 12px;
-  --bm-map-header-pb: 12px;
+  /*
+   * Capacitor WKWebView reports the full notch / Dynamic Island inset. Using it verbatim in `top:` pushes the
+   * header stack far down; cap for layout (viewport still uses env() for padding where needed).
+   */
+  --bm-safe-top: min(env(safe-area-inset-top, 0px), 22px);
+  --bm-header-offset: 36px;
+  --bm-map-header-pt: 8px;
+  --bm-map-header-pb: 8px;
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 116px);
-  --bm-map-toast-top: calc(var(--bm-map-header-top) + 196px);
-  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 240px);
-  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 74px);
+  --bm-map-toast-top: calc(var(--bm-map-header-top) + 188px);
+  --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 228px);
+  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 62px);
+  --bm-ranking-tab-panel-top: calc(var(--bm-map-header-top) + 132px);
 }
 
 .budget-app[data-bm-host="android"] {
