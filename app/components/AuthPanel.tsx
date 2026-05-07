@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -375,6 +376,21 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
       {msg && (
         <p className="mt-2 whitespace-pre-line text-[11px] font-medium text-budget-text/80">{msg}</p>
       )}
+      <p className="mt-2 text-[10px] leading-snug text-budget-muted">
+        By continuing, you agree to our{" "}
+        <Link href="/terms" className="underline">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline">
+          Privacy Policy
+        </Link>
+        . Contact:{" "}
+        <a href="mailto:contact@mappetite.net" className="underline">
+          contact@mappetite.net
+        </a>
+        .
+      </p>
     </div>
   );
 }
