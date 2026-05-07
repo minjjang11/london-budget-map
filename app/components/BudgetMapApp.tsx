@@ -1989,15 +1989,15 @@ export default function BudgetMapApp() {
           setCourseResultRadiusKm(null);
           setSelectedId(null);
         }}
-        className="flex min-h-[36px] shrink-0 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-full text-center transition-colors"
+        className="flex min-h-[35px] shrink-0 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-full text-center transition-colors"
         style={{
           border: "none",
           backgroundColor: active ? "#00A878" : "#E0F7F2",
           color: active ? "#FFFFFF" : "#4C4C4C",
-          paddingLeft: "12px",
-          paddingRight: "12px",
-          paddingTop: "8px",
-          paddingBottom: "8px",
+          paddingLeft: "11px",
+          paddingRight: "11px",
+          paddingTop: "7px",
+          paddingBottom: "7px",
         }}
       >
         {emoji ? (
@@ -2317,7 +2317,7 @@ export default function BudgetMapApp() {
               <img
                 src="/brand/mappetite-wordmark.png"
                 alt="Mappetite"
-                className="h-[20px] w-auto max-w-[min(200px,88vw)] object-contain object-left select-none"
+                className="h-[21px] w-auto max-w-[min(200px,88vw)] object-contain object-left select-none"
                 draggable={false}
               />
             </h1>
@@ -4070,3 +4070,4 @@ export default function BudgetMapApp() {
     </>
   );
 }
+
