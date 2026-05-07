@@ -1989,20 +1989,20 @@ export default function BudgetMapApp() {
           setCourseResultRadiusKm(null);
           setSelectedId(null);
         }}
-        className="flex min-h-[38px] shrink-0 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-full text-center transition-colors"
+        className="flex min-h-[36px] shrink-0 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-full text-center transition-colors"
         style={{
           border: "none",
           backgroundColor: active ? "#00A878" : "#E0F7F2",
           color: active ? "#FFFFFF" : "#4C4C4C",
-          paddingLeft: "14px",
-          paddingRight: "14px",
-          paddingTop: "9px",
-          paddingBottom: "9px",
+          paddingLeft: "12px",
+          paddingRight: "12px",
+          paddingTop: "8px",
+          paddingBottom: "8px",
         }}
       >
         {emoji ? (
           <span
-            className={`grid size-5 shrink-0 place-items-center text-[15px] leading-none ${active ? "" : "opacity-70"}`}
+            className={`grid size-5 shrink-0 place-items-center text-[14px] leading-none ${active ? "" : "opacity-70"}`}
             aria-hidden
           >
             {emoji}
