@@ -72,7 +72,7 @@ html.cap-native .budget-root-inner {
   .budget-tab-panel {
     @apply absolute left-0 right-0 z-20 overflow-y-auto bg-budget-bg [scrollbar-width:none] [&::-webkit-scrollbar]:hidden;
     top: calc(14px + var(--bm-safe-top, env(safe-area-inset-top, 0px)));
-    bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(88px + env(safe-area-inset-bottom, 0px));
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
   }
 
@@ -130,9 +130,9 @@ html.cap-native .budget-root-inner {
    * Profile / Course / Submit: scroll panel starts under panelHero only once —
    * do not add safe-area again (was inflating gap on iPhone vs Galaxy).
    */
-  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 72px);
+  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 84px);
   /* Ranking tab: tall hero (segments + chips). Default matches legacy calc(208px + --bm-safe-top). */
-  --bm-ranking-tab-panel-top: calc(208px + var(--bm-safe-top));
+  --bm-ranking-tab-panel-top: calc(220px + var(--bm-safe-top));
 }
 
 .budget-app[data-bm-host="ios"] {
@@ -147,8 +147,8 @@ html.cap-native .budget-root-inner {
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 116px);
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 188px);
   --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 228px);
-  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 62px);
-  --bm-ranking-tab-panel-top: calc(var(--bm-map-header-top) + 132px);
+  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 74px);
+  --bm-ranking-tab-panel-top: calc(var(--bm-map-header-top) + 144px);
 }
 
 .budget-app[data-bm-host="android"] {
@@ -164,7 +164,7 @@ html.cap-native .budget-root-inner {
   /* +28px vs old budget anchor — keep toast/hint spacing similar */
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 186px);
   --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 230px);
-  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 68px);
+  --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 80px);
 }
 
 /**

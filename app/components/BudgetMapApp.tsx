@@ -2278,14 +2278,14 @@ export default function BudgetMapApp() {
           className="absolute left-3 right-3 z-50 min-w-0 max-w-full overflow-visible rounded-[20px] border border-budget-surface/90 bg-budget-white shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
           style={{
             top: "var(--bm-map-header-top)",
-            paddingLeft: "15.6px",
-            paddingRight: "15.6px",
+            paddingLeft: "18px",
+            paddingRight: "18px",
             paddingTop: "var(--bm-map-header-pt)",
             paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="mb-2 flex min-w-0 flex-col gap-1 min-[340px]:mb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
-            <h1 className="min-w-0 shrink-0">
+          <div className="mb-2 flex min-w-0 flex-col gap-1 px-0.5 min-[340px]:mb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
+            <h1 className="min-w-0 shrink-0 py-0.5">
               <img
                 src="/brand/mappetite-wordmark.png"
                 alt="Mappetite"
@@ -2545,7 +2545,7 @@ export default function BudgetMapApp() {
           onClick={flyToMyLocation}
           aria-label="Centre map on my location"
           title="My location"
-          className="absolute bottom-[calc(98px+env(safe-area-inset-bottom,0px))] right-4 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
+          className="absolute bottom-[calc(86px+env(safe-area-inset-bottom,0px))] right-4 z-30 grid size-[52px] shrink-0 place-items-center rounded-full border border-budget-surface/90 bg-budget-white/95 text-budget-primary shadow-budget-float backdrop-blur-sm transition active:scale-[0.97]"
         >
           <LocateFixed size={22} strokeWidth={2.25} aria-hidden />
         </button>
@@ -2569,7 +2569,7 @@ export default function BudgetMapApp() {
                 className={`absolute bottom-0 left-0 right-0 border border-budget-surface/80 bg-budget-white shadow-budget-sheet animate-slide-up ${
                   placeDetailExpanded
                     ? "rounded-t-[26px] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-0 pt-0 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]"
-                    : "mx-3 mb-[calc(72px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(62vh,520px)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-4 pt-3 pb-4"
+                    : "mx-3 mb-[calc(64px+env(safe-area-inset-bottom,0px))] rounded-[26px] max-h-[min(62vh,520px)] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [touch-action:pan-y] [-webkit-overflow-scrolling:touch] px-4 pt-3 pb-4"
                 }`}
                 style={
                   placeDetailExpanded
@@ -3963,7 +3963,7 @@ export default function BudgetMapApp() {
         <div
           role="status"
           aria-live="polite"
-          className="pointer-events-none absolute bottom-[calc(88px+env(safe-area-inset-bottom,0px))] left-1/2 z-[85] w-[min(320px,calc(100%-2rem))] max-w-[calc(100%-2rem)] -translate-x-1/2 animate-fade-in"
+          className="pointer-events-none absolute bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-1/2 z-[85] w-[min(320px,calc(100%-2rem))] max-w-[calc(100%-2rem)] -translate-x-1/2 animate-fade-in"
         >
           <div className="rounded-2xl border border-white/10 bg-[#0d1f1a]/92 px-4 py-2.5 text-center shadow-[0_10px_40px_rgba(13,31,26,0.35)] backdrop-blur-md">
             <p className="text-[13px] font-semibold tracking-tight text-white">
@@ -3982,7 +3982,7 @@ export default function BudgetMapApp() {
         style={{
           background: "white",
           borderRadius: "28px 28px 0 0",
-          minHeight: "74px",
+          minHeight: "58px",
           width: "100%",
           position: "absolute",
           bottom: "0",
@@ -3991,7 +3991,7 @@ export default function BudgetMapApp() {
           display: "flex",
           alignItems: "flex-start",
           justifyContent: "space-around",
-          padding: "10px 10px calc(8px + env(safe-area-inset-bottom, 0px))",
+          padding: "6px 8px calc(4px + env(safe-area-inset-bottom, 0px))",
           boxShadow: "0 -4px 20px rgba(13, 31, 26, 0.08)",
           border: "none",
           zIndex: 60,

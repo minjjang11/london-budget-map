@@ -176,9 +176,13 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setBusy(true);
                 setMsg(null);
                 try {
+                  const emailRedirectTo = (await getSupabaseOAuthRedirectTo()) || undefined;
                   const { error } = await withTimeout(
                     supabase.auth.signInWithOtp({
                       email: email.trim(),
+                      options: {
+                        emailRedirectTo,
+                      },
                     }),
                     AUTH_NETWORK_MS,
                     "Couldn’t send the code. Check your connection and try again.",
@@ -274,9 +278,13 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               setBusy(true);
               setMsg(null);
               try {
+                const emailRedirectTo = (await getSupabaseOAuthRedirectTo()) || undefined;
                 const { error } = await withTimeout(
                   supabase.auth.signInWithOtp({
                     email: email.trim(),
+                    options: {
+                      emailRedirectTo,
+                    },
                   }),
                   AUTH_NETWORK_MS,
                     "Couldn’t resend the code. Check your connection and try again.",
