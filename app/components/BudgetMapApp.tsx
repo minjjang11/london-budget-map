@@ -1977,7 +1977,10 @@ export default function BudgetMapApp() {
         }}
       >
         {emoji ? (
-          <span className={`shrink-0 text-[11px] leading-none ${active ? "" : "opacity-70"}`} aria-hidden>
+          <span
+            className={`grid size-5 shrink-0 place-items-center text-[15px] leading-none ${active ? "" : "opacity-70"}`}
+            aria-hidden
+          >
             {emoji}
           </span>
         ) : null}
@@ -1988,7 +1991,7 @@ export default function BudgetMapApp() {
     );
   };
 
-  const rankingCatChip = (id: Category | "all", label: string) => {
+  const rankingCatChip = (id: Category | "all", label: string, emoji: string) => {
     const allSelected = activeCats.length === 0;
     const active = id === "all" ? allSelected : activeCats.includes(id);
     return (
@@ -2010,11 +2013,17 @@ export default function BudgetMapApp() {
             return CATEGORY_IDS.filter((cat) => [...prev, id].includes(cat));
           });
         }}
-        className={`min-w-0 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-center text-[11px] font-extrabold leading-none transition ${
+        className={`flex min-h-[38px] min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-full px-2 py-1.5 text-[11px] font-extrabold leading-none transition ${
           active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text/70"
         }`}
       >
-        <span className="block truncate">{label}</span>
+        <span
+          className={`grid size-5 shrink-0 place-items-center text-[15px] leading-none ${active ? "" : "opacity-80"}`}
+          aria-hidden
+        >
+          {emoji}
+        </span>
+        <span className="min-w-0 flex-1 truncate text-center">{label}</span>
       </button>
     );
   };
@@ -2195,8 +2204,8 @@ export default function BudgetMapApp() {
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-        <div className={`grid size-11 shrink-0 place-items-center rounded-2xl text-white shadow-[0_8px_18px_rgb(13_31_26_/0.14)] ${accentClass}`}>
-          <Icon size={22} strokeWidth={2.1} />
+        <div className={`grid size-10 shrink-0 place-items-center rounded-2xl text-white shadow-[0_8px_18px_rgb(13_31_26_/0.14)] ${accentClass}`}>
+          <Icon size={20} strokeWidth={2.1} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">{accentLabel}</p>
@@ -2458,7 +2467,7 @@ export default function BudgetMapApp() {
             })}
           </div>
           <div className="mt-2 flex gap-1">
-            {CATS.map((c) => rankingCatChip(c.id as Category | "all", c.label))}
+            {CATS.map((c) => rankingCatChip(c.id as Category | "all", c.label, c.emoji))}
           </div>
         </section>
       )}
@@ -3411,20 +3420,26 @@ export default function BudgetMapApp() {
 
               <label className="mb-1.5 mt-3 block text-xs font-semibold text-budget-muted">Category</label>
               <div className="mb-3.5 flex gap-2">
-                {(["restaurant", "pub", "cafe"] as Category[]).map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setSubmitCat(c)}
-                    className={`flex-1 cursor-pointer rounded-[14px] py-2.5 text-xs font-bold text-budget-text ${
-                      submitCat === c
-                        ? "border-2 border-budget-primary bg-budget-surface"
-                        : "border border-budget-surface bg-budget-white"
-                    }`}
-                  >
-                    {CATS.find((x) => x.id === c)?.emoji} {CATS.find((x) => x.id === c)?.label}
-                  </button>
-                ))}
+                {(["restaurant", "pub", "cafe"] as Category[]).map((c) => {
+                  const catRow = CATS.find((x) => x.id === c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setSubmitCat(c)}
+                      className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[14px] py-2.5 text-xs font-bold text-budget-text ${
+                        submitCat === c
+                          ? "border-2 border-budget-primary bg-budget-surface"
+                          : "border border-budget-surface bg-budget-white"
+                      }`}
+                    >
+                      <span className="grid size-5 shrink-0 place-items-center text-[15px] leading-none" aria-hidden>
+                        {catRow?.emoji}
+                      </span>
+                      <span>{catRow?.label}</span>
+                    </button>
+                  );
+                })}
               </div>
               <p className="mb-3 text-[11px] leading-snug text-budget-muted">
                 Price cap:{" "}
