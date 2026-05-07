@@ -2306,13 +2306,13 @@ export default function BudgetMapApp() {
           className="absolute left-3 right-3 z-50 min-w-0 max-w-full overflow-visible rounded-[20px] border border-budget-surface/90 bg-budget-white shadow-[0_10px_34px_rgb(13_31_26_/0.12)]"
           style={{
             top: "var(--bm-map-header-top)",
-            paddingLeft: "18px",
-            paddingRight: "18px",
+            paddingLeft: "20px",
+            paddingRight: "20px",
             paddingTop: "var(--bm-map-header-pt)",
             paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="flex min-w-0 flex-col gap-2 px-0 pb-3 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
+          <div className="flex min-w-0 flex-col gap-3 px-0 pb-4 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-3">
             <h1 className="min-w-0 shrink-0">
               <img
                 src="/brand/mappetite-wordmark.png"
@@ -2328,7 +2328,7 @@ export default function BudgetMapApp() {
               Eat well. Spend less.
             </p>
           </div>
-          <div className="budget-map-chip-scroll mt-1 min-w-0 md:mt-1.5">
+          <div className="budget-map-chip-scroll mt-2 min-w-0 md:mt-2">
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
         </header>

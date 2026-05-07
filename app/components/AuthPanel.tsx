@@ -279,7 +279,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               Back
             </button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <input
               type="text"
               value={code}
@@ -290,7 +290,9 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               placeholder="000000"
               inputMode="numeric"
               autoComplete="one-time-code"
-              className="budget-input-sm min-w-0 flex-1 text-center text-[15px] font-extrabold tracking-[0.22em]"
+              maxLength={OTP_LEN_MAX}
+              aria-label="6-digit sign-in code"
+              className="budget-input-sm w-[min(14ch,100%)] shrink-0 text-center font-mono text-[16px] font-extrabold tabular-nums tracking-[0.28em]"
             />
             <button
               type="button"
