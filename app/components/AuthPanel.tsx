@@ -5,11 +5,44 @@ import type { Session } from "@supabase/supabase-js";
 import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
+import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
 import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
 
 const AUTH_NETWORK_MS = 5000;
+/** Email OTP + SMTP can exceed OAuth handshakes — avoid false “network” timeouts. */
+const AUTH_OTP_SEND_MS = 22000;
 /** Supabase email OTP length (project setting); we accept 6–8 so either template works. */
 const OTP_LEN_MIN = 6;
+
+function formatOtpSendError(message: string): string {
+  const m = message.trim();
+  const low = m.toLowerCase();
+  if (low.includes("rate") || low.includes("too many") || low.includes("frequency")) {
+    return `${m} Wait a minute before trying again.`;
+  }
+  if (
+    low.includes("redirect") ||
+    low.includes("not allowed") ||
+    low.includes("invalid url") ||
+    low.includes("callback")
+  ) {
+    return `${m} Add this app’s sign-in URL under Supabase → Authentication → URL configuration → Redirect URLs (e.g. https://your-domain/map or com.mappetite.app://auth/callback), or set NEXT_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO to an allowed URL.`;
+  }
+  /** Exact string from GoTrue when SMTP/default mail fails — almost always project-side email config, not app bug. */
+  if (low.includes("magic link") || (low.includes("error sending") && low.includes("email"))) {
+    return (
+      `${m}\n\n` +
+      "Supabase가 인증 메일을 보내기 전에 실패한 상태입니다.\n" +
+      "• Dashboard → Authentication → 설정(또는 Project Settings → Auth): Custom SMTP를 쓰면 호스트·포트·비밀번호·발신(From) 주소를 확인하세요. 예전에 잘못된 SMTP를 켠 뒤 끄면 기본 발송이 막히는 경우가 있어, Resend·SendGrid 등으로 다시 맞추는 경우가 많습니다.\n" +
+      "• 무료/기본 메일은 수신 주소가 제한되거나 속도 제한이 있을 수 있습니다. 프로젝트가 Paused인지, 스팸함도 확인하세요.\n" +
+      "• Redirect URL: Authentication → URL configuration에 https://당신도메인/map (앱과 동일) 이 등록돼 있어야 링크 인증이 됩니다."
+    );
+  }
+  if (low.includes("confirmation") || low.includes("sending") || low.includes("smtp") || low.includes("mail")) {
+    return `${m} Check Supabase → Project Settings → Auth: enable a mail provider (or use Supabase default) and confirm email sign-ups aren’t blocked.`;
+  }
+  return m;
+}
 const OTP_LEN_MAX = 8;
 
 type Props = {
@@ -176,19 +209,13 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setBusy(true);
                 setMsg(null);
                 try {
-                  const emailRedirectTo = (await getSupabaseOAuthRedirectTo()) || undefined;
-                  const { error } = await withTimeout(
-                    supabase.auth.signInWithOtp({
-                      email: email.trim(),
-                      options: {
-                        emailRedirectTo,
-                      },
-                    }),
-                    AUTH_NETWORK_MS,
+                  const result = await withTimeout(
+                    signInWithOtpWithOptionalRedirect(supabase, email),
+                    AUTH_OTP_SEND_MS,
                     "Couldn’t send the code. Check your connection and try again.",
                   );
-                  if (error) {
-                    setMsg(error.message);
+                  if (result.error) {
+                    setMsg(formatOtpSendError(result.error.message));
                     return;
                   }
                   setCode("");
@@ -278,18 +305,12 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               setBusy(true);
               setMsg(null);
               try {
-                const emailRedirectTo = (await getSupabaseOAuthRedirectTo()) || undefined;
-                const { error } = await withTimeout(
-                  supabase.auth.signInWithOtp({
-                    email: email.trim(),
-                    options: {
-                      emailRedirectTo,
-                    },
-                  }),
-                  AUTH_NETWORK_MS,
-                    "Couldn’t resend the code. Check your connection and try again.",
+                const result = await withTimeout(
+                  signInWithOtpWithOptionalRedirect(supabase, email),
+                  AUTH_OTP_SEND_MS,
+                  "Couldn’t resend the code. Check your connection and try again.",
                 );
-                setMsg(error ? error.message : "Sent a fresh sign-in code.");
+                setMsg(result.error ? formatOtpSendError(result.error.message) : "Sent a fresh sign-in code.");
               } catch (e) {
                 setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
               } finally {
@@ -302,7 +323,9 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
           </button>
         </>
       )}
-      {msg && <p className="mt-2 text-[11px] font-medium text-budget-text/80">{msg}</p>}
+      {msg && (
+        <p className="mt-2 whitespace-pre-line text-[11px] font-medium text-budget-text/80">{msg}</p>
+      )}
     </div>
   );
 }

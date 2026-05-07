@@ -2293,8 +2293,8 @@ export default function BudgetMapApp() {
             paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="mb-2 flex min-w-0 flex-col gap-1 px-0.5 min-[340px]:mb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
-            <h1 className="min-w-0 shrink-0 py-0.5">
+          <div className="flex min-w-0 flex-col gap-1 px-0.5 pb-[18px] min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
+            <h1 className="min-w-0 shrink-0">
               <img
                 src="/brand/mappetite-wordmark.png"
                 alt="Mappetite"
@@ -2422,12 +2422,12 @@ export default function BudgetMapApp() {
 
       {tab === "ranking" && (
         <section
-          className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-3 pt-3 shadow-budget-header"
+          className="absolute left-3 right-3 z-30 rounded-[24px] border border-budget-surface/80 bg-budget-white px-4 pb-3 pt-2.5 shadow-budget-header"
           style={{ top: "var(--bm-map-header-top)" }}
         >
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-budget-primary text-white shadow-[0_8px_18px_rgb(0_168_120_/0.22)]">
+              <div className="grid size-10 shrink-0 place-items-center rounded-2xl bg-budget-primary text-white shadow-[0_8px_18px_rgb(13_31_26_/0.14)]">
                 <Crown size={20} strokeWidth={2.1} />
               </div>
               <div className="min-w-0 flex-1">
@@ -4004,9 +4004,9 @@ export default function BudgetMapApp() {
           left: "0",
           right: "0",
           display: "flex",
-          alignItems: "flex-start",
+          alignItems: "flex-end",
           justifyContent: "space-around",
-          padding: "6px 8px calc(4px + env(safe-area-inset-bottom, 0px))",
+          padding: "8px 8px calc(6px + env(safe-area-inset-bottom, 0px))",
           boxShadow: "0 -4px 20px rgba(13, 31, 26, 0.08)",
           border: "none",
           zIndex: 60,

@@ -120,7 +120,7 @@ html.cap-native .budget-root-inner {
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 22px);
   --bm-header-offset: 50px;
   --bm-map-header-top: calc(var(--bm-safe-top) + var(--bm-header-offset));
-  --bm-map-header-pt: 10px;
+  --bm-map-header-pt: 18px;
   --bm-map-header-pb: 11px;
   /* Distance from header card top to budget tools row (overlaps lower header) */
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 106px);
@@ -142,7 +142,7 @@ html.cap-native .budget-root-inner {
    */
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 22px);
   --bm-header-offset: 36px;
-  --bm-map-header-pt: 8px;
+  --bm-map-header-pt: 16px;
   --bm-map-header-pb: 8px;
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 116px);
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 188px);
@@ -154,7 +154,7 @@ html.cap-native .budget-root-inner {
 .budget-app[data-bm-host="android"] {
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 28px);
   --bm-header-offset: 42px;
-  --bm-map-header-pt: 8px;
+  --bm-map-header-pt: 16px;
   --bm-map-header-pb: 10px;
   /*
    * Budget slider sits below the header stack (z-49 vs header z-50). Too small an offset

@@ -64,3 +64,15 @@ export async function getSupabaseOAuthRedirectTo(): Promise<string> {
   const origin = getBrowserAuthRedirectOrigin();
   return origin ? `${origin}/map` : "";
 }
+
+/**
+ * `signInWithOtp` / magic-link `emailRedirectTo`. Must exactly match a URL in Supabase
+ * Authentication → URL configuration → Redirect URLs. Pin with NEXT_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO
+ * when dynamic detection is wrong (e.g. preview domains).
+ */
+export async function getSupabaseEmailRedirectTo(): Promise<string | undefined> {
+  const pinned = process.env.NEXT_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO?.trim();
+  if (pinned) return pinned;
+  const url = await getSupabaseOAuthRedirectTo();
+  return url || undefined;
+}
