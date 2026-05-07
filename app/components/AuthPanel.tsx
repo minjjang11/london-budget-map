@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
@@ -11,14 +11,29 @@ import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/ge
 const AUTH_NETWORK_MS = 5000;
 /** Email OTP + SMTP can exceed OAuth handshakes — avoid false “network” timeouts. */
 const AUTH_OTP_SEND_MS = 22000;
-/** Supabase email OTP length (project setting); we accept 6–8 so either template works. */
+/** verifyOtp can be slower than signInWithOtp on cold storage. */
+const AUTH_VERIFY_MS = 20000;
+/** Match Supabase Auth → Email → Email OTP length (set to 6 in dashboard for 6-digit codes). */
 const OTP_LEN_MIN = 6;
+const OTP_LEN_MAX = 6;
+/** Client-side resend spacing (server may still return 429 with a longer wait). */
+const RESEND_COOLDOWN_S = 60;
+
+function parseRetryAfterSeconds(message: string): number | null {
+  const sec = message.match(/(\d+)\s*seconds?/i);
+  if (sec) return Math.min(600, Math.max(1, parseInt(sec[1], 10)));
+  const min = message.match(/(\d+)\s*minutes?/i);
+  if (min) return Math.min(600, parseInt(min[1], 10) * 60);
+  const any = message.match(/(\d+)\s*sec/i);
+  if (any) return Math.min(600, Math.max(1, parseInt(any[1], 10)));
+  return null;
+}
 
 function formatOtpSendError(message: string): string {
   const m = message.trim();
   const low = m.toLowerCase();
   if (low.includes("rate") || low.includes("too many") || low.includes("frequency")) {
-    return `${m} Wait a minute before trying again.`;
+    return `${m} Wait for the countdown, then try again.`;
   }
   if (
     low.includes("redirect") ||
@@ -28,14 +43,13 @@ function formatOtpSendError(message: string): string {
   ) {
     return `${m} Add this app’s sign-in URL under Supabase → Authentication → URL configuration → Redirect URLs (e.g. https://your-domain/map or com.mappetite.app://auth/callback), or set NEXT_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO to an allowed URL.`;
   }
-  /** Exact string from GoTrue when SMTP/default mail fails — almost always project-side email config, not app bug. */
   if (low.includes("magic link") || (low.includes("error sending") && low.includes("email"))) {
     return (
       `${m}\n\n` +
       "Supabase가 인증 메일을 보내기 전에 실패한 상태입니다.\n" +
-      "• Dashboard → Authentication → 설정(또는 Project Settings → Auth): Custom SMTP를 쓰면 호스트·포트·비밀번호·발신(From) 주소를 확인하세요. 예전에 잘못된 SMTP를 켠 뒤 끄면 기본 발송이 막히는 경우가 있어, Resend·SendGrid 등으로 다시 맞추는 경우가 많습니다.\n" +
-      "• 무료/기본 메일은 수신 주소가 제한되거나 속도 제한이 있을 수 있습니다. 프로젝트가 Paused인지, 스팸함도 확인하세요.\n" +
-      "• Redirect URL: Authentication → URL configuration에 https://당신도메인/map (앱과 동일) 이 등록돼 있어야 링크 인증이 됩니다."
+      "• Dashboard → Authentication → 설정(또는 Project Settings → Auth): Custom SMTP를 쓰면 호스트·포트·비밀번호·발신(From) 주소를 확인하세요.\n" +
+      "• 무료/기본 메일은 수신 주소가 제한되거나 속도 제한이 있을 수 있습니다.\n" +
+      "• Redirect URL: Authentication → URL configuration에 https://당신도메인/map 이 등록돼 있어야 링크 인증이 됩니다."
     );
   }
   if (low.includes("confirmation") || low.includes("sending") || low.includes("smtp") || low.includes("mail")) {
@@ -43,11 +57,10 @@ function formatOtpSendError(message: string): string {
   }
   return m;
 }
-const OTP_LEN_MAX = 8;
 
 type Props = {
   session: Session | null;
-  onSessionChange: () => void;
+  onSessionChange: () => void | Promise<void>;
   /** Tighter layout for header strip */
   compact?: boolean;
 };
@@ -59,6 +72,13 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [step, setStep] = useState<"choice" | "email" | "code">("choice");
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = window.setTimeout(() => setResendCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
 
   if (!supabase) return null;
 
@@ -77,7 +97,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
             setBusy(true);
             await supabase.auth.signOut();
             setBusy(false);
-            onSessionChange();
+            await Promise.resolve(onSessionChange());
           }}
           disabled={busy}
           className="shrink-0 cursor-pointer rounded-full border border-budget-surface bg-budget-bg px-3 py-1 text-[11px] font-extrabold text-budget-text disabled:opacity-50"
@@ -167,6 +187,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               onClick={() => {
                 setStep("email");
                 setMsg(null);
+                setResendCooldown(0);
               }}
               className="flex w-full cursor-pointer items-center justify-center rounded-xl border border-budget-surface bg-budget-bg px-3 py-3 text-[13px] font-extrabold text-budget-text disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -215,12 +236,18 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     "Couldn’t send the code. Check your connection and try again.",
                   );
                   if (result.error) {
-                    setMsg(formatOtpSendError(result.error.message));
+                    const raw = result.error.message;
+                    setMsg(formatOtpSendError(raw));
+                    const wait = parseRetryAfterSeconds(raw);
+                    if (wait != null) setResendCooldown(wait);
                     return;
                   }
                   setCode("");
                   setStep("code");
-                  setMsg(`We sent a sign-in code (${OTP_LEN_MIN}–${OTP_LEN_MAX} digits) to your email.`);
+                  setResendCooldown(RESEND_COOLDOWN_S);
+                  setMsg(
+                    "We sent a 6-digit Mappetite sign-in code to your email. Enter it below.",
+                  );
                 } catch (e) {
                   setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
                 } finally {
@@ -237,7 +264,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
         <>
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold text-budget-muted">
-              Enter the code from your email ({OTP_LEN_MIN}–{OTP_LEN_MAX} digits)
+              Enter the 6-digit code from your email
             </p>
             <button
               type="button"
@@ -260,7 +287,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setCode(e.target.value.replace(/\D/g, "").slice(0, OTP_LEN_MAX));
                 setMsg(null);
               }}
-              placeholder="00000000"
+              placeholder="000000"
               inputMode="numeric"
               autoComplete="one-time-code"
               className="budget-input-sm min-w-0 flex-1 text-center text-[15px] font-extrabold tracking-[0.22em]"
@@ -278,15 +305,22 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                       token: code.trim(),
                       type: "email",
                     }),
-                    AUTH_NETWORK_MS,
-                    "Sign-in timed out or failed. Check the code and try again.",
+                    AUTH_VERIFY_MS,
+                    "Sign-in timed out. Check the code and try again.",
                   );
                   if (error) {
                     setMsg(error.message);
+                    setBusy(false);
                     return;
                   }
-                  setMsg("Logged in.");
-                  onSessionChange();
+                  setMsg("Welcome! Finishing sign-in…");
+                  await Promise.resolve(onSessionChange());
+                  const { data } = await supabase.auth.getSession();
+                  if (data.session) {
+                    setMsg(null);
+                  } else {
+                    setMsg("Signed in — if the header doesn’t update, open Profile again.");
+                  }
                 } catch (e) {
                   setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
                 } finally {
@@ -298,29 +332,42 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               {busy ? "…" : "Verify"}
             </button>
           </div>
-          <button
-            type="button"
-            disabled={busy || !email.trim()}
-            onClick={async () => {
-              setBusy(true);
-              setMsg(null);
-              try {
-                const result = await withTimeout(
-                  signInWithOtpWithOptionalRedirect(supabase, email),
-                  AUTH_OTP_SEND_MS,
-                  "Couldn’t resend the code. Check your connection and try again.",
-                );
-                setMsg(result.error ? formatOtpSendError(result.error.message) : "Sent a fresh sign-in code.");
-              } catch (e) {
-                setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
-              } finally {
-                setBusy(false);
-              }
-            }}
-            className="mt-2 cursor-pointer rounded-full border border-budget-surface bg-budget-bg px-3 py-1.5 text-[11px] font-extrabold text-budget-text disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Resend code
-          </button>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              disabled={busy || !email.trim() || resendCooldown > 0}
+              onClick={async () => {
+                setBusy(true);
+                setMsg(null);
+                try {
+                  const result = await withTimeout(
+                    signInWithOtpWithOptionalRedirect(supabase, email),
+                    AUTH_OTP_SEND_MS,
+                    "Couldn’t resend the code. Check your connection and try again.",
+                  );
+                  if (result.error) {
+                    const raw = result.error.message;
+                    setMsg(formatOtpSendError(raw));
+                    const wait = parseRetryAfterSeconds(raw);
+                    if (wait != null) setResendCooldown(wait);
+                    return;
+                  }
+                  setResendCooldown(RESEND_COOLDOWN_S);
+                  setMsg("Sent a fresh sign-in code.");
+                } catch (e) {
+                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              className="cursor-pointer rounded-full border border-budget-surface bg-budget-bg px-3 py-1.5 text-[11px] font-extrabold text-budget-text disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : "Resend code"}
+            </button>
+            {resendCooldown > 0 ? (
+              <span className="text-[10px] font-semibold tabular-nums text-budget-muted">{resendCooldown}s</span>
+            ) : null}
+          </div>
         </>
       )}
       {msg && (

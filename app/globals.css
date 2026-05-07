@@ -120,8 +120,8 @@ html.cap-native .budget-root-inner {
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 22px);
   --bm-header-offset: 50px;
   --bm-map-header-top: calc(var(--bm-safe-top) + var(--bm-header-offset));
-  --bm-map-header-pt: 18px;
-  --bm-map-header-pb: 11px;
+  --bm-map-header-pt: 12px;
+  --bm-map-header-pb: 8px;
   /* Distance from header card top to budget tools row (overlaps lower header) */
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 106px);
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 186px);
@@ -132,7 +132,7 @@ html.cap-native .budget-root-inner {
    */
   --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 84px);
   /* Ranking tab: tall hero (segments + chips). Default matches legacy calc(208px + --bm-safe-top). */
-  --bm-ranking-tab-panel-top: calc(220px + var(--bm-safe-top));
+  --bm-ranking-tab-panel-top: calc(236px + var(--bm-safe-top));
 }
 
 .budget-app[data-bm-host="ios"] {
@@ -143,20 +143,20 @@ html.cap-native .budget-root-inner {
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 22px);
   --bm-header-offset: 36px;
   /* Match default `web` card padding so iPhone Safari / native shell matches desktop web header rhythm */
-  --bm-map-header-pt: 18px;
-  --bm-map-header-pb: 11px;
+  --bm-map-header-pt: 12px;
+  --bm-map-header-pb: 8px;
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 116px);
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 188px);
   --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 228px);
   --bm-tab-scroll-top: calc(var(--bm-map-header-top) + 74px);
-  --bm-ranking-tab-panel-top: calc(var(--bm-map-header-top) + 144px);
+  --bm-ranking-tab-panel-top: calc(var(--bm-map-header-top) + 158px);
 }
 
 .budget-app[data-bm-host="android"] {
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 28px);
   --bm-header-offset: 42px;
-  --bm-map-header-pt: 18px;
-  --bm-map-header-pb: 11px;
+  --bm-map-header-pt: 12px;
+  --bm-map-header-pb: 8px;
   /*
    * Budget slider sits below the header stack (z-49 vs header z-50). Too small an offset
    * places it under the category card — iOS uses a larger increment; keep Android separate.

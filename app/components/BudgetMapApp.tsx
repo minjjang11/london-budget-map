@@ -58,6 +58,7 @@ import { rankingNetScore, registeredWithinTrailingDays, RANKING_RULES } from "@/
 import type { PlaceContributionRow } from "@/lib/types/placeContributions";
 import AuthPanel from "./AuthPanel";
 import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
+import { WebAuthUrlBridge } from "./WebAuthUrlBridge";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 
 type BudgetMapHost = "ios" | "android" | "web";
@@ -870,6 +871,29 @@ export default function BudgetMapApp() {
       cancelled = true;
     };
   }, [session?.user?.id]);
+
+  /** Push device-only bookmark IDs to `saved_places` when they refer to approved DB places (cross web ↔ app). */
+  useEffect(() => {
+    const c = getBrowserSupabase();
+    const uid = session?.user?.id;
+    if (!c || !uid || remoteApprovedLoading || remoteApprovedSpots.length === 0) return;
+    const approvedSet = new Set(remoteApprovedSpots.map((s) => s.id));
+    const toUpload = [...savedLocalIds].filter((id) => approvedSet.has(id) && !savedRemoteIds.has(id));
+    if (toUpload.length === 0) return;
+    let cancelled = false;
+    void (async () => {
+      for (const id of toUpload) {
+        if (cancelled) return;
+        const { error } = await insertSavedPlace(c, id, uid);
+        if (!error && !cancelled) {
+          setSavedRemoteIds((prev) => new Set(prev).add(id));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, savedLocalIds, savedRemoteIds, remoteApprovedSpots, remoteApprovedLoading]);
 
   useEffect(() => {
     const client = getBrowserSupabase();
@@ -1991,7 +2015,7 @@ export default function BudgetMapApp() {
     );
   };
 
-  const rankingCatChip = (id: Category | "all", label: string, emoji: string) => {
+  const rankingCatChip = (id: Category | "all", label: string) => {
     const allSelected = activeCats.length === 0;
     const active = id === "all" ? allSelected : activeCats.includes(id);
     return (
@@ -2013,17 +2037,11 @@ export default function BudgetMapApp() {
             return CATEGORY_IDS.filter((cat) => [...prev, id].includes(cat));
           });
         }}
-        className={`flex min-h-[38px] min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 rounded-full px-2 py-1.5 text-[11px] font-extrabold leading-none transition ${
+        className={`min-w-0 flex-1 cursor-pointer rounded-full px-2 py-1.5 text-center text-[11px] font-extrabold leading-none transition ${
           active ? "bg-budget-primary text-white" : "bg-budget-surface text-budget-text/70"
         }`}
       >
-        <span
-          className={`grid size-5 shrink-0 place-items-center text-[15px] leading-none ${active ? "" : "opacity-80"}`}
-          aria-hidden
-        >
-          {emoji}
-        </span>
-        <span className="min-w-0 flex-1 truncate text-center">{label}</span>
+        <span className="block truncate">{label}</span>
       </button>
     );
   };
@@ -2234,6 +2252,7 @@ export default function BudgetMapApp() {
 
   return (
     <>
+      <WebAuthUrlBridge onAuthApplied={() => refreshSession()} />
       <NativeAuthUrlBridge onAuthApplied={() => void refreshSession()} />
       <div
         className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full"
@@ -2293,7 +2312,7 @@ export default function BudgetMapApp() {
             paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="flex min-w-0 flex-col gap-2 px-0 pb-[18px] min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
+          <div className="flex min-w-0 flex-col gap-2 px-0 pb-3 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
             <h1 className="min-w-0 shrink-0">
               <img
                 src="/brand/mappetite-wordmark.png"
@@ -2467,7 +2486,7 @@ export default function BudgetMapApp() {
             })}
           </div>
           <div className="mt-2 flex gap-1">
-            {CATS.map((c) => rankingCatChip(c.id as Category | "all", c.label, c.emoji))}
+            {CATS.map((c) => rankingCatChip(c.id as Category | "all", c.label))}
           </div>
         </section>
       )}
@@ -3389,7 +3408,7 @@ export default function BudgetMapApp() {
 
             {isSupabaseConfigured() && (
               <div className="mb-4">
-                <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
+                <AuthPanel session={session} onSessionChange={refreshSession} />
               </div>
             )}
 
@@ -3662,7 +3681,7 @@ export default function BudgetMapApp() {
         <div className="budget-tab-panel px-4 pb-4 pt-1.5" style={{ top: "var(--bm-tab-scroll-top)" }}>
           {isSupabaseConfigured() && getBrowserSupabase() ? (
             <div className="mb-4">
-              <AuthPanel session={session} onSessionChange={() => void refreshSession()} />
+              <AuthPanel session={session} onSessionChange={refreshSession} />
             </div>
           ) : null}
           {isSupabaseConfigured() && getBrowserSupabase() && !session?.user ? (
@@ -4006,7 +4025,7 @@ export default function BudgetMapApp() {
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "space-around",
-          padding: "8px 8px calc(6px + env(safe-area-inset-bottom, 0px))",
+          padding: "11px 8px calc(7px + env(safe-area-inset-bottom, 0px))",
           boxShadow: "0 -4px 20px rgba(13, 31, 26, 0.08)",
           border: "none",
           zIndex: 60,
