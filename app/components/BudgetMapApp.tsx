@@ -2312,7 +2312,7 @@ export default function BudgetMapApp() {
             paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="flex min-w-0 flex-col gap-2 px-0 pb-3 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
+          <div className="flex min-w-0 flex-col gap-2 px-0 pb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
             <h1 className="min-w-0 shrink-0 pt-[1px]">
               <img
                 src="/brand/mappetite-wordmark.png"
