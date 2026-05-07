@@ -246,7 +246,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                   setStep("code");
                   setResendCooldown(RESEND_COOLDOWN_S);
                   setMsg(
-                    "We sent a 6-digit Mappetite sign-in code to your email. Enter it below.",
+                    "We sent a 6-digit Mappetite sign-in code to your email. Enter it in the code field\.",
                   );
                 } catch (e) {
                   setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
@@ -264,7 +264,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
         <>
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold text-budget-muted">
-              Enter the 6-digit code from your email
+              Enter your 6-digit code from the email
             </p>
             <button
               type="button"
