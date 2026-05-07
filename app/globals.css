@@ -142,8 +142,9 @@ html.cap-native .budget-root-inner {
    */
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 22px);
   --bm-header-offset: 36px;
-  --bm-map-header-pt: 16px;
-  --bm-map-header-pb: 8px;
+  /* Match default `web` card padding so iPhone Safari / native shell matches desktop web header rhythm */
+  --bm-map-header-pt: 18px;
+  --bm-map-header-pb: 11px;
   --bm-map-budget-tools-top: calc(var(--bm-map-header-top) + 116px);
   --bm-map-toast-top: calc(var(--bm-map-header-top) + 188px);
   --bm-map-hint-banner-top: calc(var(--bm-map-header-top) + 228px);
@@ -154,8 +155,8 @@ html.cap-native .budget-root-inner {
 .budget-app[data-bm-host="android"] {
   --bm-safe-top: min(env(safe-area-inset-top, 0px), 28px);
   --bm-header-offset: 42px;
-  --bm-map-header-pt: 16px;
-  --bm-map-header-pb: 10px;
+  --bm-map-header-pt: 18px;
+  --bm-map-header-pb: 11px;
   /*
    * Budget slider sits below the header stack (z-49 vs header z-50). Too small an offset
    * places it under the category card — iOS uses a larger increment; keep Android separate.
@@ -183,13 +184,21 @@ html.cap-native .budget-root-inner {
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  padding-left: 2px;
-  padding-right: 22px;
-  margin-left: -2px;
-  margin-right: -2px;
+  padding-left: 0;
+  padding-right: 18px;
+  margin-left: 0;
+  margin-right: 0;
   min-width: 0;
   touch-action: pan-x;
   scrollbar-width: none;
+}
+
+/* Desktop: slight inset so first chip aligns with title column; phones use full width above */
+@media (min-width: 640px) {
+  .budget-map-chip-scroll {
+    padding-left: 2px;
+    margin-left: -2px;
+  }
 }
 
 .budget-map-chip-scroll::-webkit-scrollbar {

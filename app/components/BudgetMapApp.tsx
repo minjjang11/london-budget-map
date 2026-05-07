@@ -2293,7 +2293,7 @@ export default function BudgetMapApp() {
             paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="flex min-w-0 flex-col gap-1 px-0.5 pb-[18px] min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
+          <div className="flex min-w-0 flex-col gap-2 px-0 pb-[18px] min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
             <h1 className="min-w-0 shrink-0">
               <img
                 src="/brand/mappetite-wordmark.png"
@@ -2309,7 +2309,7 @@ export default function BudgetMapApp() {
               Eat well. Spend less.
             </p>
           </div>
-          <div className="budget-map-chip-scroll mt-0.5 min-w-0">
+          <div className="budget-map-chip-scroll mt-1 min-w-0 md:mt-1.5">
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
         </header>
