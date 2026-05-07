@@ -385,7 +385,9 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
         <Link href="/privacy" className="underline">
           Privacy Policy
         </Link>
-        . Contact:{" "}
+        .
+        <br />
+        Contact:{" "}
         <a href="mailto:contact@mappetite.net" className="underline">
           contact@mappetite.net
         </a>
