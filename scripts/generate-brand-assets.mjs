@@ -16,7 +16,7 @@ const paths = {
   iosSplash3x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png"),
   iosIcon1024: path.join(root, "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"),
   androidSplash: path.join(root, "android/app/src/main/res/drawable/splash.png"),
-  androidForeground: path.join(root, "android/app/src/main/res/drawable/ic_launcher_foreground.png"),
+  androidForeground: path.join(root, "android/app/src/main/res/drawable/ic_launcher_foreground_src.png"),
 };
 
 async function ensureParent(filePath) {
