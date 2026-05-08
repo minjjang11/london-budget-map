@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LegalDocLayout } from "../components/LegalDocLayout";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Mappetite",
@@ -8,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="h-dvh w-full overflow-y-auto bg-budget-bg text-budget-text">
+    <LegalDocLayout>
       <div className="mx-auto w-full max-w-[860px] px-4 pb-16 pt-6">
         <section className="rounded-[24px] border border-budget-surface/80 bg-budget-white px-5 py-5 shadow-budget-header">
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -67,6 +68,6 @@ export default function TermsPage() {
           </p>
         </section>
       </div>
-    </main>
+    </LegalDocLayout>
   );
 }

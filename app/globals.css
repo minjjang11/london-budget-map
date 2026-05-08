@@ -216,6 +216,25 @@ html.cap-native .budget-root-inner {
   border-radius: 4px;
 }
 
+/* Legal pages (Privacy/Terms): thumb hidden until user scrolls — see LegalDocLayout. */
+.budget-legal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.budget-legal-scroll.budget-legal-scroll--active {
+  scrollbar-color: var(--color-budget-primary) transparent;
+}
+.budget-legal-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.budget-legal-scroll::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+}
+.budget-legal-scroll.budget-legal-scroll--active::-webkit-scrollbar-thumb {
+  background: var(--color-budget-primary);
+}
+
 .google-map-root,
 .google-map-root > div {
   width: 100%;
