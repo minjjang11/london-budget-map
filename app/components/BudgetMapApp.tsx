@@ -2665,7 +2665,7 @@ export default function BudgetMapApp() {
                             setPlaceDetailTransition("forward");
                             setPlaceDetailExpanded(true);
                           }}
-                          className="inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-2xl border-0 bg-budget-primary py-3 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
+                          className="inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-2xl border-0 bg-budget-primary py-3 text-[14px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
                         >
                           Full details
                           <ChevronRight size={18} className="text-white opacity-95" aria-hidden />
