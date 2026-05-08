@@ -2661,27 +2661,27 @@ export default function BudgetMapApp() {
                         <button
                           type="button"
                           onClick={() => {
+                            placeDetailSheetRef.current?.scrollTo({ top: 0, behavior: "auto" });
+                            setPlaceDetailTransition("forward");
+                            setPlaceDetailExpanded(true);
+                          }}
+                          className="inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-2xl border-0 bg-budget-primary py-3 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
+                        >
+                          Full details
+                          <ChevronRight size={18} className="text-white opacity-95" aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
                             window.open(
                               `https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`,
                               "_blank",
                             );
                           }}
-                          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-3 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
+                          className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface bg-budget-white py-3 text-[13px] font-extrabold text-budget-text"
                         >
                           <Navigation size={17} strokeWidth={2.25} />
                           Directions in Google Maps
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            placeDetailSheetRef.current?.scrollTo({ top: 0, behavior: "auto" });
-                            setPlaceDetailTransition("forward");
-                            setPlaceDetailExpanded(true);
-                          }}
-                          className="inline-flex w-full cursor-pointer items-center justify-center gap-1 rounded-2xl border-2 border-budget-surface bg-budget-white py-3 text-[13px] font-extrabold text-budget-text"
-                        >
-                          Full details
-                          <ChevronRight size={18} className="text-budget-primary" aria-hidden />
                         </button>
                       </div>
                     </div>
