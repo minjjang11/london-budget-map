@@ -8,6 +8,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
 import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
+import { MAPPETITE_SUPPORT_EMAIL, mappetiteSupportMailtoHref } from "@/lib/site/supportContact";
 
 const AUTH_NETWORK_MS = 5000;
 /** Email OTP + SMTP can exceed OAuth handshakes — avoid false “network” timeouts. */
@@ -390,8 +391,8 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
         .
         <br />
         Contact:{" "}
-        <a href="mailto:contact@mappetite.net" className="underline">
-          contact@mappetite.net
+        <a href={mappetiteSupportMailtoHref} className="underline">
+          {MAPPETITE_SUPPORT_EMAIL}
         </a>
         .
       </p>

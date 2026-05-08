@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalDocLayout } from "../components/LegalDocLayout";
+import { MAPPETITE_SUPPORT_EMAIL, mappetiteSupportMailtoHref } from "@/lib/site/supportContact";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Mappetite",
@@ -63,8 +64,8 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-lg font-extrabold">Contact & Deletion Requests</h2>
             <p className="text-sm leading-6">
               Contact:{" "}
-              <a className="underline" href="mailto:contact@mappetite.net">
-                contact@mappetite.net
+              <a className="underline" href={mappetiteSupportMailtoHref}>
+                {MAPPETITE_SUPPORT_EMAIL}
               </a>
             </p>
             <p className="text-sm leading-6">

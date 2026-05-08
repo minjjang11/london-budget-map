@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalDocLayout } from "../components/LegalDocLayout";
+import { MAPPETITE_SUPPORT_EMAIL, mappetiteSupportMailtoHref } from "@/lib/site/supportContact";
 
 export const metadata: Metadata = {
   title: "Terms of Service — Mappetite",
@@ -53,8 +54,8 @@ export default function TermsPage() {
             <h2 className="text-lg font-extrabold">Support</h2>
             <p className="text-sm leading-6">
               Contact:{" "}
-              <a className="underline" href="mailto:contact@mappetite.net">
-                contact@mappetite.net
+              <a className="underline" href={mappetiteSupportMailtoHref}>
+                {MAPPETITE_SUPPORT_EMAIL}
               </a>
             </p>
           </section>
