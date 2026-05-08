@@ -61,7 +61,8 @@ function formatOtpSendError(message: string): string {
 
 type Props = {
   session: Session | null;
-  onSessionChange: () => void | Promise<void>;
+  /** Pass `sessionHint` from `verifyOtp` so UI updates if `getSession()` lags (e.g. native storage). */
+  onSessionChange: (sessionHint?: Session | null) => void | Promise<void>;
   /** Tighter layout for header strip */
   compact?: boolean;
 };
@@ -302,7 +303,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setBusy(true);
                 setMsg(null);
                 try {
-                  const { error } = await withTimeout(
+                  const { data: otpData, error } = await withTimeout(
                     supabase.auth.verifyOtp({
                       email: email.trim(),
                       token: code.trim(),
@@ -316,10 +317,11 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     setBusy(false);
                     return;
                   }
+                  setCode("");
                   setMsg("Welcome! Finishing sign-in…");
-                  await Promise.resolve(onSessionChange());
+                  await Promise.resolve(onSessionChange(otpData.session ?? null));
                   const { data } = await supabase.auth.getSession();
-                  if (data.session) {
+                  if (data.session ?? otpData.session) {
                     setMsg(null);
                   } else {
                     setMsg("Signed in — if the header doesn’t update, open Profile again.");

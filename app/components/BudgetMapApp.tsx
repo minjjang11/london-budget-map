@@ -606,14 +606,14 @@ export default function BudgetMapApp() {
   const [reportText, setReportText] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
 
-  const refreshSession = useCallback(async () => {
+  const refreshSession = useCallback(async (sessionHint?: Session | null) => {
     const c = getBrowserSupabase();
     if (!c) {
       setSession(null);
       return;
     }
     const { data } = await c.auth.getSession();
-    setSession(data.session ?? null);
+    setSession(data.session ?? (sessionHint?.user ? sessionHint : null));
   }, []);
 
   const reloadReviewVotes = useCallback(async () => {
