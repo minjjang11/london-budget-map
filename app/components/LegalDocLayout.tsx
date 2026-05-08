@@ -22,7 +22,7 @@ export function LegalDocLayout({ children }: { children: ReactNode }) {
   return (
     <main
       onScroll={bumpScrollIndicator}
-      className={`budget-legal-scroll h-dvh w-full overflow-y-auto bg-budget-bg text-budget-text ${
+      className={`budget-legal-scroll h-dvh w-full overflow-y-auto bg-budget-white text-budget-text ${
         active ? "budget-legal-scroll--active" : ""
       }`}
     >
