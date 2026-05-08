@@ -31,11 +31,21 @@ function parseRetryAfterSeconds(message: string): number | null {
   return null;
 }
 
+/** Strip vendor hostnames and soften infra names in strings shown after sign-in attempts. */
+function scrubAuthErrorForDisplay(message: string): string {
+  let s = message.trim();
+  if (!s) return "Something went wrong. Please try again.";
+  s = s.replace(/https?:\/\/[a-z0-9-]+\.supabase\.co[^\s]*/gi, "").trim();
+  s = s.replace(/\bsupabase\b/gi, "Mappetite");
+  s = s.replace(/\s{2,}/g, " ");
+  return s.trim() || "Something went wrong. Please try again.";
+}
+
 function formatOtpSendError(message: string): string {
   const m = message.trim();
   const low = m.toLowerCase();
   if (low.includes("rate") || low.includes("too many") || low.includes("frequency")) {
-    return `${m} Wait for the countdown, then try again.`;
+    return `${scrubAuthErrorForDisplay(m)} Wait for the countdown, then try again.`;
   }
   if (
     low.includes("redirect") ||
@@ -43,21 +53,20 @@ function formatOtpSendError(message: string): string {
     low.includes("invalid url") ||
     low.includes("callback")
   ) {
-    return `${m} Add this app’s sign-in URL under Supabase → Authentication → URL configuration → Redirect URLs (e.g. https://your-domain/map or com.mappetite.app://auth/callback), or set NEXT_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO to an allowed URL.`;
+    return `Sign-in couldn’t finish from this app. Try Google sign-in, or email ${MAPPETITE_SUPPORT_EMAIL} if it keeps happening.`;
   }
   if (low.includes("magic link") || (low.includes("error sending") && low.includes("email"))) {
     return (
-      `${m}\n\n` +
-      "Supabase가 인증 메일을 보내기 전에 실패한 상태입니다.\n" +
-      "• Dashboard → Authentication → 설정(또는 Project Settings → Auth): Custom SMTP를 쓰면 호스트·포트·비밀번호·발신(From) 주소를 확인하세요.\n" +
-      "• 무료/기본 메일은 수신 주소가 제한되거나 속도 제한이 있을 수 있습니다.\n" +
-      "• Redirect URL: Authentication → URL configuration에 https://당신도메인/map 이 등록돼 있어야 링크 인증이 됩니다."
+      "We couldn’t send a sign-in email.\n\n" +
+      "• Try again in a few minutes or use Google sign-in.\n" +
+      "• Check spam / promotions if you don’t see the message.\n" +
+      `• Still stuck? ${MAPPETITE_SUPPORT_EMAIL}`
     );
   }
   if (low.includes("confirmation") || low.includes("sending") || low.includes("smtp") || low.includes("mail")) {
-    return `${m} Check Supabase → Project Settings → Auth: enable a mail provider (or use Supabase default) and confirm email sign-ups aren’t blocked.`;
+    return `We couldn’t send the sign-in email. Try again, use Google sign-in, or contact ${MAPPETITE_SUPPORT_EMAIL}.`;
   }
-  return m;
+  return scrubAuthErrorForDisplay(m);
 }
 
 type Props = {
@@ -140,7 +149,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                       "Couldn’t start Google sign-in. Check your connection and try again.",
                     );
                     if (error) {
-                      setMsg(error.message);
+                      setMsg(scrubAuthErrorForDisplay(error.message));
                       return;
                     }
                     if (data.url) {
@@ -153,15 +162,15 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     provider: "google",
                     options: { redirectTo: redirectTo || undefined },
                   });
-                  if (error) setMsg(error.message);
+                  if (error) setMsg(scrubAuthErrorForDisplay(error.message));
                 } catch (e) {
-                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                  setMsg(e instanceof Error ? scrubAuthErrorForDisplay(e.message) : "Something went wrong. Please try again.");
                 } finally {
                   setBusy(false);
                 }
               }}
               className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-budget-surface bg-white px-3 py-3 text-[13px] font-extrabold text-budget-text shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
-              aria-label="Sign in to Mappetite with Google"
+              aria-label="Continue with Google"
             >
               <span className="grid size-5 place-items-center rounded-full bg-white" aria-hidden>
                 <svg viewBox="0 0 24 24" width="16" height="16">
@@ -183,7 +192,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                   />
                 </svg>
               </span>
-              {busy ? "Connecting…" : "Sign in to Mappetite with Google"}
+              {busy ? "Connecting…" : "Continue with Google"}
             </button>
             <button
               type="button"
@@ -253,7 +262,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     "We sent a 6-digit Mappetite sign-in code to your email. Enter it in the code field\.",
                   );
                 } catch (e) {
-                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                  setMsg(e instanceof Error ? scrubAuthErrorForDisplay(e.message) : "Something went wrong. Please try again.");
                 } finally {
                   setBusy(false);
                 }
@@ -315,7 +324,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     "Sign-in timed out. Check the code and try again.",
                   );
                   if (error) {
-                    setMsg(error.message);
+                    setMsg(scrubAuthErrorForDisplay(error.message));
                     setBusy(false);
                     return;
                   }
@@ -329,7 +338,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     setMsg("Signed in — if the header doesn’t update, open Profile again.");
                   }
                 } catch (e) {
-                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                  setMsg(e instanceof Error ? scrubAuthErrorForDisplay(e.message) : "Something went wrong. Please try again.");
                 } finally {
                   setBusy(false);
                 }
@@ -362,7 +371,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                   setResendCooldown(RESEND_COOLDOWN_S);
                   setMsg("Sent a fresh sign-in code.");
                 } catch (e) {
-                  setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
+                  setMsg(e instanceof Error ? scrubAuthErrorForDisplay(e.message) : "Something went wrong. Please try again.");
                 } finally {
                   setBusy(false);
                 }
