@@ -7,6 +7,8 @@ const root = process.cwd();
 const paths = {
   /** Full brand lockup exported from design (pin + wordmark + gradients). */
   lockupSvg: path.join(root, "assets/brand/mappetite-pin.source.svg"),
+  /** Canonical app icon source (user-provided 1024x1024 PNG). */
+  appIconPng: path.join(root, "assets/brand/mappetite-app-icon-1024.png"),
   webLockup: path.join(root, "public/brand/mappetite-lockup-native-2048.png"),
   webPin: path.join(root, "public/brand/mappetite-pin-native-1024.png"),
   iosSplash1x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-2.png"),
@@ -43,6 +45,24 @@ async function renderLockupPng(size) {
  * This crop is intentionally conservative and padded to survive Android masks.
  */
 async function renderPinIconPng(size) {
+  try {
+    await fs.access(paths.appIconPng);
+    return sharp(paths.appIconPng)
+      .resize(size, size, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+        kernel: sharp.kernel.lanczos3,
+      })
+      .png({
+        compressionLevel: 9,
+        adaptiveFiltering: true,
+        effort: 9,
+      })
+      .toBuffer();
+  } catch {
+    // Fall back to SVG crop when the PNG source is missing.
+  }
+
   const svg = await fs.readFile(paths.lockupSvg);
   const hi = 4096;
   const raster = await sharp(svg)
@@ -95,7 +115,7 @@ async function run() {
   await writePng(await renderLockupPng(2732), paths.androidSplash);
   await writePng(await renderPinIconPng(432), paths.androidForeground);
 
-  console.log("Brand assets generated from lockup SVG.");
+  console.log("Brand assets generated from canonical icon + lockup SVG.");
 }
 
 run().catch((err) => {
