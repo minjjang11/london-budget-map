@@ -638,6 +638,7 @@ export default function BudgetMapApp() {
     setMyVotes(m);
   }, [pendingRows, session?.user?.id]);
   const [toast, setToast] = useState<string | null>(null);
+  const [locationHelpOpen, setLocationHelpOpen] = useState(false);
   /** Bottom snackbar after Submit — avoids huge banner toast for success */
   const [submitFeedback, setSubmitFeedback] = useState<null | "queued" | "local">(null);
 
@@ -1783,6 +1784,7 @@ export default function BudgetMapApp() {
 
   const flyToMyLocation = () => {
     if (!navigator.geolocation) return;
+    setLocationHelpOpen(false);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
@@ -1790,13 +1792,41 @@ export default function BudgetMapApp() {
         setFlyTo({ center: [lat, lng], zoom: 15 });
         setTab("map");
       },
-      () => {
-        setToast("Location blocked — check browser permissions.");
+      (error) => {
+        if (error.code === error.PERMISSION_DENIED) {
+          setToast("Location blocked.");
+          window.setTimeout(() => setToast(null), 2200);
+          setLocationHelpOpen(true);
+          return;
+        }
+        setToast("Could not get location — try again.");
         window.setTimeout(() => setToast(null), 3000);
       },
       { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
     );
   };
+
+  const openLocationSettings = useCallback(async () => {
+    if (budgetMapHost === "ios") {
+      window.location.href = "app-settings:";
+      return;
+    }
+    if (budgetMapHost === "android") {
+      try {
+        const { Browser } = await import("@capacitor/browser");
+        await Browser.open({ url: "app-settings:" });
+        return;
+      } catch {
+        // Fall through to inline guidance.
+      }
+    }
+    const help =
+      budgetMapHost === "android"
+        ? "Android: Settings > Apps > Mappetite > Permissions > Location > Allow."
+        : "Browser: tap the lock icon in the address bar, then allow Location.";
+    setToast(help);
+    window.setTimeout(() => setToast(null), 5200);
+  }, [budgetMapHost]);
 
   const bumpUpvote = (spotId: string) => {
     if (remoteIds.has(spotId)) return;
@@ -2579,6 +2609,39 @@ export default function BudgetMapApp() {
         </button>
       )}
 
+      {tab === "map" && locationHelpOpen && (
+        <div
+          className="absolute left-3 right-3 z-[56] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-3 text-[12px] text-budget-text shadow-budget-float backdrop-blur-sm"
+          style={{ top: "var(--bm-map-toast-top)" }}
+        >
+          <p className="font-semibold">Location is blocked. Enable it to center the map on your current position.</p>
+          <div className="mt-2.5 flex gap-2">
+            <button
+              type="button"
+              onClick={flyToMyLocation}
+              className="flex-1 cursor-pointer rounded-xl border-0 bg-budget-primary px-3 py-2 text-[12px] font-extrabold text-white"
+            >
+              Try again
+            </button>
+            <button
+              type="button"
+              onClick={() => void openLocationSettings()}
+              className="flex-1 cursor-pointer rounded-xl border border-budget-surface bg-budget-white px-3 py-2 text-[12px] font-extrabold text-budget-text"
+            >
+              Open settings
+            </button>
+            <button
+              type="button"
+              onClick={() => setLocationHelpOpen(false)}
+              className="shrink-0 cursor-pointer rounded-xl border border-budget-surface bg-budget-white px-2.5 py-2 text-[12px] font-extrabold text-budget-muted"
+              aria-label="Dismiss location help"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Map overlays — clean full-bleed map per ref */}
       {tab === "map" && (
         <>
@@ -2624,8 +2687,7 @@ export default function BudgetMapApp() {
                       <div className="flex items-start justify-between gap-1.5">
                         <div className="min-w-0 flex-1">
                           <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-budget-primary">
-                            {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()} ·{" "}
-                            {selected.area.toUpperCase()}
+                            {(CATS.find((c) => c.id === selected.category)?.label ?? "Spot").toUpperCase()}
                           </p>
                           <h2 className="mt-0.5 break-words text-[1.2rem] font-extrabold leading-[1.15] tracking-[-0.03em] text-budget-text">
                             {selected.name}
