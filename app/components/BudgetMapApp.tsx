@@ -2400,7 +2400,7 @@ export default function BudgetMapApp() {
               }}
             >
               <div
-                className="mb-2 flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5"
+                className="mb-1 flex min-w-0 flex-wrap items-baseline gap-x-1 gap-y-0.5"
                 style={{ fontFamily: "inherit" }}
               >
                 <span
