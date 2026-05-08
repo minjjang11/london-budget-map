@@ -102,6 +102,33 @@ async function writePng(buf, outPath) {
   await sharp(buf).png({ compressionLevel: 9 }).toFile(outPath);
 }
 
+/** Android adaptive icon: keep artwork inside the safe zone (avoid oversized look on launchers). */
+async function renderAndroidForegroundPng(size) {
+  const inner = Math.round(size * 0.68);
+  const icon = await renderPinIconPng(inner);
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      {
+        input: icon,
+        left: Math.round((size - inner) / 2),
+        top: Math.round((size - inner) / 2),
+      },
+    ])
+    .png({
+      compressionLevel: 9,
+      adaptiveFiltering: true,
+      effort: 9,
+    })
+    .toBuffer();
+}
+
 async function run() {
   await writePng(await renderLockupPng(2048), paths.webLockup);
   await writePng(await renderPinIconPng(1024), paths.webPin);
@@ -113,7 +140,7 @@ async function run() {
   await writePng(await renderPinIconPng(1024), paths.iosIcon1024);
 
   await writePng(await renderLockupPng(2732), paths.androidSplash);
-  await writePng(await renderPinIconPng(432), paths.androidForeground);
+  await writePng(await renderAndroidForegroundPng(432), paths.androidForeground);
 
   console.log("Brand assets generated from canonical icon + lockup SVG.");
 }
