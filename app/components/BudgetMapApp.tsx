@@ -2654,7 +2654,7 @@ export default function BudgetMapApp() {
                         <p className="mt-1.5 text-[11px] font-semibold text-budget-muted">
                           👍 {selectedIsPending ? selectedPendingTallies.up : selected.upvotes ?? 0} · 👎{" "}
                           {selectedIsPending ? selectedPendingTallies.down : selected.downvotes ?? 0}
-                          {!session?.user ? " · Sign in (Ranking → Newly-registered) to vote" : null}
+                          {!session?.user ? " · Sign in to vote" : null}
                         </p>
                       ) : null}
                       <div className="mt-3 flex flex-col gap-2">
@@ -2898,7 +2898,7 @@ export default function BudgetMapApp() {
                         {selectedIsPending
                           ? "Newly registered spots use shared queue votes and reports before approval."
                           : remoteIds.has(selected.id)
-                            ? "Sign in via Ranking to vote on verified listings."
+                            ? "Sign in to vote on verified listings."
                             : "Stored on this device until shared voting is shipped."}
                       </p>
                     </div>

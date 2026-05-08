@@ -161,6 +161,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 }
               }}
               className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-budget-surface bg-white px-3 py-3 text-[13px] font-extrabold text-budget-text shadow-sm disabled:cursor-not-allowed disabled:opacity-50"
+              aria-label="Sign in to Mappetite with Google"
             >
               <span className="grid size-5 place-items-center rounded-full bg-white" aria-hidden>
                 <svg viewBox="0 0 24 24" width="16" height="16">
@@ -182,7 +183,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                   />
                 </svg>
               </span>
-              {busy ? "Connecting…" : "Continue with Google"}
+              {busy ? "Connecting…" : "Sign in to Mappetite with Google"}
             </button>
             <button
               type="button"
