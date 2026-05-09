@@ -29,7 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Capacitor WKWebView: set before paint so SSR shell never shows 390px letterboxing. */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform())document.documentElement.classList.add("cap-native");}catch(_){}})();`,
+            __html: `(function(){function m(){try{var C=window.Capacitor;if(C&&C.isNativePlatform&&C.isNativePlatform())document.documentElement.classList.add("cap-native");}catch(_){}}function g(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform()))return false;var p=window.location.pathname||"";var root=p==="/"||p===""||/index\\.html$/i.test(p);if(!root)return false;window.location.replace("/map.html");return true}catch(_){return false}}m();if(g())return;var i=0,t=setInterval(function(){m();if(g()||++i>=48)clearInterval(t)},25);})();`,
           }}
         />
         {/* 모바일: 전체 너비. md+: ~iPhone 비율(390×844) 프레임 — 길쭉한 세로줄 느낌 완화. cap-native: 디바이스 전체 너비. */}
