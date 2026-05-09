@@ -4,6 +4,7 @@ import type { CSSProperties } from "react";
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
 import type { Session } from "@supabase/supabase-js";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import type { MapSpot } from "./MapView";
 import {
   Map,
@@ -60,6 +61,7 @@ import AuthPanel from "./AuthPanel";
 import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
 import { WebAuthUrlBridge } from "./WebAuthUrlBridge";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
+import { MAPPETITE_SUPPORT_EMAIL } from "@/lib/site/supportContact";
 
 type BudgetMapHost = "ios" | "android" | "web";
 
@@ -605,6 +607,8 @@ export default function BudgetMapApp() {
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
   const [reportText, setReportText] = useState("");
   const [reportBusy, setReportBusy] = useState(false);
+  const [profileGeneralReportOpen, setProfileGeneralReportOpen] = useState(false);
+  const [profileGeneralReportNote, setProfileGeneralReportNote] = useState("");
 
   const refreshSession = useCallback(async (sessionHint?: Session | null) => {
     const c = getBrowserSupabase();
@@ -663,6 +667,18 @@ export default function BudgetMapApp() {
       return [...prev, slug];
     });
   }, []);
+
+  useEffect(() => {
+    if (tab !== "profile") setProfileGeneralReportOpen(false);
+  }, [tab]);
+
+  const profileGeneralReportMailto = useMemo(() => {
+    const subject = encodeURIComponent("Mappetite — content report");
+    const body = encodeURIComponent(
+      profileGeneralReportNote.trim() || "(describe what looked inappropriate or unsafe)",
+    );
+    return `mailto:${MAPPETITE_SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+  }, [profileGeneralReportNote]);
 
   const courseStopIdRef = useRef(4);
   const [courseBudget, setCourseBudget] = useState(25);
@@ -3851,6 +3867,41 @@ export default function BudgetMapApp() {
               </button>
             ))
           )}
+          <div className="mt-8 border-t border-budget-surface/80 pt-6">
+            <h3 className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.08em] text-budget-subtle">
+              Legal &amp; safety
+            </h3>
+            <div className="rounded-2xl border border-budget-surface bg-budget-white px-4 py-3">
+              <div className="flex flex-col gap-2.5 text-[13px] font-semibold">
+                <Link
+                  href="/privacy"
+                  className="text-budget-text underline decoration-budget-faint underline-offset-4 hover:text-budget-primary"
+                >
+                  Privacy Policy
+                </Link>
+                <Link
+                  href="/terms"
+                  className="text-budget-text underline decoration-budget-faint underline-offset-4 hover:text-budget-primary"
+                >
+                  Terms of Service
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileGeneralReportNote("");
+                    setProfileGeneralReportOpen(true);
+                  }}
+                  className="flex cursor-pointer items-center gap-2 text-left font-semibold text-budget-muted underline decoration-budget-faint underline-offset-4 hover:text-budget-text"
+                >
+                  <Flag size={14} className="shrink-0 opacity-70" aria-hidden />
+                  Report inappropriate content
+                </button>
+              </div>
+              <p className="mt-3 text-[11px] leading-snug text-budget-muted">
+                Queue-specific reports stay on Ranking. Use this for anything else that breaks the rules.
+              </p>
+            </div>
+          </div>
         </div>
       )}
 
@@ -4054,6 +4105,62 @@ export default function BudgetMapApp() {
           )}
         </div>
       )}
+
+      {profileGeneralReportOpen ? (
+        <div
+          className="fixed inset-0 z-[190] flex items-end justify-center bg-[#0d1f1a]/45 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-12 backdrop-blur-[2px]"
+          role="presentation"
+          onClick={() => setProfileGeneralReportOpen(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="profile-report-title"
+            className="w-full max-w-[390px] rounded-t-[22px] border border-budget-surface bg-budget-bg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_48px_rgb(13_31_26_/0.25)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 id="profile-report-title" className="text-[17px] font-extrabold tracking-tight text-budget-text">
+                Report inappropriate content
+              </h2>
+              <button
+                type="button"
+                onClick={() => setProfileGeneralReportOpen(false)}
+                className="cursor-pointer rounded-full p-1.5 text-budget-muted hover:bg-budget-surface/80 hover:text-budget-text"
+                aria-label="Close"
+              >
+                <X size={20} strokeWidth={2} />
+              </button>
+            </div>
+            <p className="mb-3 text-[12px] leading-snug text-budget-muted">
+              Tell us what you saw (spam, abuse, wrong info). We&apos;ll open your email app — send to{" "}
+              <span className="font-semibold text-budget-text">{MAPPETITE_SUPPORT_EMAIL}</span>.
+            </p>
+            <textarea
+              value={profileGeneralReportNote}
+              onChange={(e) => setProfileGeneralReportNote(e.target.value)}
+              placeholder="What happened? Include spot names or links if you can."
+              rows={4}
+              className="budget-input mb-3 w-full resize-none text-[13px]"
+            />
+            <div className="flex gap-2">
+              <a
+                href={profileGeneralReportMailto}
+                className="flex flex-1 cursor-pointer items-center justify-center rounded-2xl border-0 bg-budget-primary py-3 text-[14px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)] no-underline"
+              >
+                Open email app
+              </a>
+              <button
+                type="button"
+                onClick={() => setProfileGeneralReportOpen(false)}
+                className="cursor-pointer rounded-2xl border-2 border-budget-surface bg-budget-white px-4 py-3 text-[13px] font-extrabold text-budget-text"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {submitFeedback ? (
         <div
