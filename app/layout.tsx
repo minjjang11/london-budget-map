@@ -23,7 +23,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en-GB" suppressHydrationWarning>
       <head>
-        <link rel="preload" as="image" href={brandImg("/brand/maimo-splash-logo-transparent.png")} />
+        <link rel="preload" as="image" href={brandImg("/brand/maimo-splash-pin.svg")} />
+        <link rel="preload" as="image" href={brandImg("/brand/maimo-splash-wordmark.svg")} />
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard/dist/web/static/pretendard.css" />
         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
       </head>

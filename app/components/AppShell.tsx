@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { brandImg } from "@/lib/site/brandAssets";
+import { SplashBrandLockup } from "@/app/components/SplashBrandLockup";
 
 const SPLASH_MS = 1800;
 
 const SPLASH_BG = "#FCFFFF";
 
 /**
- * In-app splash: solid fill + transparent logo asset only (no full-screen mockup / nested screenshot).
+ * In-app splash: solid fill + vector lockup (pin SVG + wordmark SVG from canonical assets — no live text).
  * Native launch screens use the same colour in Android `splash.xml` / iOS LaunchScreen + Capacitor config.
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -27,16 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           style={{ backgroundColor: SPLASH_BG }}
         >
           <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6">
-            <img
-              src={brandImg("/brand/maimo-splash-logo-transparent.png")}
-              alt=""
-              className="w-[min(31vw,140px)] max-h-[28vh] object-contain select-none"
-              style={{ imageRendering: "auto" }}
-              draggable={false}
-            />
-            <p className="mt-3.5 text-center text-[clamp(1.18rem,4.9vw,1.45rem)] font-bold tracking-[-0.02em] text-budget-primary">
-              Maimo Map
-            </p>
+            <SplashBrandLockup />
           </div>
           <p
             className="shrink-0 px-4 pb-[calc(max(1.25rem,env(safe-area-inset-bottom))+3rem)] pt-2 text-center text-[clamp(0.8rem,2.5vw,0.92rem)] font-medium tracking-[-0.01em] text-budget-muted/55"

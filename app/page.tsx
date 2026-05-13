@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { brandImg } from "@/lib/site/brandAssets";
+import { SplashBrandLockup } from "@/app/components/SplashBrandLockup";
 import { WebRootRedirect } from "./WebRootRedirect";
 
 /** OAuth/homepage: visible Privacy & Terms on the public root URL. Web redirects to `/map` via `WebRootRedirect`; native uses `layout.tsx` → `/map.html`. */
@@ -12,18 +12,7 @@ export default function RootPage() {
         style={{ backgroundColor: "#FCFFFF" }}
       >
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <div className="w-[min(43.2vw,168px)] shrink-0">
-            <img
-              src={brandImg("/brand/maimo-splash-logo-transparent.png")}
-              alt="Maimo Map"
-              className="h-auto w-full object-contain select-none"
-              style={{ imageRendering: "auto" }}
-              draggable={false}
-            />
-          </div>
-          <p className="mt-2.5 text-[clamp(1.05rem,4vw,1.22rem)] font-extrabold tracking-[-0.02em] text-budget-primary">
-            Maimo Map
-          </p>
+          <SplashBrandLockup />
           <p className="mt-6 max-w-[28ch] text-[15px] leading-relaxed text-budget-muted">
             Crowdsourced cheap eats, pints &amp; coffee in London.
           </p>
