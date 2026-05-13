@@ -30,16 +30,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <img
               src={brandImg("/brand/maimo-splash-logo-transparent.png")}
               alt=""
-              className="w-[min(43.2vw,192px)] max-h-[38vh] object-contain select-none"
+              className="w-[min(31vw,140px)] max-h-[28vh] object-contain select-none"
               style={{ imageRendering: "auto" }}
               draggable={false}
             />
-            <p className="mt-3 text-center text-[clamp(1.05rem,4.2vw,1.28rem)] font-extrabold tracking-[-0.02em] text-budget-primary">
+            <p className="mt-3.5 text-center text-[clamp(1.18rem,4.9vw,1.45rem)] font-bold tracking-[-0.02em] text-budget-primary">
               Maimo Map
             </p>
           </div>
           <p
-            className="shrink-0 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2 text-center text-[clamp(0.9rem,3vw,1.15rem)] font-semibold tracking-[-0.01em] text-budget-muted/90"
+            className="shrink-0 px-4 pb-[calc(max(1.25rem,env(safe-area-inset-bottom))+3rem)] pt-2 text-center text-[clamp(0.8rem,2.5vw,0.92rem)] font-medium tracking-[-0.01em] text-budget-muted/55"
             aria-label="Loading budget-friendly spots..."
           >
             Loading budget-friendly spots...
