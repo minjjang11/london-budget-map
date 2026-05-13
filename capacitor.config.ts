@@ -6,7 +6,7 @@ const config: CapacitorConfig = {
   webDir: 'out',
   plugins: {
     SplashScreen: {
-      backgroundColor: '#ffffff',
+      backgroundColor: '#FCFFFF',
     },
   },
 };
