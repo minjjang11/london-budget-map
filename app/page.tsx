@@ -7,17 +7,23 @@ export default function RootPage() {
   return (
     <>
       <WebRootRedirect />
-      <div className="relative flex min-h-dvh flex-col bg-[#FCFFFF] px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div
+        className="relative flex min-h-dvh flex-col bg-[#FCFFFF] px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]"
+        style={{ backgroundColor: "#FCFFFF" }}
+      >
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <div className="w-[min(43.2vw,168px)] shrink-0">
             <img
-              src={brandImg("/brand/maimo-lockup-native-2048.png")}
+              src={brandImg("/brand/maimo-splash-logo-transparent.png")}
               alt="Maimo Map"
               className="h-auto w-full object-contain select-none"
               style={{ imageRendering: "auto" }}
               draggable={false}
             />
           </div>
+          <p className="mt-2.5 text-[clamp(1.05rem,4vw,1.22rem)] font-extrabold tracking-[-0.02em] text-budget-primary">
+            Maimo Map
+          </p>
           <p className="mt-6 max-w-[28ch] text-[15px] leading-relaxed text-budget-muted">
             Crowdsourced cheap eats, pints &amp; coffee in London.
           </p>

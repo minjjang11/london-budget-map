@@ -5,38 +5,23 @@ import sharp from "sharp";
 const root = process.cwd();
 
 const paths = {
-  /** Full brand lockup exported from design (pin + wordmark + gradients). */
+  /** Pin source (SVG artboard). */
   lockupSvg: path.join(root, "assets/brand/maimo-pin.source.svg"),
   /** Canonical app icon source (user-provided 1024x1024 PNG). */
   appIconPng: path.join(root, "assets/brand/maimo-app-icon-1024.png"),
-  webLockup: path.join(root, "public/brand/maimo-lockup-native-2048.png"),
+  /** Web + in-app splash: transparent pin only (no full-screen mockup). */
+  webSplashLogo: path.join(root, "public/brand/maimo-splash-logo-transparent.png"),
   webPin: path.join(root, "public/brand/maimo-pin-native-1024.png"),
   iosSplash1x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-2.png"),
   iosSplash2x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-1.png"),
   iosSplash3x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png"),
   iosIcon1024: path.join(root, "ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png"),
-  androidSplash: path.join(root, "android/app/src/main/res/drawable/splash.png"),
+  androidSplashLogo: path.join(root, "android/app/src/main/res/drawable/splash_logo.png"),
   androidForeground: path.join(root, "android/app/src/main/res/drawable/ic_launcher_foreground_src.png"),
 };
 
 async function ensureParent(filePath) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
-}
-
-async function renderLockupPng(size) {
-  const svg = await fs.readFile(paths.lockupSvg);
-  return sharp(svg)
-    .resize(size, size, {
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-      kernel: sharp.kernel.lanczos3,
-    })
-    .png({
-      compressionLevel: 9,
-      adaptiveFiltering: true,
-      effort: 9,
-    })
-    .toBuffer();
 }
 
 /**
@@ -130,19 +115,20 @@ async function renderAndroidForegroundPng(size) {
 }
 
 async function run() {
-  await writePng(await renderLockupPng(2048), paths.webLockup);
-  await writePng(await renderPinIconPng(1024), paths.webPin);
+  const pin1024 = await renderPinIconPng(1024);
+  await writePng(pin1024, paths.webPin);
+  await writePng(pin1024, paths.webSplashLogo);
 
-  await writePng(await renderLockupPng(2732), paths.iosSplash1x);
-  await writePng(await renderLockupPng(2732), paths.iosSplash2x);
-  await writePng(await renderLockupPng(2732), paths.iosSplash3x);
+  await writePng(pin1024, paths.iosSplash1x);
+  await writePng(pin1024, paths.iosSplash2x);
+  await writePng(pin1024, paths.iosSplash3x);
 
-  await writePng(await renderPinIconPng(1024), paths.iosIcon1024);
+  await writePng(pin1024, paths.iosIcon1024);
 
-  await writePng(await renderLockupPng(2732), paths.androidSplash);
+  await writePng(pin1024, paths.androidSplashLogo);
   await writePng(await renderAndroidForegroundPng(432), paths.androidForeground);
 
-  console.log("Brand assets generated from canonical icon + lockup SVG.");
+  console.log("Brand assets: transparent pin for splash/web; native splash uses solid colour + centred logo.");
 }
 
 run().catch((err) => {
