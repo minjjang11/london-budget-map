@@ -2364,12 +2364,12 @@ export default function BudgetMapApp() {
               <img
                 src={brandImg("/brand/maimo-splash-wordmark.svg")}
                 alt="Maimo Map"
-                className="h-[19px] w-auto max-w-[min(200px,78vw)] object-contain object-left select-none"
+                className="h-[23px] w-auto max-w-[min(230px,82vw)] object-contain object-left select-none"
                 draggable={false}
               />
             </h1>
             <p
-              className="max-[300px]:hidden min-w-0 text-[10px] font-semibold leading-[19px] tracking-[-0.01em] min-[340px]:flex min-[340px]:shrink-0 min-[340px]:items-center min-[340px]:text-right"
+              className="max-[300px]:hidden min-w-0 text-[10px] font-semibold leading-[23px] tracking-[-0.01em] min-[340px]:flex min-[340px]:shrink-0 min-[340px]:items-center min-[340px]:text-right"
               style={{ color: "#496059" }}
             >
               Eat well. Spend less.

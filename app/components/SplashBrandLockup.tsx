@@ -16,7 +16,7 @@ export function SplashBrandLockup() {
       <img
         src={brandImg("/brand/maimo-splash-wordmark.svg")}
         alt="Maimo Map"
-        className="mt-4 w-[min(88vw,420px)] max-w-[94vw] object-contain select-none"
+        className="mt-10 w-[min(88vw,420px)] max-w-[94vw] object-contain select-none"
         draggable={false}
       />
     </div>
