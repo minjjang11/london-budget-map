@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { brandImg } from "@/lib/site/brandAssets";
 import { WebRootRedirect } from "./WebRootRedirect";
 
 /** OAuth/homepage: visible Privacy & Terms on the public root URL. Web redirects to `/map` via `WebRootRedirect`; native uses `layout.tsx` → `/map.html`. */
@@ -10,7 +11,7 @@ export default function RootPage() {
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <div className="w-[min(43.2vw,168px)] shrink-0">
             <img
-              src="/brand/maimo-lockup-native-2048.png"
+              src={brandImg("/brand/maimo-lockup-native-2048.png")}
               alt="Maimo Map"
               className="h-auto w-full object-contain select-none"
               style={{ imageRendering: "auto" }}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { brandImg } from "@/lib/site/brandAssets";
 
 const SPLASH_MS = 1800;
 
@@ -23,7 +24,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-0 bg-[#FCFFFF]" />
           <div className="absolute left-1/2 top-1/2 w-[min(43.2vw,192px)] -translate-x-1/2 -translate-y-1/2">
             <img
-              src="/brand/maimo-lockup-native-2048.png"
+              src={brandImg("/brand/maimo-lockup-native-2048.png")}
               alt="Maimo Map"
               className="h-auto w-full object-contain select-none"
               style={{ imageRendering: "auto" }}

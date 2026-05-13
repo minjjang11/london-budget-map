@@ -61,6 +61,7 @@ import AuthPanel from "./AuthPanel";
 import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
 import { WebAuthUrlBridge } from "./WebAuthUrlBridge";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
+import { brandImg } from "@/lib/site/brandAssets";
 import { MAIMAO_SUPPORT_EMAIL } from "@/lib/site/supportContact";
 
 type BudgetMapHost = "ios" | "android" | "web";
@@ -2361,7 +2362,7 @@ export default function BudgetMapApp() {
           <div className="flex min-w-0 flex-col gap-2 px-0 pb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
             <h1 className="min-w-0 shrink-0 pt-[1px]">
               <img
-                src="/brand/maimo-wordmark.png"
+                src={brandImg("/brand/maimo-wordmark.png")}
                 alt="Maimo Map"
                 className="h-[22px] w-auto max-w-[min(200px,88vw)] object-contain object-left select-none"
                 draggable={false}
