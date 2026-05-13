@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Mappetite</string>
-    <string name="title_activity_main">Mappetite</string>
-    <string name="package_name">com.londonbudgetmap.app</string>
-    <string name="custom_url_scheme">com.londonbudgetmap.app</string>
+    <string name="app_name">Maimo Map</string>
+    <string name="title_activity_main">Maimo Map</string>
+    <string name="package_name">com.maimo.app</string>
+    <string name="custom_url_scheme">com.maimo.app</string>
 </resources>

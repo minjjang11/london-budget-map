@@ -1,7 +1,7 @@
 import { getBrowserAuthRedirectOrigin } from "./getBrowserAuthRedirectOrigin";
 
 /** Must match Android/iOS URL scheme + Supabase Auth "Redirect URLs". */
-export const NATIVE_OAUTH_REDIRECT = "com.mappetite.app://auth/callback";
+export const NATIVE_OAUTH_REDIRECT = "com.maimo.app://auth/callback";
 
 function envForcesNativeOAuth(): boolean {
   const v = process.env.NEXT_PUBLIC_CAPACITOR_OAUTH_NATIVE?.trim().toLowerCase();

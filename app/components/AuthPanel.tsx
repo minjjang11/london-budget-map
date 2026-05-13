@@ -8,7 +8,7 @@ import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
 import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
-import { MAPPETITE_SUPPORT_EMAIL, mappetiteSupportMailtoHref } from "@/lib/site/supportContact";
+import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 const AUTH_NETWORK_MS = 5000;
 /** Email OTP + SMTP can exceed OAuth handshakes — avoid false “network” timeouts. */
@@ -36,7 +36,7 @@ function scrubAuthErrorForDisplay(message: string): string {
   let s = message.trim();
   if (!s) return "Something went wrong. Please try again.";
   s = s.replace(/https?:\/\/[a-z0-9-]+\.supabase\.co[^\s]*/gi, "").trim();
-  s = s.replace(/\bsupabase\b/gi, "Mappetite");
+  s = s.replace(/\bsupabase\b/gi, "Maimo Map");
   s = s.replace(/\s{2,}/g, " ");
   return s.trim() || "Something went wrong. Please try again.";
 }
@@ -53,18 +53,18 @@ function formatOtpSendError(message: string): string {
     low.includes("invalid url") ||
     low.includes("callback")
   ) {
-    return `Sign-in couldn’t finish from this app. Try Google sign-in, or email ${MAPPETITE_SUPPORT_EMAIL} if it keeps happening.`;
+    return `Sign-in couldn’t finish from this app. Try Google sign-in, or email ${MAIMAO_SUPPORT_EMAIL} if it keeps happening.`;
   }
   if (low.includes("magic link") || (low.includes("error sending") && low.includes("email"))) {
     return (
       "We couldn’t send a sign-in email.\n\n" +
       "• Try again in a few minutes or use Google sign-in.\n" +
       "• Check spam / promotions if you don’t see the message.\n" +
-      `• Still stuck? ${MAPPETITE_SUPPORT_EMAIL}`
+      `• Still stuck? ${MAIMAO_SUPPORT_EMAIL}`
     );
   }
   if (low.includes("confirmation") || low.includes("sending") || low.includes("smtp") || low.includes("mail")) {
-    return `We couldn’t send the sign-in email. Try again, use Google sign-in, or contact ${MAPPETITE_SUPPORT_EMAIL}.`;
+    return `We couldn’t send the sign-in email. Try again, use Google sign-in, or contact ${MAIMAO_SUPPORT_EMAIL}.`;
   }
   return scrubAuthErrorForDisplay(m);
 }
@@ -259,7 +259,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                   setStep("code");
                   setResendCooldown(RESEND_COOLDOWN_S);
                   setMsg(
-                    "We sent a 6-digit Mappetite sign-in code to your email. Enter it in the code field\.",
+                    "We sent a 6-digit Maimo Map sign-in code to your email. Enter it in the code field\.",
                   );
                 } catch (e) {
                   setMsg(e instanceof Error ? scrubAuthErrorForDisplay(e.message) : "Something went wrong. Please try again.");
@@ -401,8 +401,8 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
         .
         <br />
         Contact:{" "}
-        <a href={mappetiteSupportMailtoHref} className="underline">
-          {MAPPETITE_SUPPORT_EMAIL}
+        <a href={maimoSupportMailtoHref} className="underline">
+          {MAIMAO_SUPPORT_EMAIL}
         </a>
         .
       </p>

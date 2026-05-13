@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.mappetite.app',
-  appName: 'Mappetite',
+  appId: 'com.maimo.app',
+  appName: 'Maimo Map',
   webDir: 'out',
   plugins: {
     SplashScreen: {

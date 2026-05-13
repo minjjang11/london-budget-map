@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalDocLayout } from "../components/LegalDocLayout";
 import { legalDocPageClassName } from "@/lib/site/legalDocPageClasses";
-import { MAPPETITE_SUPPORT_EMAIL, mappetiteSupportMailtoHref } from "@/lib/site/supportContact";
+import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — Mappetite",
-  description: "How Mappetite collects, uses, and protects your data.",
+  title: "Privacy Policy — Maimo Map",
+  description: "How Maimo Map collects, uses, and protects your data.",
 };
 
 export default function PrivacyPolicyPage() {
@@ -51,7 +51,7 @@ export default function PrivacyPolicyPage() {
         <section className="mt-8 space-y-3">
           <h2 className="text-lg font-extrabold">Community Data & Accuracy</h2>
           <p className="text-sm leading-6">
-            Mappetite is community-driven. Prices, photos, and reviews may change over time and may not always be
+            Maimo Map is community-driven. Prices, photos, and reviews may change over time and may not always be
             fully accurate.
           </p>
           <p className="text-sm leading-6">
@@ -64,13 +64,13 @@ export default function PrivacyPolicyPage() {
           <h2 className="text-lg font-extrabold">Contact & Deletion Requests</h2>
           <p className="text-sm leading-6">
             Contact:{" "}
-            <a className="underline" href={mappetiteSupportMailtoHref}>
-              {MAPPETITE_SUPPORT_EMAIL}
+            <a className="underline" href={maimoSupportMailtoHref}>
+              {MAIMAO_SUPPORT_EMAIL}
             </a>
           </p>
           <p className="text-sm leading-6">
             To request account/data deletion, email us from your sign-in email address with the subject{" "}
-            <strong>Delete my Mappetite data</strong>. We may ask for verification before deleting data.
+            <strong>Delete my Maimo Map data</strong>. We may ask for verification before deleting data.
           </p>
         </section>
 

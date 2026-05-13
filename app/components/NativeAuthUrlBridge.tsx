@@ -28,12 +28,12 @@ async function handleOAuthReturnUrl(
     return;
   }
   if (error) {
-    window.dispatchEvent(new CustomEvent("mappetite-auth-error", { detail: error }));
+    window.dispatchEvent(new CustomEvent("maimo-auth-error", { detail: error }));
   }
 }
 
 /**
- * Capacitor: OAuth returns to `com.mappetite.app://...` with PKCE `code` or hash tokens.
+ * Capacitor: OAuth returns to `com.maimo.app://...` with PKCE `code` or hash tokens.
  * Must call `exchangeCodeForSession` — implicit hash-only handling was leaving users stuck in Chrome.
  */
 export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => void }) {

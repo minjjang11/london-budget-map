@@ -1,4 +1,4 @@
-package com.londonbudgetmap.app;
+package com.maimo.app;
 
 import com.getcapacitor.BridgeActivity;
 

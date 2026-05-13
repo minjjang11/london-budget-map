@@ -1,4 +1,4 @@
-/** Public support & developer contact (legal pages, auth footer, store listings should match). */
-export const MAPPETITE_SUPPORT_EMAIL = "contact@mappetite.net" as const;
+/** Public support email (legal pages, auth footer, store listings should match). */
+export const MAIMAO_SUPPORT_EMAIL = "contact@maimo.net" as const;
 
-export const mappetiteSupportMailtoHref = `mailto:${MAPPETITE_SUPPORT_EMAIL}` as const;
+export const maimoSupportMailtoHref = `mailto:${MAIMAO_SUPPORT_EMAIL}` as const;

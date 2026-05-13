@@ -10,8 +10,8 @@ export default function RootPage() {
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <div className="w-[min(43.2vw,168px)] shrink-0">
             <img
-              src="/brand/mappetite-lockup-native-2048.png"
-              alt="Mappetite"
+              src="/brand/maimo-lockup-native-2048.png"
+              alt="Maimo Map"
               className="h-auto w-full object-contain select-none"
               style={{ imageRendering: "auto" }}
               draggable={false}

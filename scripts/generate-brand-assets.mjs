@@ -6,11 +6,11 @@ const root = process.cwd();
 
 const paths = {
   /** Full brand lockup exported from design (pin + wordmark + gradients). */
-  lockupSvg: path.join(root, "assets/brand/mappetite-pin.source.svg"),
+  lockupSvg: path.join(root, "assets/brand/maimo-pin.source.svg"),
   /** Canonical app icon source (user-provided 1024x1024 PNG). */
-  appIconPng: path.join(root, "assets/brand/mappetite-app-icon-1024.png"),
-  webLockup: path.join(root, "public/brand/mappetite-lockup-native-2048.png"),
-  webPin: path.join(root, "public/brand/mappetite-pin-native-1024.png"),
+  appIconPng: path.join(root, "assets/brand/maimo-app-icon-1024.png"),
+  webLockup: path.join(root, "public/brand/maimo-lockup-native-2048.png"),
+  webPin: path.join(root, "public/brand/maimo-pin-native-1024.png"),
   iosSplash1x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-2.png"),
   iosSplash2x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732-1.png"),
   iosSplash3x: path.join(root, "ios/App/App/Assets.xcassets/Splash.imageset/splash-2732x2732.png"),

@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AppShell } from "./components/AppShell";
-import { mappetiteSupportMailtoHref } from "@/lib/site/supportContact";
+import { maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 export const metadata: Metadata = {
-  title: "Mappetite — London prices, actually",
+  title: "Maimo Map — London prices, actually",
   description:
     "Crowdsourced cheap eats, pints & coffee in London. Built for students and young professionals who still read the menu prices.",
-  authors: [{ name: "Mappetite", url: mappetiteSupportMailtoHref }],
+  authors: [{ name: "Maimo Map", url: maimoSupportMailtoHref }],
 };
 
 export const viewport: Viewport = {

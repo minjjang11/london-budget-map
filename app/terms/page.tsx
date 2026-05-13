@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LegalDocLayout } from "../components/LegalDocLayout";
 import { legalDocPageClassName } from "@/lib/site/legalDocPageClasses";
-import { MAPPETITE_SUPPORT_EMAIL, mappetiteSupportMailtoHref } from "@/lib/site/supportContact";
+import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Mappetite",
-  description: "Terms governing your use of Mappetite.",
+  title: "Terms of Service — Maimo Map",
+  description: "Terms governing your use of Maimo Map.",
 };
 
 export default function TermsPage() {
@@ -45,7 +45,7 @@ export default function TermsPage() {
         <section className="mt-8 space-y-3">
           <h2 className="text-lg font-extrabold">No Guarantee of Price Accuracy</h2>
           <p className="text-sm leading-6">
-            Mappetite uses community-submitted information. Prices and venue details can change and may not always be
+            Maimo Map uses community-submitted information. Prices and venue details can change and may not always be
             current or accurate.
           </p>
         </section>
@@ -54,8 +54,8 @@ export default function TermsPage() {
           <h2 className="text-lg font-extrabold">Support</h2>
           <p className="text-sm leading-6">
             Contact:{" "}
-            <a className="underline" href={mappetiteSupportMailtoHref}>
-              {MAPPETITE_SUPPORT_EMAIL}
+            <a className="underline" href={maimoSupportMailtoHref}>
+              {MAIMAO_SUPPORT_EMAIL}
             </a>
           </p>
         </section>

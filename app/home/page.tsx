@@ -113,7 +113,7 @@ export default function HomePage() {
       <main className="px-4 pt-6">
         <section className="border-b border-ldn-line/70 pb-8">
           <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-ldn-pine">
-            Mappetite
+            Maimo Map
           </p>
           <h1 className="mt-2 text-[2.5rem] font-bold leading-[1.06] tracking-[-0.03em]">
             London on a

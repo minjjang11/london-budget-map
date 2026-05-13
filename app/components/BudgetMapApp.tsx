@@ -61,7 +61,7 @@ import AuthPanel from "./AuthPanel";
 import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
 import { WebAuthUrlBridge } from "./WebAuthUrlBridge";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
-import { MAPPETITE_SUPPORT_EMAIL } from "@/lib/site/supportContact";
+import { MAIMAO_SUPPORT_EMAIL } from "@/lib/site/supportContact";
 
 type BudgetMapHost = "ios" | "android" | "web";
 
@@ -428,13 +428,13 @@ function titleCaseWords(value: string): string {
     .join(" ");
 }
 
-function buildMappetiteShareText(spot: Spot): string {
+function buildShareText(spot: Spot): string {
   const low = lowestPrice(spot);
   const priceStr = formatMapPriceLabel(Math.max(low, 0.01));
   const area = titleCaseWords(spot.area || "London");
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://london-budget-map.vercel.app").replace(/\/+$/, "");
   return [
-    "Mappetite 🍽️",
+    "Maimo Map 🍽️",
     "",
     `${spot.name} · ${priceStr}`,
     `${area}, London`,
@@ -673,11 +673,11 @@ export default function BudgetMapApp() {
   }, [tab]);
 
   const profileGeneralReportMailto = useMemo(() => {
-    const subject = encodeURIComponent("Mappetite — content report");
+    const subject = encodeURIComponent("Maimo Map — content report");
     const body = encodeURIComponent(
       profileGeneralReportNote.trim() || "(describe what looked inappropriate or unsafe)",
     );
-    return `mailto:${MAPPETITE_SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+    return `mailto:${MAIMAO_SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
   }, [profileGeneralReportNote]);
 
   const courseStopIdRef = useRef(4);
@@ -1556,10 +1556,10 @@ export default function BudgetMapApp() {
 
   const handleShareSelectedSpot = useCallback(async () => {
     if (!selected) return;
-    const text = buildMappetiteShareText(selected);
+    const text = buildShareText(selected);
     try {
       if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
-        await navigator.share({ title: "Mappetite", text });
+        await navigator.share({ title: "Maimo Map", text });
         setToast("Share sheet opened");
         window.setTimeout(() => setToast(null), 2500);
         return;
@@ -1838,7 +1838,7 @@ export default function BudgetMapApp() {
     }
     const help =
       budgetMapHost === "android"
-        ? "Android: Settings > Apps > Mappetite > Permissions > Location > Allow."
+        ? "Android: Settings > Apps > Maimo Map > Permissions > Location > Allow."
         : "Browser: tap the lock icon in the address bar, then allow Location.";
     setToast(help);
     window.setTimeout(() => setToast(null), 5200);
@@ -2361,8 +2361,8 @@ export default function BudgetMapApp() {
           <div className="flex min-w-0 flex-col gap-2 px-0 pb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
             <h1 className="min-w-0 shrink-0 pt-[1px]">
               <img
-                src="/brand/mappetite-wordmark.png"
-                alt="Mappetite"
+                src="/brand/maimo-wordmark.png"
+                alt="Maimo Map"
                 className="h-[22px] w-auto max-w-[min(200px,88vw)] object-contain object-left select-none"
                 draggable={false}
               />
@@ -4134,7 +4134,7 @@ export default function BudgetMapApp() {
             </div>
             <p className="mb-3 text-[12px] leading-snug text-budget-muted">
               Tell us what you saw (spam, abuse, wrong info). We&apos;ll open your email app — send to{" "}
-              <span className="font-semibold text-budget-text">{MAPPETITE_SUPPORT_EMAIL}</span>.
+              <span className="font-semibold text-budget-text">{MAIMAO_SUPPORT_EMAIL}</span>.
             </p>
             <textarea
               value={profileGeneralReportNote}
