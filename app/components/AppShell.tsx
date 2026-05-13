@@ -21,8 +21,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {!showApp ? (
-        <div className="fixed inset-0 z-[9999] overflow-hidden bg-[#FCFFFF]">
-          <div className="absolute inset-0 bg-[#FCFFFF]" />
+        <div className="fixed inset-0 z-[9999] overflow-hidden bg-white">
+          <div className="absolute inset-0 bg-white" />
           <div
             className="absolute left-1/2 top-1/2 flex w-[min(43.2vw,192px)] -translate-x-1/2 -translate-y-1/2 flex-col items-center text-center"
             aria-label="Maimo Map"

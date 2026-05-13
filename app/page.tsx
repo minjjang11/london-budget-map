@@ -7,7 +7,7 @@ export default function RootPage() {
   return (
     <>
       <WebRootRedirect />
-      <div className="relative flex min-h-dvh flex-col bg-[#FCFFFF] px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="relative flex min-h-dvh flex-col bg-white px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex flex-1 flex-col items-center justify-center text-center">
           <div className="flex w-[min(43.2vw,168px)] shrink-0 flex-col items-center" aria-label="Maimo Map">
             <img
