@@ -6,7 +6,7 @@ import { brandImg } from "@/lib/site/brandAssets";
  */
 export function SplashBrandLockup() {
   return (
-    <div className="flex origin-center scale-[0.71] flex-col items-center">
+    <div className="flex origin-center scale-[0.355] flex-col items-center">
       <img
         src={brandImg("/brand/maimo-splash-pin.svg")}
         alt=""
@@ -16,7 +16,7 @@ export function SplashBrandLockup() {
       <img
         src={brandImg("/brand/maimo-splash-wordmark.svg")}
         alt="Maimo Map"
-        className="mt-1.5 w-[min(88vw,420px)] max-w-[94vw] object-contain select-none"
+        className="mt-1 w-[min(88vw,420px)] max-w-[94vw] object-contain select-none"
         draggable={false}
       />
     </div>
