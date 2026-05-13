@@ -62,6 +62,7 @@ import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
 import { WebAuthUrlBridge } from "./WebAuthUrlBridge";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 import { MAIMAO_SUPPORT_EMAIL } from "@/lib/site/supportContact";
+import { brandImg } from "@/lib/site/brandAssets";
 
 type BudgetMapHost = "ios" | "android" | "web";
 
@@ -2358,20 +2359,23 @@ export default function BudgetMapApp() {
             paddingBottom: "var(--bm-map-header-pb)",
           }}
         >
-          <div className="flex min-w-0 flex-col gap-2 px-0 pb-2.5 min-[340px]:flex-row min-[340px]:items-end min-[340px]:justify-between min-[340px]:gap-2">
-            <h1 className="min-w-0 shrink-0 pt-[1px]">
-              <span className="inline-block max-w-[min(200px,88vw)] truncate text-[19px] font-extrabold leading-[22px] tracking-[-0.03em] text-budget-primary select-none">
-                Maimo Map
-              </span>
+          <div className="flex min-w-0 flex-col gap-1.5 px-0 pb-2 min-[340px]:flex-row min-[340px]:items-center min-[340px]:justify-between min-[340px]:gap-3">
+            <h1 className="flex min-w-0 shrink-0 items-center leading-none">
+              <img
+                src={brandImg("/brand/maimo-splash-wordmark.svg")}
+                alt="Maimo Map"
+                className="h-[19px] w-auto max-w-[min(200px,78vw)] object-contain object-left select-none"
+                draggable={false}
+              />
             </h1>
             <p
-              className="max-[300px]:hidden min-w-0 text-[10px] font-semibold leading-snug tracking-[-0.01em] min-[340px]:shrink-0 min-[340px]:text-right"
+              className="max-[300px]:hidden min-w-0 text-[10px] font-semibold leading-[19px] tracking-[-0.01em] min-[340px]:flex min-[340px]:shrink-0 min-[340px]:items-center min-[340px]:text-right"
               style={{ color: "#496059" }}
             >
               Eat well. Spend less.
             </p>
           </div>
-          <div className="budget-map-chip-scroll mt-1 min-w-0 md:mt-1.5">
+          <div className="budget-map-chip-scroll mt-0.5 min-w-0 md:mt-0.5">
             {CATS.map((c) => chipCat(c.id as Category | "all", c.label, c.emoji))}
           </div>
         </header>
