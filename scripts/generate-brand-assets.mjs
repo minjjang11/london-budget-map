@@ -5,10 +5,8 @@ import sharp from "sharp";
 const root = process.cwd();
 
 const paths = {
-  /** Pin source (SVG artboard). */
-  lockupSvg: path.join(root, "assets/brand/maimo-pin.source.svg"),
-  /** Canonical app icon source (user-provided 1024x1024 PNG). */
-  appIconPng: path.join(root, "assets/brand/maimo-app-icon-1024.png"),
+  /** Map pin only: no wordmark, no canvas rect, transparent background (splash + icons). */
+  pinIconOnlySvg: path.join(root, "assets/brand/maimo-pin-icon-only.source.svg"),
   /** Web + in-app splash: transparent pin only (no full-screen mockup). */
   webSplashLogo: path.join(root, "public/brand/maimo-splash-logo-transparent.png"),
   webPin: path.join(root, "public/brand/maimo-pin-native-1024.png"),
@@ -25,48 +23,12 @@ async function ensureParent(filePath) {
 }
 
 /**
- * App icon should be mostly the pin (not the full wordmark).
- * The provided SVG is a large artboard; the pin lives in the upper area.
- * This crop is intentionally conservative and padded to survive Android masks.
+ * Renders the map pin from the pin-only SVG (true alpha — no baked canvas).
+ * Do not use `maimo-app-icon-1024.png` here: common exports include an opaque light square.
  */
 async function renderPinIconPng(size) {
-  try {
-    await fs.access(paths.appIconPng);
-    return sharp(paths.appIconPng)
-      .resize(size, size, {
-        fit: "contain",
-        background: { r: 0, g: 0, b: 0, alpha: 0 },
-        kernel: sharp.kernel.lanczos3,
-      })
-      .png({
-        compressionLevel: 9,
-        adaptiveFiltering: true,
-        effort: 9,
-      })
-      .toBuffer();
-  } catch {
-    // Fall back to SVG crop when the PNG source is missing.
-  }
-
-  const svg = await fs.readFile(paths.lockupSvg);
-  const hi = 4096;
-  const raster = await sharp(svg)
-    .resize(hi, hi, {
-      fit: "contain",
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
-      kernel: sharp.kernel.lanczos3,
-    })
-    .png()
-    .toBuffer();
-
-  // Crop to pin region in the hi-res raster (based on the Group 40.svg layout).
-  const extracted = await sharp(raster)
-    .extract({
-      left: Math.round(hi * 0.22),
-      top: Math.round(hi * 0.02),
-      width: Math.round(hi * 0.56),
-      height: Math.round(hi * 0.62),
-    })
+  const svg = await fs.readFile(paths.pinIconOnlySvg);
+  return sharp(svg)
     .resize(size, size, {
       fit: "contain",
       background: { r: 0, g: 0, b: 0, alpha: 0 },
@@ -78,8 +40,6 @@ async function renderPinIconPng(size) {
       effort: 9,
     })
     .toBuffer();
-
-  return extracted;
 }
 
 async function writePng(buf, outPath) {

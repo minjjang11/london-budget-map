@@ -1,0 +1,28 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  fill="none"
+  viewBox="905 0 870 1170"
+  width="870"
+  height="1170"
+>
+  <defs>
+    <linearGradient
+      id="paint0_pin"
+      x1="1339.06"
+      y1="-2.96702"
+      x2="1339.06"
+      y2="1160.38"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop offset="0.149038" stop-color="#00D4A0" />
+      <stop offset="0.620192" stop-color="#00A878" />
+      <stop offset="1" stop-color="#6A4FF0" />
+    </linearGradient>
+  </defs>
+  <path
+    fill="url(#paint0_pin)"
+    fill-rule="evenodd"
+    clip-rule="evenodd"
+    d="M913 436.06C913 197.171 1105.02 6.42853e-05 1341.34 8.49457e-05C1573.98 0.000105284 1766 197.171 1766 436.06C1766 697.696 1503.05 888.74 1341.34 1159C1179.47 901.4 913 709.075 913 436.06Z"
+  />
+</svg>
