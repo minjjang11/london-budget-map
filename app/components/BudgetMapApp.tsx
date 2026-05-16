@@ -612,6 +612,8 @@ export default function BudgetMapApp() {
   const [profileGeneralReportOpen, setProfileGeneralReportOpen] = useState(false);
   const [profileGeneralReportNote, setProfileGeneralReportNote] = useState("");
   const [profileGeneralReportBusy, setProfileGeneralReportBusy] = useState(false);
+  /** When true, leaving the Profile tab dismisses the general report sheet (opened from Profile). Map-opened reports stay up across tabs. */
+  const [profileGeneralReportBindToProfileTab, setProfileGeneralReportBindToProfileTab] = useState(false);
 
   const refreshSession = useCallback(async (sessionHint?: Session | null) => {
     const c = getBrowserSupabase();
@@ -672,8 +674,12 @@ export default function BudgetMapApp() {
   }, []);
 
   useEffect(() => {
-    if (tab !== "profile") setProfileGeneralReportOpen(false);
-  }, [tab]);
+    if (!profileGeneralReportOpen || !profileGeneralReportBindToProfileTab) return;
+    if (tab !== "profile") {
+      setProfileGeneralReportOpen(false);
+      setProfileGeneralReportBindToProfileTab(false);
+    }
+  }, [tab, profileGeneralReportOpen, profileGeneralReportBindToProfileTab]);
 
   const profileGeneralReportMailto = useMemo(() => {
     const subject = encodeURIComponent("Maimo Map — content report");
@@ -705,6 +711,7 @@ export default function BudgetMapApp() {
       return;
     }
     setProfileGeneralReportOpen(false);
+    setProfileGeneralReportBindToProfileTab(false);
     setProfileGeneralReportNote("");
     setToast("Thanks — we received your report.");
     window.setTimeout(() => setToast(null), 4000);
@@ -1192,6 +1199,8 @@ export default function BudgetMapApp() {
     setContributionPrice("");
     setContributionComment("");
     setContributionPhoto("");
+    setReportTargetId(null);
+    setReportText("");
   }, [selectedId]);
 
   useEffect(() => {
@@ -2916,13 +2925,6 @@ export default function BudgetMapApp() {
                             </span>
                           </div>
                         ))}
-                        {cleanDisplayNote(sub.review) && (
-                          <div className="mt-3 rounded-xl border-l-[4px] border-budget-primary bg-emerald-50/95 px-3 py-2.5 text-[13px] font-medium leading-snug text-budget-text">
-                            <span className="text-budget-primary/80">&ldquo;</span>
-                            {cleanDisplayNote(sub.review)}
-                            <span className="text-budget-primary/80">&rdquo;</span>
-                          </div>
-                        )}
                       </div>
                     ))}
                     <div className="rounded-2xl border border-budget-surface/80 bg-budget-white px-3 py-3 shadow-sm">
@@ -3015,17 +3017,17 @@ export default function BudgetMapApp() {
                             : "Stored on this device until shared voting is shipped."}
                       </p>
                     </div>
-                    {remoteIds.has(selected.id) ? (
-                      <div className="rounded-2xl border border-budget-surface/80 bg-budget-white px-3 py-3 shadow-sm">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
-                            Add your menu
-                          </p>
-                          <span className="text-[11px] font-semibold text-budget-muted">
-                            Cap {formatBudgetCap(SUBMIT_PRICE_LIMITS[selected.category])}
-                          </span>
-                        </div>
-                        {!session?.user ? (
+                    <div className="rounded-2xl border border-budget-surface/80 bg-budget-white px-3 py-3 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-budget-subtle">
+                          Add your menu
+                        </p>
+                        <span className="text-[11px] font-semibold text-budget-muted">
+                          Cap {formatBudgetCap(SUBMIT_PRICE_LIMITS[selected.category])}
+                        </span>
+                      </div>
+                      {remoteIds.has(selected.id) ? (
+                        !session?.user ? (
                           <p className="mt-2 text-[12px] leading-snug text-budget-muted">
                             Sign in to add another menu price, photo, or comment for this place.
                           </p>
@@ -3095,14 +3097,25 @@ export default function BudgetMapApp() {
                               {contributionBusy ? "Adding…" : "Add to this place"}
                             </button>
                           </>
-                        )}
-                      </div>
-                    ) : null}
-                  </div>
+                        )
+                      ) : selectedIsPending ? (
+                        <p className="mt-2 text-[12px] leading-snug text-budget-muted">
+                          This tip is still in the queue. After it&apos;s approved on the map, you can attach more menu
+                          rows here. Need to correct something sooner? Use <span className="font-bold text-budget-text">Report</span>{" "}
+                          below or send another entry from <span className="font-bold text-budget-text">Submit</span>.
+                        </p>
+                      ) : (
+                        <p className="mt-2 text-[12px] leading-snug text-budget-muted">
+                          {isSupabaseConfigured()
+                            ? "Only verified map listings can take extra menu rows here. Submit this place from the Submit tab first, or keep browsing saved device-only tips."
+                            : "Connect Supabase to share listings. Until then, new menu rows can’t be saved to the team from here."}
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                <div className="mt-5">
-                  <div className="flex gap-3 px-3">
+                    <div className="mt-5">
+                      <div className="flex gap-3">
                     <button
                       type="button"
                       disabled={savePlaceBusy && remoteIds.has(selected.id)}
@@ -3130,18 +3143,28 @@ export default function BudgetMapApp() {
                       Directions
                     </button>
                   </div>
-                  {selectedIsPending ? (
-                    <div className="mt-2 flex justify-end px-3">
-                      <button
-                        type="button"
-                        onClick={() => handleReportTap(selectedPendingRow!.id)}
-                        className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-budget-muted underline decoration-budget-faint underline-offset-2 hover:text-budget-text"
-                      >
-                        <Flag size={12} className="shrink-0 opacity-70" aria-hidden />
-                        Report
-                      </button>
-                    </div>
-                  ) : null}
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedIsPending && selectedPendingRow) {
+                          handleReportTap(selectedPendingRow.id);
+                          return;
+                        }
+                        if (!selected) return;
+                        setProfileGeneralReportBindToProfileTab(false);
+                        setProfileGeneralReportNote(
+                          `[Map · ${selected.name}]\nPlace id: ${selected.id}\nCategory: ${selected.category}\n\n`,
+                        );
+                        setProfileGeneralReportBusy(false);
+                        setProfileGeneralReportOpen(true);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg px-1.5 py-1 text-[11px] font-semibold text-budget-muted underline decoration-budget-faint underline-offset-2 hover:text-budget-text"
+                    >
+                      <Flag size={12} className="shrink-0 opacity-70" aria-hidden />
+                      Report
+                    </button>
+                  </div>
                   {selectedIsPending && reportTargetId === selectedPendingRow?.id ? (
                     <div className="mt-2 space-y-2">
                       <input
@@ -3178,7 +3201,8 @@ export default function BudgetMapApp() {
                     </p>
                   ) : null}
                 </div>
-                  </div>
+                    </div>
+                </div>
                 )}
               </div>
             </div>
@@ -3925,6 +3949,7 @@ export default function BudgetMapApp() {
                   onClick={() => {
                     setProfileGeneralReportNote("");
                     setProfileGeneralReportBusy(false);
+                    setProfileGeneralReportBindToProfileTab(true);
                     setProfileGeneralReportOpen(true);
                   }}
                   className="flex cursor-pointer items-center gap-2 text-left font-semibold text-budget-muted underline decoration-budget-faint underline-offset-4 hover:text-budget-text"
@@ -4146,7 +4171,10 @@ export default function BudgetMapApp() {
         <div
           className="fixed inset-0 z-[190] flex items-end justify-center bg-[#0d1f1a]/45 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-12 backdrop-blur-[2px]"
           role="presentation"
-          onClick={() => setProfileGeneralReportOpen(false)}
+          onClick={() => {
+            setProfileGeneralReportOpen(false);
+            setProfileGeneralReportBindToProfileTab(false);
+          }}
         >
           <div
             role="dialog"
@@ -4161,7 +4189,10 @@ export default function BudgetMapApp() {
               </h2>
               <button
                 type="button"
-                onClick={() => setProfileGeneralReportOpen(false)}
+                onClick={() => {
+                  setProfileGeneralReportOpen(false);
+                  setProfileGeneralReportBindToProfileTab(false);
+                }}
                 className="cursor-pointer rounded-full p-1.5 text-budget-muted hover:bg-budget-surface/80 hover:text-budget-text"
                 aria-label="Close"
               >
@@ -4209,7 +4240,10 @@ export default function BudgetMapApp() {
               )}
               <button
                 type="button"
-                onClick={() => setProfileGeneralReportOpen(false)}
+                onClick={() => {
+                  setProfileGeneralReportOpen(false);
+                  setProfileGeneralReportBindToProfileTab(false);
+                }}
                 className="cursor-pointer rounded-2xl border-2 border-budget-surface bg-budget-white px-4 py-3 text-[13px] font-extrabold text-budget-text"
               >
                 Cancel
