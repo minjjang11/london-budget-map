@@ -4152,7 +4152,7 @@ export default function BudgetMapApp() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="profile-report-title"
-            className="w-full max-w-[390px] rounded-t-[22px] border border-budget-surface bg-budget-bg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_48px_rgb(13_31_26_/0.25)]"
+            className="w-full max-w-[390px] overflow-hidden rounded-[22px] border border-budget-surface bg-budget-bg px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 shadow-[0_-12px_48px_rgb(13_31_26_/0.25)]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between gap-3">
