@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Slightly inset logo so Android 12+ splash circle does not feel oversized vs launcher icon. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/splash_logo"
+    android:insetLeft="40dp"
+    android:insetTop="40dp"
+    android:insetRight="40dp"
+    android:insetBottom="40dp" />

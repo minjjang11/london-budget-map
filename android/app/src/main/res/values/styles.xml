@@ -16,8 +16,13 @@
     </style>
 
 
+    <!-- Android 12+ default: huge launcher icon. Use splash_logo + same bg as Capacitor (#FCFFFF). -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
-        <item name="android:background">@drawable/splash</item>
-        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_screen_icon</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_background</item>
+        <item name="postSplashScreenTheme">@style/AppTheme.NoActionBar</item>
+        <!-- Pre-API 31 window -->
+        <item name="android:windowBackground">@drawable/splash</item>
     </style>
 </resources>
