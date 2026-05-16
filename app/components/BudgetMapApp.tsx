@@ -60,7 +60,9 @@ import { rankingNetScore, registeredWithinTrailingDays, RANKING_RULES } from "@/
 import type { PlaceContributionRow } from "@/lib/types/placeContributions";
 import AuthPanel from "./AuthPanel";
 import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
+import { NativeBackButtonBridge } from "./NativeBackButtonBridge";
 import { WebAuthUrlBridge } from "./WebAuthUrlBridge";
+import { openGoogleMapsDirections } from "@/lib/native/openGoogleMapsDirections";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
 import { moderationFetch } from "@/lib/moderation/moderationClientFetch";
 import { MAIMAO_SUPPORT_EMAIL } from "@/lib/site/supportContact";
@@ -2330,6 +2332,44 @@ export default function BudgetMapApp() {
     </section>
   );
 
+  const handleNativeBack = useCallback((): boolean => {
+    if (profileGeneralReportOpen) {
+      setProfileGeneralReportOpen(false);
+      setProfileGeneralReportBindToProfileTab(false);
+      return true;
+    }
+    if (locationHelpOpen) {
+      setLocationHelpOpen(false);
+      return true;
+    }
+    if (tab === "map" && placeDetailExpanded) {
+      placeDetailSheetRef.current?.scrollTo({ top: 0, behavior: "auto" });
+      setPlaceDetailTransition("backward");
+      setPlaceDetailExpanded(false);
+      return true;
+    }
+    if (tab === "map" && selectedId) {
+      setSelectedId(null);
+      return true;
+    }
+    if (tab === "map" && budgetOpen) {
+      setBudgetOpen(false);
+      return true;
+    }
+    if (tab !== "map") {
+      setTab("map");
+      return true;
+    }
+    return false;
+  }, [
+    profileGeneralReportOpen,
+    locationHelpOpen,
+    tab,
+    placeDetailExpanded,
+    selectedId,
+    budgetOpen,
+  ]);
+
   const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
   const placeNameById = useMemo(
     () =>
@@ -2343,6 +2383,7 @@ export default function BudgetMapApp() {
     <>
       <WebAuthUrlBridge onAuthApplied={() => refreshSession()} />
       <NativeAuthUrlBridge onAuthApplied={() => void refreshSession()} />
+      <NativeBackButtonBridge onBack={handleNativeBack} />
       <div
         className="budget-app relative mx-auto flex h-dvh min-h-0 w-full max-w-full flex-col overflow-hidden bg-budget-bg font-sans text-budget-text md:h-full"
         data-bm-host={budgetMapHost}
@@ -2793,12 +2834,7 @@ export default function BudgetMapApp() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => {
-                            window.open(
-                              `https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`,
-                              "_blank",
-                            );
-                          }}
+                          onClick={() => void openGoogleMapsDirections(selected.lat, selected.lng)}
                           className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface bg-budget-white py-3 text-[13px] font-extrabold text-budget-text"
                         >
                           <Navigation size={17} strokeWidth={2.25} />
@@ -3130,12 +3166,7 @@ export default function BudgetMapApp() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        window.open(
-                          `https://www.google.com/maps/dir/?api=1&destination=${selected.lat},${selected.lng}`,
-                          "_blank",
-                        );
-                      }}
+                      onClick={() => void openGoogleMapsDirections(selected.lat, selected.lng)}
                       className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-0 bg-budget-primary py-2.5 text-[13px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)]"
                     >
                       <Navigation size={18} strokeWidth={2.25} />

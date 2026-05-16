@@ -1,6 +1,6 @@
 "use client";
 
-/** When Browser plugin opens via window.open fallback (same-tab/CT). */
+/** When Browser plugin opens via window.open fallback (web only). */
 let oauthFallbackWindow: Window | null = null;
 
 function isBrowserUnimplemented(err: unknown): boolean {
@@ -11,42 +11,39 @@ function isBrowserUnimplemented(err: unknown): boolean {
   return /not implemented/i.test(msg);
 }
 
-/** Opens OAuth URL in Custom Tab, or WebView fallback if the native plugin is missing. */
+/**
+ * Opens OAuth in Chrome Custom Tab (Android) or SFSafariViewController (iOS).
+ * Never uses `window.open` in the Capacitor WebView — that causes nested login / letterboxing on Samsung.
+ */
 export async function openOAuthInAppBrowser(url: string): Promise<void> {
   const { Capacitor } = await import("@capacitor/core");
   if (!Capacitor.isNativePlatform()) return;
 
   oauthFallbackWindow = null;
+
+  const { Browser } = await import("@capacitor/browser");
   try {
-    const { Browser } = await import("@capacitor/browser");
-    await Browser.open({ url });
+    await Browser.open({
+      url,
+      presentationStyle: "popover",
+    });
     return;
   } catch (err) {
     if (!isBrowserUnimplemented(err)) throw err;
   }
 
-  oauthFallbackWindow = window.open(url, "_blank", "noopener,noreferrer");
-  if (!oauthFallbackWindow) {
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
+  throw new Error(
+    "Could not open the sign-in browser on this device. Try email sign-in or update the app.",
+  );
 }
 
-/** Closes Custom Tab or the fallback window opened by {@link openOAuthInAppBrowser}. */
+/** Closes Custom Tab / Safari VC opened by {@link openOAuthInAppBrowser}. */
 export async function closeOAuthInAppBrowser(): Promise<void> {
+  oauthFallbackWindow = null;
   try {
     const { Browser } = await import("@capacitor/browser");
     await Browser.close();
   } catch {
-    try {
-      oauthFallbackWindow?.close();
-    } finally {
-      oauthFallbackWindow = null;
-    }
+    /* already closed */
   }
 }
