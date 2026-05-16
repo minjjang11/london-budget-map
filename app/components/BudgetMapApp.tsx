@@ -62,6 +62,7 @@ import AuthPanel from "./AuthPanel";
 import { NativeAuthUrlBridge } from "./NativeAuthUrlBridge";
 import { WebAuthUrlBridge } from "./WebAuthUrlBridge";
 import SubmitPlacesAutocomplete from "./SubmitPlacesAutocomplete";
+import { moderationFetch } from "@/lib/moderation/moderationClientFetch";
 import { MAIMAO_SUPPORT_EMAIL } from "@/lib/site/supportContact";
 import { brandImg } from "@/lib/site/brandAssets";
 
@@ -1044,7 +1045,7 @@ export default function BudgetMapApp() {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch("/api/moderation/me", { credentials: "include" });
+        const r = await moderationFetch(session, "me", { method: "GET" });
         const j = (await r.json()) as { moderator?: boolean };
         if (!cancelled) setIsModerator(Boolean(j.moderator));
       } catch {
@@ -1054,13 +1055,13 @@ export default function BudgetMapApp() {
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.email]);
+  }, [session?.user?.email, session?.access_token]);
 
   useEffect(() => {
     if (tab !== "ranking" || communitySeg !== "review" || !isModerator) return;
     let cancelled = false;
     void (async () => {
-      const r = await fetch("/api/moderation/evaluate-expired", { method: "POST", credentials: "include" });
+      const r = await moderationFetch(session, "evaluate-expired", { method: "POST" });
       const j = (await r.json().catch(() => ({}))) as { error?: string };
       if (cancelled) return;
       if (!r.ok) {
@@ -1075,7 +1076,7 @@ export default function BudgetMapApp() {
     return () => {
       cancelled = true;
     };
-  }, [tab, communitySeg, isModerator]);
+  }, [tab, communitySeg, isModerator, session?.access_token]);
 
   useEffect(() => {
     if (tab !== "ranking" || communitySeg !== "review") {
@@ -1770,7 +1771,7 @@ export default function BudgetMapApp() {
   const runModerationEvaluate = useCallback(async () => {
     setModerationBusyId("__eval__");
     try {
-      const r = await fetch("/api/moderation/evaluate-expired", { method: "POST", credentials: "include" });
+      const r = await moderationFetch(session, "evaluate-expired", { method: "POST" });
       const j = (await r.json().catch(() => ({}))) as {
         error?: string;
         autoApproved?: number;
@@ -1793,14 +1794,13 @@ export default function BudgetMapApp() {
     } finally {
       setModerationBusyId(null);
     }
-  }, []);
+  }, [session]);
 
   const moderateApprove = useCallback(async (submissionId: string) => {
     setModerationBusyId(submissionId);
     try {
-      const r = await fetch("/api/moderation/approve", {
+      const r = await moderationFetch(session, "approve", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ submissionId }),
       });
@@ -1817,14 +1817,13 @@ export default function BudgetMapApp() {
     } finally {
       setModerationBusyId(null);
     }
-  }, []);
+  }, [session]);
 
   const moderateReject = useCallback(async (submissionId: string) => {
     setModerationBusyId(submissionId);
     try {
-      const r = await fetch("/api/moderation/reject", {
+      const r = await moderationFetch(session, "reject", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ submissionId }),
       });
@@ -1840,7 +1839,7 @@ export default function BudgetMapApp() {
     } finally {
       setModerationBusyId(null);
     }
-  }, []);
+  }, [session]);
 
   const flyToMyLocation = () => {
     if (!navigator.geolocation) return;
