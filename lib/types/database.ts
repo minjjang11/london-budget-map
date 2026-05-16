@@ -3,6 +3,7 @@ import type { PlaceContributionInsert, PlaceContributionRow } from "./placeContr
 import type { PlaceReviewTagInsert, PlaceReviewTagRow } from "./placeReviewTag";
 import type { SavedPlaceInsert, SavedPlaceRow } from "./savedPlaces";
 import type { PlaceVoteInsert, PlaceVoteRow } from "./placeEngagement";
+import type { GeneralContentReportInsert, GeneralContentReportRow } from "./generalContentReports";
 import type {
   SubmissionReportInsert,
   SubmissionReportRow,
@@ -61,6 +62,12 @@ export type Database = {
       submission_reports: {
         Row: SubmissionReportRow;
         Insert: SubmissionReportInsert;
+        Update: never;
+        Relationships: [];
+      };
+      general_content_reports: {
+        Row: GeneralContentReportRow;
+        Insert: GeneralContentReportInsert;
         Update: never;
         Relationships: [];
       };

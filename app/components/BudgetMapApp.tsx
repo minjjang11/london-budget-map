@@ -40,6 +40,7 @@ import {
   upsertSubmissionVote,
 } from "@/lib/places/submissionVotes";
 import { insertSubmissionReport } from "@/lib/places/submissionReports";
+import { insertGeneralContentReport } from "@/lib/places/generalContentReports";
 import { fetchPlaceVoteData, removePlaceVote, upsertPlaceVote } from "@/lib/places/placeVotes";
 import { deleteSavedPlace, fetchMySavedPlaceIds, insertSavedPlace } from "@/lib/places/savedPlaces";
 import {
@@ -610,6 +611,7 @@ export default function BudgetMapApp() {
   const [reportBusy, setReportBusy] = useState(false);
   const [profileGeneralReportOpen, setProfileGeneralReportOpen] = useState(false);
   const [profileGeneralReportNote, setProfileGeneralReportNote] = useState("");
+  const [profileGeneralReportBusy, setProfileGeneralReportBusy] = useState(false);
 
   const refreshSession = useCallback(async (sessionHint?: Session | null) => {
     const c = getBrowserSupabase();
@@ -680,6 +682,38 @@ export default function BudgetMapApp() {
     );
     return `mailto:${MAIMAO_SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
   }, [profileGeneralReportNote]);
+
+  const handleProfileGeneralReportSubmit = useCallback(async () => {
+    if (profileGeneralReportBusy) return;
+    if (!isSupabaseConfigured()) {
+      if (typeof window !== "undefined") window.location.href = profileGeneralReportMailto;
+      return;
+    }
+    const client = getBrowserSupabase();
+    if (!client) {
+      setToast("Could not connect — try again.");
+      window.setTimeout(() => setToast(null), 4500);
+      return;
+    }
+    setProfileGeneralReportBusy(true);
+    const uid = session?.user?.id ?? null;
+    const { error } = await insertGeneralContentReport(client, profileGeneralReportNote, uid);
+    setProfileGeneralReportBusy(false);
+    if (error) {
+      setToast(error);
+      window.setTimeout(() => setToast(null), 5000);
+      return;
+    }
+    setProfileGeneralReportOpen(false);
+    setProfileGeneralReportNote("");
+    setToast("Thanks — we received your report.");
+    window.setTimeout(() => setToast(null), 4000);
+  }, [
+    profileGeneralReportBusy,
+    profileGeneralReportMailto,
+    profileGeneralReportNote,
+    session?.user?.id,
+  ]);
 
   const courseStopIdRef = useRef(4);
   const [courseBudget, setCourseBudget] = useState(25);
@@ -3890,6 +3924,7 @@ export default function BudgetMapApp() {
                   type="button"
                   onClick={() => {
                     setProfileGeneralReportNote("");
+                    setProfileGeneralReportBusy(false);
                     setProfileGeneralReportOpen(true);
                   }}
                   className="flex cursor-pointer items-center gap-2 text-left font-semibold text-budget-muted underline decoration-budget-faint underline-offset-4 hover:text-budget-text"
@@ -4134,8 +4169,18 @@ export default function BudgetMapApp() {
               </button>
             </div>
             <p className="mb-3 text-[12px] leading-snug text-budget-muted">
-              Tell us what you saw (spam, abuse, wrong info). We&apos;ll open your email app — send to{" "}
-              <span className="font-semibold text-budget-text">{MAIMAO_SUPPORT_EMAIL}</span>.
+              {isSupabaseConfigured() ? (
+                <>
+                  Tell us what you saw (spam, abuse, wrong info). We&apos;ll send it straight to our team — no email
+                  app needed. You can still reach us at{" "}
+                  <span className="font-semibold text-budget-text">{MAIMAO_SUPPORT_EMAIL}</span> if you prefer.
+                </>
+              ) : (
+                <>
+                  Tell us what you saw (spam, abuse, wrong info). We&apos;ll open your email app — send to{" "}
+                  <span className="font-semibold text-budget-text">{MAIMAO_SUPPORT_EMAIL}</span>.
+                </>
+              )}
             </p>
             <textarea
               value={profileGeneralReportNote}
@@ -4145,12 +4190,23 @@ export default function BudgetMapApp() {
               className="budget-input mb-3 w-full resize-none text-[13px]"
             />
             <div className="flex gap-2">
-              <a
-                href={profileGeneralReportMailto}
-                className="flex flex-1 cursor-pointer items-center justify-center rounded-2xl border-0 bg-budget-primary py-3 text-[14px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)] no-underline"
-              >
-                Open email app
-              </a>
+              {isSupabaseConfigured() ? (
+                <button
+                  type="button"
+                  onClick={() => void handleProfileGeneralReportSubmit()}
+                  disabled={profileGeneralReportBusy}
+                  className="flex flex-1 cursor-pointer items-center justify-center rounded-2xl border-0 bg-budget-primary py-3 text-[14px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {profileGeneralReportBusy ? "Sending…" : "Submit report"}
+                </button>
+              ) : (
+                <a
+                  href={profileGeneralReportMailto}
+                  className="flex flex-1 cursor-pointer items-center justify-center rounded-2xl border-0 bg-budget-primary py-3 text-[14px] font-extrabold text-white shadow-[0_6px_16px_rgb(0_168_120_/0.35)] no-underline"
+                >
+                  Open email app
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => setProfileGeneralReportOpen(false)}
@@ -4159,6 +4215,13 @@ export default function BudgetMapApp() {
                 Cancel
               </button>
             </div>
+            {isSupabaseConfigured() ? (
+              <p className="mt-3 text-center text-[11px] font-semibold text-budget-muted">
+                <a href={profileGeneralReportMailto} className="text-budget-primary underline underline-offset-2">
+                  Use my email app instead
+                </a>
+              </p>
+            ) : null}
           </div>
         </div>
       ) : null}
