@@ -3026,7 +3026,13 @@ export default function BudgetMapApp() {
                           Cap {formatBudgetCap(SUBMIT_PRICE_LIMITS[selected.category])}
                         </span>
                       </div>
-                      {remoteIds.has(selected.id) ? (
+                      {selected.id.startsWith("pending-") ? (
+                        <p className="mt-2 text-[12px] leading-snug text-budget-muted">
+                          This tip is still in the queue. After it&apos;s approved on the map, you can attach more menu
+                          rows here. Need to correct something sooner? Use <span className="font-bold text-budget-text">Report</span>{" "}
+                          below or send another entry from <span className="font-bold text-budget-text">Submit</span>.
+                        </p>
+                      ) : remoteIds.has(selected.id) ? (
                         !session?.user ? (
                           <p className="mt-2 text-[12px] leading-snug text-budget-muted">
                             Sign in to add another menu price, photo, or comment for this place.
@@ -3098,12 +3104,6 @@ export default function BudgetMapApp() {
                             </button>
                           </>
                         )
-                      ) : selectedIsPending ? (
-                        <p className="mt-2 text-[12px] leading-snug text-budget-muted">
-                          This tip is still in the queue. After it&apos;s approved on the map, you can attach more menu
-                          rows here. Need to correct something sooner? Use <span className="font-bold text-budget-text">Report</span>{" "}
-                          below or send another entry from <span className="font-bold text-budget-text">Submit</span>.
-                        </p>
                       ) : (
                         <p className="mt-2 text-[12px] leading-snug text-budget-muted">
                           {isSupabaseConfigured()
