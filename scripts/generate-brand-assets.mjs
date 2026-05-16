@@ -47,6 +47,33 @@ async function writePng(buf, outPath) {
   await sharp(buf).png({ compressionLevel: 9 }).toFile(outPath);
 }
 
+/** iOS app icon: keep the mark comfortably inset inside the 1024 icon canvas. */
+async function renderIosIconPng(size) {
+  const inner = Math.round(size * 0.56);
+  const icon = await renderPinIconPng(inner);
+  return sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite([
+      {
+        input: icon,
+        left: Math.round((size - inner) / 2),
+        top: Math.round((size - inner) / 2),
+      },
+    ])
+    .png({
+      compressionLevel: 9,
+      adaptiveFiltering: true,
+      effort: 9,
+    })
+    .toBuffer();
+}
+
 /** Android adaptive icon: keep artwork inside the safe zone (avoid oversized look on launchers). */
 async function renderAndroidForegroundPng(size) {
   const inner = Math.round(size * 0.68);
@@ -83,7 +110,7 @@ async function run() {
   await writePng(pin1024, paths.iosSplash2x);
   await writePng(pin1024, paths.iosSplash3x);
 
-  await writePng(pin1024, paths.iosIcon1024);
+  await writePng(await renderIosIconPng(1024), paths.iosIcon1024);
 
   await writePng(pin1024, paths.androidSplashLogo);
   await writePng(await renderAndroidForegroundPng(432), paths.androidForeground);
