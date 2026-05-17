@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import type { CSSProperties } from "react";
 import { useState, useMemo, useEffect, useLayoutEffect, useCallback, useRef } from "react";
@@ -43,6 +43,17 @@ import { insertSubmissionReport } from "@/lib/places/submissionReports";
 import { insertGeneralContentReport } from "@/lib/places/generalContentReports";
 import { fetchPlaceVoteData, removePlaceVote, upsertPlaceVote } from "@/lib/places/placeVotes";
 import { deleteSavedPlace, fetchMySavedPlaceIds, insertSavedPlace } from "@/lib/places/savedPlaces";
+import {
+  loadLocalSavedPlaces,
+  localSavedMapWithoutIds,
+  localSavedRecordToSpot,
+  persistLocalSavedPlaces,
+  spotToLocalSavedRecord,
+  syncLocalSavedPlacesToAccount,
+  type LocalSavedPlaceMap,
+} from "@/lib/savedPlaces/localSavedPlaces";
+import { openAppLocationSettings } from "@/lib/native/openAppLocationSettings";
+import { probeGeolocationPermission } from "@/lib/native/probeGeolocationPermission";
 import {
   deletePlaceContribution,
   fetchMyPlaceContributions,
@@ -117,7 +128,6 @@ const CATS: { id: Category | "all"; emoji: string; label: string }[] = [
 const INITIAL_SPOTS: Spot[] = [];
 
 const LS_KEY = "budget-map-spots-v2";
-const LS_SAVED = "budget-map-saved-v2";
 const LS_PENDING_PHOTOS = "budget-map-pending-photos-v1";
 const LOCAL_SUBMITTED_SPOT_ID_PREFIX = "spot_";
 const HIDDEN_SPOT_NAMES = new Set(["budget test spot"]);
@@ -376,22 +386,6 @@ function saveSpots(spots: Spot[]) {
   } catch { /* ignore */ }
 }
 
-function loadSaved(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  try {
-    const raw = localStorage.getItem(LS_SAVED);
-    return raw ? new Set(JSON.parse(raw)) : new Set();
-  } catch {
-    return new Set();
-  }
-}
-
-function saveSavedIds(ids: Set<string>) {
-  try {
-    localStorage.setItem(LS_SAVED, JSON.stringify([...ids]));
-  } catch { /* ignore */ }
-}
-
 function lowestPrice(spot: Spot): number {
   let min = Infinity;
   spot.submissions.forEach((s) => s.items.forEach((i) => {
@@ -534,12 +528,13 @@ function truncateText(s: string, max: number): string {
 
 export default function BudgetMapApp() {
   const [spots, setSpots] = useState<Spot[]>([]);
-  /** Device-only bookmarks (local spots + legacy LS entries). */
-  const [savedLocalIds, setSavedLocalIds] = useState<Set<string>>(new Set());
+  /** Device bookmarks (localStorage); includes verified places saved while signed out. */
+  const [localSavedById, setLocalSavedById] = useState<LocalSavedPlaceMap>({});
   /** Account bookmarks for approved `places` rows (Supabase). */
   const [savedRemoteIds, setSavedRemoteIds] = useState<Set<string>>(new Set());
   const [savePlaceBusy, setSavePlaceBusy] = useState(false);
 
+  const savedLocalIds = useMemo(() => new Set(Object.keys(localSavedById)), [localSavedById]);
   const savedIds = useMemo(
     () => new Set([...savedLocalIds, ...savedRemoteIds]),
     [savedLocalIds, savedRemoteIds],
@@ -820,7 +815,7 @@ export default function BudgetMapApp() {
   useEffect(() => {
     setMounted(true);
     setSpots(loadSpots());
-    setSavedLocalIds(loadSaved());
+    setLocalSavedById(loadLocalSavedPlaces());
     setPendingSubmissionPhotos(loadPendingSubmissionPhotos());
   }, []);
 
@@ -906,8 +901,8 @@ export default function BudgetMapApp() {
     saveSpots(spots);
   }, [spots]);
   useEffect(() => {
-    saveSavedIds(savedLocalIds);
-  }, [savedLocalIds]);
+    persistLocalSavedPlaces(localSavedById);
+  }, [localSavedById]);
   useEffect(() => {
     savePendingSubmissionPhotos(pendingSubmissionPhotos);
   }, [pendingSubmissionPhotos]);
@@ -934,28 +929,50 @@ export default function BudgetMapApp() {
     };
   }, [session?.user?.id]);
 
-  /** Push device-only bookmark IDs to `saved_places` when they refer to approved DB places (cross web ↔ app). */
+  /** Merge device bookmarks into `saved_places` after sign-in (keeps local rows if upload fails). */
   useEffect(() => {
     const c = getBrowserSupabase();
     const uid = session?.user?.id;
-    if (!c || !uid || remoteApprovedLoading || remoteApprovedSpots.length === 0) return;
+    if (!c || !uid || remoteApprovedLoading) return;
     const approvedSet = new Set(remoteApprovedSpots.map((s) => s.id));
-    const toUpload = [...savedLocalIds].filter((id) => approvedSet.has(id) && !savedRemoteIds.has(id));
-    if (toUpload.length === 0) return;
+    const localKeys = Object.keys(localSavedById);
+    const needsUpload = localKeys.some((id) => approvedSet.has(id) && !savedRemoteIds.has(id));
+    const needsLocalCleanup = localKeys.some((id) => savedRemoteIds.has(id));
+    if (!needsUpload && !needsLocalCleanup) return;
     let cancelled = false;
     void (async () => {
-      for (const id of toUpload) {
-        if (cancelled) return;
-        const { error } = await insertSavedPlace(c, id, uid);
-        if (!error && !cancelled) {
-          setSavedRemoteIds((prev) => new Set(prev).add(id));
+      const result = await syncLocalSavedPlacesToAccount(
+        c,
+        uid,
+        localSavedById,
+        savedRemoteIds,
+        approvedSet,
+      );
+      if (cancelled) return;
+      if (result.syncedIds.length > 0) {
+        setSavedRemoteIds((prev) => {
+          const next = new Set(prev);
+          for (const id of result.syncedIds) {
+            if (approvedSet.has(id)) next.add(id);
+          }
+          return next;
+        });
+        const removeFromLocal = result.syncedIds.filter(
+          (id) => approvedSet.has(id) && !result.failedIds.includes(id),
+        );
+        if (removeFromLocal.length > 0) {
+          setLocalSavedById((prev) => localSavedMapWithoutIds(prev, removeFromLocal));
         }
+      }
+      if (result.errors.length > 0) {
+        setToast(`Could not sync some saves: ${result.errors[0]}`);
+        window.setTimeout(() => setToast(null), 5200);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [session?.user?.id, savedLocalIds, savedRemoteIds, remoteApprovedSpots, remoteApprovedLoading]);
+  }, [session?.user?.id, localSavedById, savedRemoteIds, remoteApprovedSpots, remoteApprovedLoading]);
 
   useEffect(() => {
     const client = getBrowserSupabase();
@@ -1221,10 +1238,33 @@ export default function BudgetMapApp() {
   }, [placeDetailExpanded, selectedId]);
 
   const toggleSave = async (id: string) => {
+    const spot = allSpots.find((s) => s.id === id);
+
+    const removeLocalSave = () => {
+      setLocalSavedById((prev) => {
+        if (!prev[id]) return prev;
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    };
+
+    const addLocalSave = () => {
+      if (!spot) {
+        setToast("Could not save — place details are not available yet.");
+        window.setTimeout(() => setToast(null), 4000);
+        return;
+      }
+      setLocalSavedById((prev) => ({ ...prev, [id]: spotToLocalSavedRecord(spot) }));
+    };
+
     if (remoteIds.has(id)) {
       if (!session?.user?.id) {
-        setToast("Sign in to save verified places from the Profile tab.");
-        window.setTimeout(() => setToast(null), 4500);
+        if (savedIds.has(id)) {
+          removeLocalSave();
+          return;
+        }
+        addLocalSave();
         return;
       }
       const c = getBrowserSupabase();
@@ -1244,12 +1284,7 @@ export default function BudgetMapApp() {
           n.delete(id);
           return n;
         });
-        setSavedLocalIds((prev) => {
-          if (!prev.has(id)) return prev;
-          const n = new Set(prev);
-          n.delete(id);
-          return n;
-        });
+        removeLocalSave();
         return;
       }
       const { error } = await insertSavedPlace(c, id, uid);
@@ -1260,14 +1295,14 @@ export default function BudgetMapApp() {
         return;
       }
       setSavedRemoteIds((prev) => new Set(prev).add(id));
+      removeLocalSave();
       return;
     }
-    setSavedLocalIds((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
+    if (savedIds.has(id)) {
+      removeLocalSave();
+      return;
+    }
+    addLocalSave();
   };
 
   const handleSelect = useCallback((id: string) => {
@@ -1868,26 +1903,38 @@ export default function BudgetMapApp() {
   };
 
   const openLocationSettings = useCallback(async () => {
-    if (budgetMapHost === "ios") {
-      window.location.href = "app-settings:";
+    const result = await openAppLocationSettings();
+    if (!result.ok) {
+      setToast(result.message);
+      window.setTimeout(() => setToast(null), 5200);
       return;
     }
-    if (budgetMapHost === "android") {
-      try {
-        const { Browser } = await import("@capacitor/browser");
-        await Browser.open({ url: "app-settings:" });
-        return;
-      } catch {
-        // Fall through to inline guidance.
-      }
+    if (!result.native) {
+      setToast(result.message);
+      window.setTimeout(() => setToast(null), 5200);
     }
-    const help =
-      budgetMapHost === "android"
-        ? "Android: Settings > Apps > Maimo Map > Permissions > Location > Allow."
-        : "Browser: tap the lock icon in the address bar, then allow Location.";
-    setToast(help);
-    window.setTimeout(() => setToast(null), 5200);
-  }, [budgetMapHost]);
+  }, []);
+
+  useEffect(() => {
+    if (budgetMapHost === "web" || !locationHelpOpen) return;
+    let removed = false;
+    let handle: { remove: () => Promise<void> } | undefined;
+    void (async () => {
+      const { App } = await import("@capacitor/app");
+      handle = await App.addListener("appStateChange", ({ isActive }) => {
+        if (!isActive || removed) return;
+        void probeGeolocationPermission().then((ok) => {
+          if (!ok || removed) return;
+          setLocationHelpOpen(false);
+          flyToMyLocation();
+        });
+      });
+    })();
+    return () => {
+      removed = true;
+      void handle?.remove();
+    };
+  }, [budgetMapHost, locationHelpOpen]);
 
   const bumpUpvote = (spotId: string) => {
     if (remoteIds.has(spotId)) return;
@@ -2370,7 +2417,20 @@ export default function BudgetMapApp() {
     budgetOpen,
   ]);
 
-  const savedSpots = allSpots.filter((s) => savedIds.has(s.id));
+  const savedSpots = useMemo(() => {
+    const byId: Record<string, Spot> = {};
+    for (const s of allSpots) byId[s.id] = s;
+    const out: Spot[] = [];
+    for (const id of savedIds) {
+      const fromMap = byId[id];
+      if (fromMap) out.push(fromMap);
+      else {
+        const local = localSavedById[id];
+        if (local) out.push(localSavedRecordToSpot(local));
+      }
+    }
+    return out;
+  }, [allSpots, savedIds, localSavedById]);
   const placeNameById = useMemo(
     () =>
       Object.fromEntries(
@@ -3227,7 +3287,7 @@ export default function BudgetMapApp() {
                   ) : null}
                   {remoteIds.has(selected.id) && !session?.user ? (
                     <p className="mt-2 text-center text-[11px] text-budget-muted">
-                      Verified spots save to your account after sign-in from Profile.
+                      Saved on this device. Sign in from Profile to sync to your account.
                     </p>
                   ) : null}
                 </div>
@@ -3856,9 +3916,8 @@ export default function BudgetMapApp() {
               role="note"
               className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12px] leading-snug text-amber-950"
             >
-              <span className="font-extrabold">Signed out</span> — device-only saves appear here.{" "}
-              <span className="font-semibold">Sign in</span> via Ranking to sync verified map spots to your
-              account.
+              <span className="font-extrabold">Signed out</span> — saves on this device appear below.{" "}
+              <span className="font-semibold">Sign in</span> to sync them to your account.
             </div>
           ) : null}
           <div className="mb-5">
