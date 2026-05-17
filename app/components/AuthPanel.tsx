@@ -159,7 +159,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                       return;
                     }
                     const { openOAuthInAppBrowser } = await import("@/lib/native/oauthInAppBrowser");
-                    await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url));
+                    await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url, redirectTo));
                     return;
                   }
                   const { error } = await supabase.auth.signInWithOAuth({

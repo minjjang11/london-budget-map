@@ -4,6 +4,9 @@ import { getBrowserAuthRedirectOrigin } from "./getBrowserAuthRedirectOrigin";
 /** Capacitor native — must match Android intent-filter + iOS CFBundleURLSchemes + Supabase Redirect URLs. */
 export const NATIVE_OAUTH_REDIRECT = "maimomap://auth/callback";
 
+/** HTTPS bridge loaded in Custom Tab; redirects to {@link NATIVE_OAUTH_REDIRECT} without exchanging PKCE in the tab. */
+export const NATIVE_OAUTH_HTTPS_HANDOFF = "https://london-budget-map.vercel.app/auth/oauth-handoff.html";
+
 export const WEB_AUTH_CALLBACK_PATH = "/auth/callback";
 
 const PRODUCTION_WEB_ORIGIN = "https://london-budget-map.vercel.app";
@@ -83,8 +86,8 @@ export function getWebOAuthRedirectTo(): string {
 /** Supabase `redirectTo` for Google OAuth. */
 export async function getSupabaseOAuthRedirectTo(): Promise<string> {
   if (typeof window === "undefined") return "";
-  if (isNativeOAuthContext()) return NATIVE_OAUTH_REDIRECT;
-  if (await isCapacitorNativeShell()) return NATIVE_OAUTH_REDIRECT;
+  if (isNativeOAuthContext()) return NATIVE_OAUTH_HTTPS_HANDOFF;
+  if (await isCapacitorNativeShell()) return NATIVE_OAUTH_HTTPS_HANDOFF;
   return getWebOAuthRedirectTo();
 }
 

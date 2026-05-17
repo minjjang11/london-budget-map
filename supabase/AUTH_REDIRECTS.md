@@ -6,7 +6,8 @@ These cannot be edited from git; set them in the [Supabase Dashboard](https://su
 
 Add (and keep any web URLs you already use):
 
-- `maimomap://auth/callback` (Capacitor Android / iOS)
+- `maimomap://auth/callback` (Capacitor deep link — final return to app)
+- `https://london-budget-map.vercel.app/auth/oauth-handoff.html` (native Custom Tab bridge — required for Google OAuth in the app)
 - `https://london-budget-map.vercel.app/auth/callback` (production web)
 - `https://london-budget-map.vercel.app` (site URL / magic links if used)
 - `http://localhost:3000/auth/callback` (local web dev, if you test OAuth locally)

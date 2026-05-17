@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Signing in…</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #f5f3ee;
+        color: #0d1f1a;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+      }
+      p {
+        font-size: 15px;
+        font-weight: 600;
+      }
+    </style>
+    <script>
+      (function () {
+        var q = location.search || "";
+        var h = location.hash || "";
+        var target = "maimomap://auth/callback" + q + h;
+        location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Returning to Maimo Map…</p>
+  </body>
+</html>

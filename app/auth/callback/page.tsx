@@ -12,7 +12,10 @@ import {
 } from "@/lib/supabase/consumeAuthCallbackUrl";
 import { mapPathAfterAuth, syncCapacitorNativePlatform } from "@/lib/site/oauthRedirects";
 
-/** Web OAuth return (`/auth/callback?code=…`). Native uses `maimomap://` via NativeAuthUrlBridge. */
+/**
+ * Web OAuth return (`/auth/callback?code=…`).
+ * Native app OAuth must use `/auth/oauth-handoff.html` → `maimomap://` (PKCE stays in the app WebView).
+ */
 export default function AuthCallbackPage() {
   const [message, setMessage] = useState("Signing you in…");
   const startedRef = useRef(false);
@@ -37,9 +40,6 @@ export default function AuthCallbackPage() {
     if (shouldHandOffWebCallbackToNativeApp()) {
       setMessage("Returning to Maimo Map…");
       window.location.replace(buildNativeOAuthHandoffUrl());
-      window.setTimeout(() => {
-        void runWebCallbackExchange(setMessage);
-      }, 1600);
       return;
     }
 
@@ -79,11 +79,11 @@ async function runWebCallbackExchange(setMessage: (msg: string) => void): Promis
 
   if (error) {
     console.error("[auth] OAuth callback failed:", error);
+    setMessage("Sign-in could not be completed. Returning to the map…");
+    window.setTimeout(() => {
+      window.location.replace(
+        `${mapPathAfterAuth()}?auth_error=${encodeURIComponent(error)}`,
+      );
+    }, 1200);
   }
-  setMessage("Sign-in could not be completed. Returning to the map…");
-  window.setTimeout(() => {
-    window.location.replace(
-      `${mapPathAfterAuth()}?auth_error=${encodeURIComponent(error ?? "sign_in_failed")}`,
-    );
-  }, 1200);
 }
