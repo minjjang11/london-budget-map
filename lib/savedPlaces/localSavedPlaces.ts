@@ -64,12 +64,21 @@ export function localSavedRecordToSpot(record: LocalSavedPlaceRecord): Spot {
     submissions: [
       {
         id: `local_${record.id}`,
-        items: price > 0 ? [{ name: "Saved", price }] : [{ name: "Saved", price: 0 }],
+        items: price > 0 ? [{ name: "From", price }] : [],
         photo: record.photo,
         date: record.savedAt,
       },
     ],
   };
+}
+
+/** True when `id` is bookmarked locally and/or on the signed-in account. */
+export function isSpotSaved(
+  id: string,
+  localSavedById: LocalSavedPlaceMap,
+  remoteSavedIds: Set<string>,
+): boolean {
+  return remoteSavedIds.has(id) || id in localSavedById;
 }
 
 function parseV3(raw: string): LocalSavedPlaceMap {

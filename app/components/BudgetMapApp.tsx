@@ -47,6 +47,7 @@ import {
   consumeLegacySavedIds,
   enrichLocalSavedMapFromSpots,
   isPlaceholderLocalSavedRecord,
+  isSpotSaved,
   loadLocalSavedPlaces,
   localSavedMapWithoutIds,
   localSavedRecordToSpot,
@@ -541,10 +542,15 @@ export default function BudgetMapApp() {
   const [savedRemoteIds, setSavedRemoteIds] = useState<Set<string>>(new Set());
   const [savePlaceBusy, setSavePlaceBusy] = useState(false);
 
-  const savedLocalIds = useMemo(() => new Set(Object.keys(localSavedById)), [localSavedById]);
-  const savedIds = useMemo(
-    () => new Set([...savedLocalIds, ...savedRemoteIds]),
-    [savedLocalIds, savedRemoteIds],
+  const savedIds = useMemo(() => {
+    const ids = new Set(savedRemoteIds);
+    for (const id of Object.keys(localSavedById)) ids.add(id);
+    return ids;
+  }, [localSavedById, savedRemoteIds]);
+
+  const isPlaceSaved = useCallback(
+    (id: string) => isSpotSaved(id, localSavedById, savedRemoteIds),
+    [localSavedById, savedRemoteIds],
   );
   const [tab, setTab] = useState<Tab>("map");
   const [activeCats, setActiveCats] = useState<Category[]>([]);
@@ -1274,7 +1280,7 @@ export default function BudgetMapApp() {
     for (const s of allSpots) byId[s.id] = s;
     for (const s of Object.values(savedRemoteSpotById)) byId[s.id] = s;
     for (const record of Object.values(localSavedById)) {
-      if (!isPlaceholderLocalSavedRecord(record)) {
+      if (!isPlaceholderLocalSavedRecord(record) && !byId[record.id]) {
         byId[record.id] = localSavedRecordToSpot(record);
       }
     }
@@ -1346,7 +1352,7 @@ export default function BudgetMapApp() {
 
     if (remoteIds.has(id)) {
       if (!session?.user?.id) {
-        if (savedIds.has(id)) {
+        if (isPlaceSaved(id)) {
           removeLocalSave();
           return;
         }
@@ -1357,7 +1363,7 @@ export default function BudgetMapApp() {
       if (!c) return;
       const uid = session.user.id;
       setSavePlaceBusy(true);
-      if (savedIds.has(id)) {
+      if (isPlaceSaved(id)) {
         const { error } = await deleteSavedPlace(c, id, uid);
         setSavePlaceBusy(false);
         if (error) {
@@ -1384,7 +1390,7 @@ export default function BudgetMapApp() {
       removeLocalSave();
       return;
     }
-    if (savedIds.has(id)) {
+    if (isPlaceSaved(id)) {
       removeLocalSave();
       return;
     }
@@ -3304,14 +3310,14 @@ export default function BudgetMapApp() {
                       <div className="flex gap-3">
                     <button
                       type="button"
-                      disabled={savePlaceBusy && remoteIds.has(selected.id)}
+                      disabled={savePlaceBusy}
                       onClick={() => void toggleSave(selected.id)}
                       className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 border-budget-surface bg-budget-white py-2.5 text-[13px] font-extrabold text-budget-text transition disabled:cursor-wait disabled:opacity-60"
                     >
-                      {saveIcon(savedIds.has(selected.id))}
-                      {savePlaceBusy && remoteIds.has(selected.id)
+                      {saveIcon(isPlaceSaved(selected.id))}
+                      {savePlaceBusy
                         ? "…"
-                        : savedIds.has(selected.id)
+                        : isPlaceSaved(selected.id)
                           ? "Saved"
                           : "Save"}
                     </button>
@@ -3376,7 +3382,7 @@ export default function BudgetMapApp() {
                       </div>
                     </div>
                   ) : null}
-                  {remoteIds.has(selected.id) && !session?.user && savedLocalIds.has(selected.id) ? (
+                  {remoteIds.has(selected.id) && !session?.user && isPlaceSaved(selected.id) ? (
                     <p className="mt-2 text-center text-[11px] text-budget-muted">
                       Saved on this device. Sign in from Profile to sync to your account.
                     </p>
@@ -3447,7 +3453,7 @@ export default function BudgetMapApp() {
               const priceNum = Number(row.price_gbp);
               const desc = cleanDisplayNote(row.description);
               const pendingSpotId = `pending-${row.id}`;
-              const pendingSaved = savedIds.has(pendingSpotId);
+              const pendingSaved = isPlaceSaved(pendingSpotId);
               return (
                 <article
                   key={row.id}
@@ -3643,7 +3649,7 @@ export default function BudgetMapApp() {
               ) : (
                 ranked.map((spot, i) => {
                   const catLabel = CATS.find((c) => c.id === spot.category)?.label ?? "Spot";
-                  const saved = savedIds.has(spot.id);
+                  const saved = isPlaceSaved(spot.id);
                   return (
                     <div
                       key={spot.id}
