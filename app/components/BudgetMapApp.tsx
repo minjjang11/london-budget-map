@@ -44,6 +44,9 @@ import { insertGeneralContentReport } from "@/lib/places/generalContentReports";
 import { fetchPlaceVoteData, removePlaceVote, upsertPlaceVote } from "@/lib/places/placeVotes";
 import { deleteSavedPlace, fetchMySavedPlaceIds, insertSavedPlace } from "@/lib/places/savedPlaces";
 import {
+  consumeLegacySavedIds,
+  enrichLocalSavedMapFromSpots,
+  isPlaceholderLocalSavedRecord,
   loadLocalSavedPlaces,
   localSavedMapWithoutIds,
   localSavedRecordToSpot,
@@ -52,6 +55,7 @@ import {
   syncLocalSavedPlacesToAccount,
   type LocalSavedPlaceMap,
 } from "@/lib/savedPlaces/localSavedPlaces";
+import { fetchApprovedPlacesByIds } from "@/lib/places/fetchApprovedPlacesByIds";
 import { openAppLocationSettings } from "@/lib/native/openAppLocationSettings";
 import { probeGeolocationPermission } from "@/lib/native/probeGeolocationPermission";
 import {
@@ -530,6 +534,9 @@ export default function BudgetMapApp() {
   const [spots, setSpots] = useState<Spot[]>([]);
   /** Device bookmarks (localStorage); includes verified places saved while signed out. */
   const [localSavedById, setLocalSavedById] = useState<LocalSavedPlaceMap>({});
+  const legacySavedIdsRef = useRef<string[]>([]);
+  /** Approved spots loaded by saved `place_id` when not already in `allSpots`. */
+  const [savedRemoteSpotById, setSavedRemoteSpotById] = useState<Record<string, Spot>>({});
   /** Account bookmarks for approved `places` rows (Supabase). */
   const [savedRemoteIds, setSavedRemoteIds] = useState<Set<string>>(new Set());
   const [savePlaceBusy, setSavePlaceBusy] = useState(false);
@@ -816,6 +823,7 @@ export default function BudgetMapApp() {
     setMounted(true);
     setSpots(loadSpots());
     setLocalSavedById(loadLocalSavedPlaces());
+    legacySavedIdsRef.current = consumeLegacySavedIds();
     setPendingSubmissionPhotos(loadPendingSubmissionPhotos());
   }, []);
 
@@ -928,6 +936,72 @@ export default function BudgetMapApp() {
       cancelled = true;
     };
   }, [session?.user?.id]);
+
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    if (!client || !session?.user?.id) {
+      setSavedRemoteSpotById({});
+      return;
+    }
+    const ids = [...savedRemoteIds];
+    if (ids.length === 0) {
+      setSavedRemoteSpotById({});
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const { spots, error } = await fetchApprovedPlacesByIds(client, ids);
+      if (cancelled) return;
+      if (error) {
+        console.warn("[budget-map] saved places fetch:", error);
+        setSavedRemoteSpotById({});
+        return;
+      }
+      setSavedRemoteSpotById(Object.fromEntries(spots.map((s) => [s.id, s])));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, savedRemoteIds]);
+
+  /** Repair legacy / placeholder device saves once approved spots are loaded. */
+  useEffect(() => {
+    if (remoteApprovedLoading) return;
+
+    setLocalSavedById((prev) => {
+      const legacy = legacySavedIdsRef.current;
+      const hasPlaceholder = Object.values(prev).some(isPlaceholderLocalSavedRecord);
+      if (legacy.length === 0 && !hasPlaceholder) return prev;
+
+      let map = enrichLocalSavedMapFromSpots(prev, remoteApprovedSpots);
+      const byApproved: Record<string, Spot> = {};
+      for (const s of remoteApprovedSpots) byApproved[s.id] = s;
+      for (const id of legacy) {
+        const spot = byApproved[id];
+        if (spot && !map[id]) {
+          map = { ...map, [id]: spotToLocalSavedRecord(spot) };
+        }
+      }
+      legacySavedIdsRef.current = [];
+      return map;
+    });
+  }, [remoteApprovedSpots, remoteApprovedLoading]);
+
+  /** Drop orphan placeholder rows (invalid local-only ids). */
+  useEffect(() => {
+    if (remoteApprovedLoading) return;
+    const approvedSet = new Set(remoteApprovedSpots.map((s) => s.id));
+    setLocalSavedById((prev) => {
+      let next: LocalSavedPlaceMap | null = null;
+      for (const [id, record] of Object.entries(prev)) {
+        if (isPlaceholderLocalSavedRecord(record) && !approvedSet.has(id)) {
+          if (!next) next = { ...prev };
+          delete next[id];
+        }
+      }
+      return next ?? prev;
+    });
+  }, [remoteApprovedSpots, remoteApprovedLoading]);
 
   /** Merge device bookmarks into `saved_places` after sign-in (keeps local rows if upload fails). */
   useEffect(() => {
@@ -1195,7 +1269,19 @@ export default function BudgetMapApp() {
     [filtered],
   );
 
-  const selected = allSpots.find((s) => s.id === selectedId) || null;
+  const spotsByIdForUi = useMemo(() => {
+    const byId: Record<string, Spot> = {};
+    for (const s of allSpots) byId[s.id] = s;
+    for (const s of Object.values(savedRemoteSpotById)) byId[s.id] = s;
+    for (const record of Object.values(localSavedById)) {
+      if (!isPlaceholderLocalSavedRecord(record)) {
+        byId[record.id] = localSavedRecordToSpot(record);
+      }
+    }
+    return byId;
+  }, [allSpots, savedRemoteSpotById, localSavedById]);
+
+  const selected = selectedId ? spotsByIdForUi[selectedId] ?? null : null;
   const selectedPendingRow = useMemo(
     () => pendingRows.find((row) => `pending-${row.id}` === selectedId) ?? null,
     [pendingRows, selectedId],
@@ -2418,19 +2504,24 @@ export default function BudgetMapApp() {
   ]);
 
   const savedSpots = useMemo(() => {
-    const byId: Record<string, Spot> = {};
-    for (const s of allSpots) byId[s.id] = s;
     const out: Spot[] = [];
+    const seen = new Set<string>();
     for (const id of savedIds) {
-      const fromMap = byId[id];
-      if (fromMap) out.push(fromMap);
-      else {
-        const local = localSavedById[id];
-        if (local) out.push(localSavedRecordToSpot(local));
+      if (seen.has(id)) continue;
+      const spot = spotsByIdForUi[id];
+      if (spot) {
+        seen.add(id);
+        out.push(spot);
+        continue;
+      }
+      const local = localSavedById[id];
+      if (local && !isPlaceholderLocalSavedRecord(local)) {
+        seen.add(id);
+        out.push(localSavedRecordToSpot(local));
       }
     }
     return out;
-  }, [allSpots, savedIds, localSavedById]);
+  }, [savedIds, spotsByIdForUi, localSavedById]);
   const placeNameById = useMemo(
     () =>
       Object.fromEntries(
@@ -3285,7 +3376,7 @@ export default function BudgetMapApp() {
                       </div>
                     </div>
                   ) : null}
-                  {remoteIds.has(selected.id) && !session?.user ? (
+                  {remoteIds.has(selected.id) && !session?.user && savedLocalIds.has(selected.id) ? (
                     <p className="mt-2 text-center text-[11px] text-budget-muted">
                       Saved on this device. Sign in from Profile to sync to your account.
                     </p>

@@ -98,7 +98,16 @@ function parseV3(raw: string): LocalSavedPlaceMap {
   return map;
 }
 
-function loadLegacyIds(): string[] {
+export function isPlaceholderLocalSavedRecord(record: LocalSavedPlaceRecord): boolean {
+  return (
+    record.name === "Saved place" &&
+    record.lat === 0 &&
+    record.lng === 0 &&
+    !record.address.trim()
+  );
+}
+
+export function loadLegacySavedIds(): string[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(LS_SAVED_LEGACY);
@@ -111,40 +120,46 @@ function loadLegacyIds(): string[] {
   }
 }
 
-/** Loads device bookmarks; merges legacy id-only key into v3 when present. */
+/** Fills missing metadata from approved map spots (legacy id-only saves). */
+export function enrichLocalSavedMapFromSpots(
+  map: LocalSavedPlaceMap,
+  spots: Spot[],
+): LocalSavedPlaceMap {
+  if (spots.length === 0) return map;
+  const byId: Record<string, Spot> = {};
+  for (const s of spots) byId[s.id] = s;
+  let next: LocalSavedPlaceMap | null = null;
+  for (const [id, record] of Object.entries(map)) {
+    const spot = byId[id];
+    if (spot && isPlaceholderLocalSavedRecord(record)) {
+      if (!next) next = { ...map };
+      next[id] = spotToLocalSavedRecord(spot);
+    }
+  }
+  return next ?? map;
+}
+
+/** Loads device bookmarks from v3 storage (legacy ids are enriched later when map spots load). */
 export function loadLocalSavedPlaces(): LocalSavedPlaceMap {
   if (typeof window === "undefined") return {};
   try {
     const raw = localStorage.getItem(LS_LOCAL_SAVED_V3);
-    const map = raw ? parseV3(raw) : {};
-    const legacyIds = loadLegacyIds();
-    for (const id of legacyIds) {
-      if (!map[id]) {
-        map[id] = {
-          id,
-          name: "Saved place",
-          category: "restaurant",
-          area: "",
-          lat: 0,
-          lng: 0,
-          address: "",
-          lowestPriceGbp: 0,
-          savedAt: new Date().toISOString(),
-        };
-      }
-    }
-    if (legacyIds.length > 0) {
-      persistLocalSavedPlaces(map);
-      try {
-        localStorage.removeItem(LS_SAVED_LEGACY);
-      } catch {
-        /* ignore */
-      }
-    }
-    return map;
+    return raw ? parseV3(raw) : {};
   } catch {
     return {};
   }
+}
+
+/** Legacy id-only bookmarks (`budget-map-saved-v2`) pending enrichment. */
+export function consumeLegacySavedIds(): string[] {
+  const legacyIds = loadLegacySavedIds();
+  if (legacyIds.length === 0) return [];
+  try {
+    localStorage.removeItem(LS_SAVED_LEGACY);
+  } catch {
+    /* ignore */
+  }
+  return legacyIds;
 }
 
 export function persistLocalSavedPlaces(map: LocalSavedPlaceMap): void {
@@ -176,6 +191,7 @@ export async function syncLocalSavedPlacesToAccount(
   const errors: string[] = [];
 
   for (const record of Object.values(localSaved)) {
+    if (isPlaceholderLocalSavedRecord(record) && !approvedPlaceIds.has(record.id)) continue;
     if (!approvedPlaceIds.has(record.id)) continue;
     if (remoteIds.has(record.id)) {
       syncedIds.push(record.id);
