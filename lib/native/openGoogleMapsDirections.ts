@@ -1,5 +1,7 @@
 "use client";
 
+import { AppLauncher } from "@capacitor/app-launcher";
+
 function walkingDirectionsWebUrl(lat: number, lng: number): string {
   const d = `${lat},${lng}`;
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(d)}&travelmode=walking`;
@@ -9,19 +11,20 @@ function googleMapsAppUrl(lat: number, lng: number): string {
   return `comgooglemaps://?daddr=${lat},${lng}&directionsmode=walking`;
 }
 
-/** Android intent URL when `comgooglemaps://` is blocked but Maps is installed. */
-function googleMapsAndroidIntentUrl(lat: number, lng: number): string {
-  const d = `${lat},${lng}`;
-  return (
-    `intent://maps.google.com/maps?daddr=${encodeURIComponent(d)}` +
-    `#Intent;scheme=https;package=com.google.android.apps.maps;end`
-  );
+async function openHttpsDirections(lat: number, lng: number): Promise<void> {
+  const webUrl = walkingDirectionsWebUrl(lat, lng);
+  try {
+    const { Browser } = await import("@capacitor/browser");
+    await Browser.open({ url: webUrl });
+  } catch {
+    window.open(webUrl, "_blank", "noopener,noreferrer");
+  }
 }
 
 /**
- * Opens Google Maps directions outside the WebView when possible.
- * iOS: `comgooglemaps://` if installed (requires LSApplicationQueriesSchemes), else HTTPS in Browser.
- * Android: app scheme / intent, else HTTPS in Browser (Custom Tab).
+ * Opens Google Maps directions outside the WebView.
+ * iOS: try `comgooglemaps://` via App Launcher, then HTTPS fallback.
+ * Android: HTTPS only (Custom Tab / browser).
  */
 export async function openGoogleMapsDirections(lat: number, lng: number): Promise<void> {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
@@ -38,30 +41,27 @@ export async function openGoogleMapsDirections(lat: number, lng: number): Promis
     return;
   }
 
-  const platform = Capacitor.getPlatform();
-  const candidates =
-    platform === "android"
-      ? [googleMapsAppUrl(lat, lng), googleMapsAndroidIntentUrl(lat, lng)]
-      : [googleMapsAppUrl(lat, lng)];
+  if (Capacitor.getPlatform() === "android") {
+    await openHttpsDirections(lat, lng);
+    return;
+  }
 
+  // iOS — try native Google Maps app, then HTTPS (LSApplicationQueriesSchemes: comgooglemaps).
+  const appUrl = googleMapsAppUrl(lat, lng);
   try {
-    const { App } = await import("@capacitor/app");
-    for (const url of candidates) {
-      const { value: canOpen } = await App.canOpenUrl({ url });
-      if (canOpen) {
-        await App.openUrl({ url });
-        return;
-      }
+    const { value } = await AppLauncher.canOpenUrl({ url: appUrl });
+    if (value) {
+      const { completed } = await AppLauncher.openUrl({ url: appUrl });
+      if (completed) return;
     }
   } catch {
-    /* fall through to browser */
+    try {
+      const { completed } = await AppLauncher.openUrl({ url: appUrl });
+      if (completed) return;
+    } catch {
+      /* fall through to HTTPS */
+    }
   }
 
-  try {
-    const { Browser } = await import("@capacitor/browser");
-    await Browser.open({ url: webUrl });
-    return;
-  } catch {
-    window.open(webUrl, "_blank", "noopener,noreferrer");
-  }
+  await openHttpsDirections(lat, lng);
 }
