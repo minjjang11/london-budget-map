@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { consumeAuthTokensFromUrl } from "@/lib/supabase/consumeAuthCallbackUrl";
+import { finishOAuthCallback } from "@/lib/auth/finishOAuthCallback";
 import { closeOAuthInAppBrowser } from "@/lib/native/oauthInAppBrowser";
 import {
   isCapacitorNativeShell,
@@ -21,11 +21,11 @@ async function handleOAuthReturnUrl(
     return;
   }
 
-  const { ok, error } = await consumeAuthTokensFromUrl(supabase, rawUrl);
+  const result = await finishOAuthCallback(supabase, rawUrl);
 
-  if (ok) {
+  if (result.ok) {
     await closeOAuthInAppBrowser();
-    onAuthApplied?.();
+    await Promise.resolve(onAuthApplied?.());
     if (typeof window !== "undefined") {
       const path = window.location.pathname || "";
       if (!/\/map(\.html)?$/i.test(path)) {
@@ -35,18 +35,11 @@ async function handleOAuthReturnUrl(
     return;
   }
 
-  const { data: sessionData } = await supabase.auth.getSession();
-  if (sessionData.session) {
-    await closeOAuthInAppBrowser();
-    onAuthApplied?.();
-    return;
-  }
-
   await closeOAuthInAppBrowser();
 
-  if (error) {
-    console.error("[auth] Native OAuth callback failed:", error);
-    window.dispatchEvent(new CustomEvent("maimo-auth-error", { detail: error }));
+  if (result.error) {
+    console.error("[auth] Native OAuth callback failed:", result.error);
+    window.dispatchEvent(new CustomEvent("maimo-auth-error", { detail: result.error }));
   }
 }
 

@@ -7,17 +7,19 @@ import {
   shouldHandOffWebCallbackToNativeApp,
 } from "@/lib/auth/oauthCallbackHandoff";
 import {
-  consumeAuthTokensFromUrl,
-  isOAuthCodeReuseError,
-} from "@/lib/supabase/consumeAuthCallbackUrl";
+  finishOAuthCallback,
+  OAUTH_STATUS_ERROR,
+  OAUTH_STATUS_HANDOFF,
+  OAUTH_STATUS_LOADING,
+} from "@/lib/auth/finishOAuthCallback";
 import { mapPathAfterAuth, syncCapacitorNativePlatform } from "@/lib/site/oauthRedirects";
 
 /**
  * Web OAuth return (`/auth/callback?code=…`).
- * Native app OAuth must use `/auth/oauth-handoff.html` → `maimomap://` (PKCE stays in the app WebView).
+ * Native app OAuth uses `/auth/oauth-handoff.html` → `maimomap://` (PKCE in app WebView).
  */
 export default function AuthCallbackPage() {
-  const [message, setMessage] = useState("Signing you in…");
+  const [message, setMessage] = useState(OAUTH_STATUS_LOADING);
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export default function AuthCallbackPage() {
     startedRef.current = true;
 
     if (syncCapacitorNativePlatform()) {
+      setMessage(OAUTH_STATUS_LOADING);
       window.location.replace(mapPathAfterAuth());
       return;
     }
@@ -38,7 +41,7 @@ export default function AuthCallbackPage() {
     }
 
     if (shouldHandOffWebCallbackToNativeApp()) {
-      setMessage("Returning to Maimo Map…");
+      setMessage(OAUTH_STATUS_HANDOFF);
       window.location.replace(buildNativeOAuthHandoffUrl());
       return;
     }
@@ -54,6 +57,8 @@ export default function AuthCallbackPage() {
 }
 
 async function runWebCallbackExchange(setMessage: (msg: string) => void): Promise<void> {
+  setMessage(OAUTH_STATUS_LOADING);
+
   const supabase = getBrowserSupabase();
   if (!supabase) {
     setMessage("Sign-in is not configured.");
@@ -61,29 +66,31 @@ async function runWebCallbackExchange(setMessage: (msg: string) => void): Promis
   }
 
   const href = window.location.href;
-  const { ok, error } = await consumeAuthTokensFromUrl(supabase, href);
-  if (ok) {
+  const result = await finishOAuthCallback(supabase, href);
+
+  if (result.ok) {
     window.location.replace(mapPathAfterAuth());
     return;
   }
 
-  if (error && isOAuthCodeReuseError(error)) {
-    setMessage("Returning to Maimo Map…");
-    if (shouldHandOffWebCallbackToNativeApp()) {
-      window.location.replace(buildNativeOAuthHandoffUrl());
-    } else {
-      window.location.replace(mapPathAfterAuth());
-    }
+  if (shouldHandOffWebCallbackToNativeApp()) {
+    setMessage(OAUTH_STATUS_HANDOFF);
+    window.location.replace(buildNativeOAuthHandoffUrl());
     return;
   }
 
-  if (error) {
-    console.error("[auth] OAuth callback failed:", error);
-    setMessage("Sign-in could not be completed. Returning to the map…");
+  if (result.error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[auth] OAuth callback failed:", result.error);
+    }
+    setMessage(OAUTH_STATUS_ERROR);
     window.setTimeout(() => {
       window.location.replace(
-        `${mapPathAfterAuth()}?auth_error=${encodeURIComponent(error)}`,
+        `${mapPathAfterAuth()}?auth_error=${encodeURIComponent(result.error!)}`,
       );
-    }, 1200);
+    }, 1500);
+    return;
   }
+
+  window.location.replace(mapPathAfterAuth());
 }

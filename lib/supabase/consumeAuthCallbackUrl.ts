@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+function devLog(...args: unknown[]): void {
+  if (process.env.NODE_ENV === "production") return;
+  console.log("[auth:oauth-callback]", ...args);
+}
+
 /** Pull query + hash fragments into one param bag (OAuth code / implicit tokens). */
 function parseAuthParamsFromDeepLink(rawUrl: string): URLSearchParams {
   const out = new URLSearchParams();
@@ -39,9 +44,14 @@ export async function consumeAuthTokensFromUrl(
   const code = params.get("code");
   if (code) {
     const { error } = await client.auth.exchangeCodeForSession(code);
-    if (!error) return { ok: true, error: null };
+    if (!error) {
+      devLog("exchangeCodeForSession succeeded");
+      return { ok: true, error: null };
+    }
+    devLog("exchangeCodeForSession failed:", error.message);
     const { data: sessionData } = await client.auth.getSession();
     if (sessionData.session && isOAuthCodeReuseError(error.message)) {
+      devLog("exchangeCodeForSession: code reuse but session exists");
       return { ok: true, error: null };
     }
     return { ok: false, error: error.message };
