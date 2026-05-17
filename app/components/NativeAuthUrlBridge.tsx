@@ -23,9 +23,8 @@ async function handleOAuthReturnUrl(
 
   const { ok, error } = await consumeAuthTokensFromUrl(supabase, rawUrl);
 
-  await closeOAuthInAppBrowser();
-
   if (ok) {
+    await closeOAuthInAppBrowser();
     onAuthApplied?.();
     if (typeof window !== "undefined") {
       const path = window.location.pathname || "";
@@ -35,6 +34,16 @@ async function handleOAuthReturnUrl(
     }
     return;
   }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (sessionData.session) {
+    await closeOAuthInAppBrowser();
+    onAuthApplied?.();
+    return;
+  }
+
+  await closeOAuthInAppBrowser();
+
   if (error) {
     console.error("[auth] Native OAuth callback failed:", error);
     window.dispatchEvent(new CustomEvent("maimo-auth-error", { detail: error }));

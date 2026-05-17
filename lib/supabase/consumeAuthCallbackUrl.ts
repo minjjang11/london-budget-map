@@ -40,6 +40,10 @@ export async function consumeAuthTokensFromUrl(
   if (code) {
     const { error } = await client.auth.exchangeCodeForSession(code);
     if (!error) return { ok: true, error: null };
+    const { data: sessionData } = await client.auth.getSession();
+    if (sessionData.session && isOAuthCodeReuseError(error.message)) {
+      return { ok: true, error: null };
+    }
     return { ok: false, error: error.message };
   }
 
@@ -52,4 +56,17 @@ export async function consumeAuthTokensFromUrl(
   }
 
   return { ok: false, error: null };
+}
+
+/** PKCE `code` was already exchanged (e.g. native deep link then Custom Tab hits HTTPS callback). */
+export function isOAuthCodeReuseError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    (m.includes("invalid") && m.includes("code")) ||
+    m.includes("expired") ||
+    m.includes("already been used") ||
+    m.includes("already used") ||
+    m.includes("redeemed") ||
+    (m.includes("grant") && m.includes("invalid"))
+  );
 }
