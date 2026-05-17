@@ -4,20 +4,22 @@ import { useEffect } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { consumeAuthTokensFromUrl } from "@/lib/supabase/consumeAuthCallbackUrl";
 import { closeOAuthInAppBrowser } from "@/lib/native/oauthInAppBrowser";
-import { isCapacitorNativeShell, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
-
-function isNativeOAuthReturn(url: string): boolean {
-  const scheme = NATIVE_OAUTH_REDIRECT.split("://")[0];
-  return Boolean(scheme && url.includes(`${scheme}://`) && (url.includes("code=") || url.includes("access_token=") || url.includes("error=")));
-}
+import {
+  isCapacitorNativeShell,
+  isNativeOAuthReturnUrl,
+  mapPathAfterAuth,
+} from "@/lib/site/oauthRedirects";
 
 async function handleOAuthReturnUrl(
   rawUrl: string,
   onAuthApplied?: () => void,
 ): Promise<void> {
-  if (!isNativeOAuthReturn(rawUrl)) return;
+  if (!isNativeOAuthReturnUrl(rawUrl)) return;
   const supabase = getBrowserSupabase();
-  if (!supabase) return;
+  if (!supabase) {
+    console.error("[auth] Supabase client missing on OAuth return");
+    return;
+  }
 
   const { ok, error } = await consumeAuthTokensFromUrl(supabase, rawUrl);
 
@@ -25,16 +27,22 @@ async function handleOAuthReturnUrl(
 
   if (ok) {
     onAuthApplied?.();
+    if (typeof window !== "undefined") {
+      const path = window.location.pathname || "";
+      if (!/\/map(\.html)?$/i.test(path)) {
+        window.location.href = mapPathAfterAuth();
+      }
+    }
     return;
   }
   if (error) {
+    console.error("[auth] Native OAuth callback failed:", error);
     window.dispatchEvent(new CustomEvent("maimo-auth-error", { detail: error }));
   }
 }
 
 /**
- * Capacitor: OAuth returns to `com.maimo.app://...` with PKCE `code` or hash tokens.
- * Must call `exchangeCodeForSession` — implicit hash-only handling was leaving users stuck in Chrome.
+ * Capacitor: OAuth returns to `maimomap://auth/callback` with PKCE `code` or hash tokens.
  */
 export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => void }) {
   useEffect(() => {
@@ -54,8 +62,8 @@ export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => v
           await handleOAuthReturnUrl(event.url, onAuthApplied);
         });
         handle = sub;
-      } catch {
-        /* web build */
+      } catch (err) {
+        console.warn("[auth] NativeAuthUrlBridge:", err);
       }
     })();
 

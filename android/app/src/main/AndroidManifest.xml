@@ -35,12 +35,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- Supabase OAuth / magic link: return to WebView via custom scheme -->
+            <!-- Supabase OAuth: maimomap://auth/callback -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.maimo.app" />
+                <data
+                    android:scheme="maimomap"
+                    android:host="auth"
+                    android:pathPrefix="/callback" />
             </intent-filter>
 
         </activity>

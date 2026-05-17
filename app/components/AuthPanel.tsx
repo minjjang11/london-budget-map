@@ -7,7 +7,8 @@ import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
-import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
+import { getSupabaseOAuthRedirectTo } from "@/lib/site/getSupabaseOAuthRedirectTo";
+import { isNativeOAuthRedirect } from "@/lib/site/oauthRedirects";
 import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 const AUTH_NETWORK_MS = 5000;
@@ -136,12 +137,12 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setMsg(null);
                 try {
                   const redirectTo = await getSupabaseOAuthRedirectTo();
-                  if (redirectTo === NATIVE_OAUTH_REDIRECT) {
+                  if (isNativeOAuthRedirect(redirectTo)) {
                     const { data, error } = await withTimeout(
                       supabase.auth.signInWithOAuth({
                         provider: "google",
                         options: {
-                          redirectTo: redirectTo || undefined,
+                          redirectTo,
                           skipBrowserRedirect: true,
                         },
                       }),
@@ -152,10 +153,13 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                       setMsg(scrubAuthErrorForDisplay(error.message));
                       return;
                     }
-                    if (data.url) {
-                      const { openOAuthInAppBrowser } = await import("@/lib/native/oauthInAppBrowser");
-                      await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url));
+                    if (!data?.url) {
+                      console.error("[auth] signInWithOAuth returned no authorization URL");
+                      setMsg("Could not start Google sign-in. Try again or use email sign-in.");
+                      return;
                     }
+                    const { openOAuthInAppBrowser } = await import("@/lib/native/oauthInAppBrowser");
+                    await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url));
                     return;
                   }
                   const { error } = await supabase.auth.signInWithOAuth({
