@@ -1,10 +1,10 @@
 import { Capacitor } from "@capacitor/core";
-import { getBrowserAuthRedirectOrigin } from "./getBrowserAuthRedirectOrigin";
+import { PUBLIC_SITE_HTTPS } from "@/lib/auth/openInExternalBrowser";
 
 /** Capacitor native — must match Android/iOS URL scheme + Supabase Auth "Redirect URLs". */
 export const NATIVE_OAUTH_REDIRECT = "maimomap://auth/callback";
 
-const PRODUCTION_WEB_ORIGIN = "https://london-budget-map.vercel.app";
+const WEB_AUTH_CALLBACK_PATH = "/auth/callback";
 
 function envForcesNativeOAuth(): boolean {
   const v = process.env.NEXT_PUBLIC_CAPACITOR_OAUTH_NATIVE?.trim().toLowerCase();
@@ -57,9 +57,21 @@ export function isNativeOAuthContext(): boolean {
 
 /** Web/mobile browser OAuth return (not the Capacitor shell). */
 export function getWebOAuthRedirectTo(): string {
-  const origin = getBrowserAuthRedirectOrigin();
-  if (origin) return `${origin.replace(/\/+$/, "")}/map`;
-  return `${PRODUCTION_WEB_ORIGIN}/map`;
+  if (typeof window !== "undefined") {
+    const { hostname, origin } = window.location;
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `${origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
+    }
+  }
+  const pinned = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (pinned) {
+    try {
+      return `${new URL(pinned).origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
+    } catch {
+      console.warn("[auth] NEXT_PUBLIC_SITE_URL is invalid; using maimomap.com callback");
+    }
+  }
+  return `${PUBLIC_SITE_HTTPS}${WEB_AUTH_CALLBACK_PATH}`;
 }
 
 /**

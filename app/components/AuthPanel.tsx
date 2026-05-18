@@ -7,6 +7,8 @@ import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
+import { detectInAppBrowser, isIosUserAgent } from "@/lib/auth/detectInAppBrowser";
+import { getOpenInBrowserUrl, openSiteInExternalBrowser } from "@/lib/auth/openInExternalBrowser";
 import {
   getWebOAuthRedirectTo,
   NATIVE_OAUTH_REDIRECT,
@@ -89,6 +91,7 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
   const [msg, setMsg] = useState<string | null>(null);
   const [step, setStep] = useState<"choice" | "email" | "code">("choice");
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [inAppGoogleHelpOpen, setInAppGoogleHelpOpen] = useState(false);
 
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -138,7 +141,12 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               onClick={async () => {
                 setBusy(true);
                 setMsg(null);
+                setInAppGoogleHelpOpen(false);
                 try {
+                  if (!syncCapacitorNativePlatform() && detectInAppBrowser().isInApp) {
+                    setInAppGoogleHelpOpen(true);
+                    return;
+                  }
                   const isNativeShell = syncCapacitorNativePlatform();
                   if (isNativeShell) {
                     const redirectTo = NATIVE_OAUTH_REDIRECT;
@@ -216,6 +224,39 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
               Enter Email
             </button>
           </div>
+          {inAppGoogleHelpOpen ? (
+            <div
+              role="dialog"
+              aria-labelledby="in-app-google-help-title"
+              className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-left"
+            >
+              <p id="in-app-google-help-title" className="text-[12px] font-semibold leading-snug text-amber-950">
+                Google login is blocked in this browser. Please open Maimo Map in Chrome or Safari to sign in.
+              </p>
+              {isIosUserAgent() ? (
+                <p className="mt-2 text-[11px] leading-snug text-amber-900/90">
+                  Tap the menu (⋯) and choose <span className="font-bold">Open in Safari</span>.
+                </p>
+              ) : null}
+              <p className="mt-2 break-all text-[11px] font-medium text-amber-900/80">{getOpenInBrowserUrl()}</p>
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => openSiteInExternalBrowser()}
+                  className="flex-1 cursor-pointer rounded-xl border-0 bg-budget-primary px-3 py-2.5 text-[12px] font-extrabold text-white"
+                >
+                  Open in browser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInAppGoogleHelpOpen(false)}
+                  className="cursor-pointer rounded-xl border border-amber-300 bg-white px-3 py-2.5 text-[12px] font-extrabold text-amber-950"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : step === "email" ? (
         <>
