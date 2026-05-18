@@ -7,11 +7,7 @@ import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
-import { getSupabaseOAuthRedirectTo } from "@/lib/site/getSupabaseOAuthRedirectTo";
-import {
-  NATIVE_OAUTH_REDIRECT,
-  shouldUseNativeOAuthBrowserFlow,
-} from "@/lib/site/oauthRedirects";
+import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
 import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 const AUTH_NETWORK_MS = 5000;
@@ -139,9 +135,8 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setBusy(true);
                 setMsg(null);
                 try {
-                  const useNativeBrowser = await shouldUseNativeOAuthBrowserFlow();
-                  if (useNativeBrowser) {
-                    const redirectTo = NATIVE_OAUTH_REDIRECT;
+                  const redirectTo = await getSupabaseOAuthRedirectTo();
+                  if (redirectTo === NATIVE_OAUTH_REDIRECT) {
                     const { data, error } = await withTimeout(
                       supabase.auth.signInWithOAuth({
                         provider: "google",
@@ -163,12 +158,9 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                       return;
                     }
                     const { openOAuthInAppBrowser } = await import("@/lib/native/oauthInAppBrowser");
-                    await openOAuthInAppBrowser(
-                      ensureSupabaseOAuthAuthorizeUrl(data.url, redirectTo),
-                    );
+                    await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url));
                     return;
                   }
-                  const redirectTo = await getSupabaseOAuthRedirectTo();
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: "google",
                     options: { redirectTo: redirectTo || undefined },

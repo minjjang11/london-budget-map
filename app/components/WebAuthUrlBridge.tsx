@@ -2,12 +2,12 @@
 
 import { useEffect, useRef } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { consumeAuthTokensFromUrl } from "@/lib/supabase/consumeAuthCallbackUrl";
+import { finishOAuthCallback } from "@/lib/auth/finishOAuthCallback";
 import { syncCapacitorNativePlatform } from "@/lib/site/getSupabaseOAuthRedirectTo";
 
 /**
- * Web: Google OAuth returns to e.g. `/map?code=…` — exchange for a session so users don’t sit on a Supabase URL.
- * Native uses {@link NativeAuthUrlBridge} only.
+ * Web/mobile browser: Google OAuth returns to `/map?code=…` — exchange in the same tab.
+ * Native Capacitor uses {@link NativeAuthUrlBridge} only.
  */
 export function WebAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => void | Promise<void> }) {
   const consumedRef = useRef(false);
@@ -17,13 +17,13 @@ export function WebAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => void
     const supabase = getBrowserSupabase();
     if (!supabase) return;
     const href = window.location.href;
-    if (!/[?&#](code|access_token)=/.test(href)) return;
+    if (!/[?&#](code|access_token|error)=/.test(href)) return;
     if (consumedRef.current) return;
 
     let cancelled = false;
     void (async () => {
-      const { ok } = await consumeAuthTokensFromUrl(supabase, href);
-      if (!ok || cancelled) return;
+      const result = await finishOAuthCallback(supabase, href);
+      if (!result.ok || cancelled) return;
       consumedRef.current = true;
 
       try {

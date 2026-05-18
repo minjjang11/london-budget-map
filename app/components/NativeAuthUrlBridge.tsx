@@ -43,9 +43,7 @@ async function handleOAuthReturnUrl(
   }
 }
 
-/**
- * Capacitor: OAuth returns to `maimomap://auth/callback` with PKCE `code` or hash tokens.
- */
+/** Capacitor: OAuth returns to `maimomap://auth/callback` with PKCE `code`. */
 export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => void }) {
   useEffect(() => {
     let handle: { remove: () => Promise<void> } | undefined;

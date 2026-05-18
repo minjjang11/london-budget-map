@@ -3,21 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import {
-  buildNativeOAuthHandoffUrl,
-  shouldHandOffWebCallbackToNativeApp,
-} from "@/lib/auth/oauthCallbackHandoff";
-import {
   finishOAuthCallback,
   OAUTH_STATUS_ERROR,
-  OAUTH_STATUS_HANDOFF,
   OAUTH_STATUS_LOADING,
 } from "@/lib/auth/finishOAuthCallback";
 import { mapPathAfterAuth, syncCapacitorNativePlatform } from "@/lib/site/oauthRedirects";
 
-/**
- * Web OAuth return (`/auth/callback?code=…`).
- * Native app OAuth uses `/auth/oauth-handoff.html` → `maimomap://` (PKCE in app WebView).
- */
+/** Fallback when an old redirect URL points at /auth/callback (primary web flow uses /map). */
 export default function AuthCallbackPage() {
   const [message, setMessage] = useState(OAUTH_STATUS_LOADING);
   const startedRef = useRef(false);
@@ -27,22 +19,7 @@ export default function AuthCallbackPage() {
     startedRef.current = true;
 
     if (syncCapacitorNativePlatform()) {
-      setMessage(OAUTH_STATUS_LOADING);
       window.location.replace(mapPathAfterAuth());
-      return;
-    }
-
-    const href = window.location.href;
-    const hasAuthParams = /[?&#](code|access_token|error)=/.test(href);
-
-    if (!hasAuthParams) {
-      window.location.replace(mapPathAfterAuth());
-      return;
-    }
-
-    if (shouldHandOffWebCallbackToNativeApp()) {
-      setMessage(OAUTH_STATUS_HANDOFF);
-      window.location.replace(buildNativeOAuthHandoffUrl());
       return;
     }
 
@@ -66,16 +43,15 @@ async function runWebCallbackExchange(setMessage: (msg: string) => void): Promis
   }
 
   const href = window.location.href;
-  const result = await finishOAuthCallback(supabase, href);
-
-  if (result.ok) {
+  if (!/[?&#](code|access_token|error)=/.test(href)) {
     window.location.replace(mapPathAfterAuth());
     return;
   }
 
-  if (shouldHandOffWebCallbackToNativeApp()) {
-    setMessage(OAUTH_STATUS_HANDOFF);
-    window.location.replace(buildNativeOAuthHandoffUrl());
+  const result = await finishOAuthCallback(supabase, href);
+
+  if (result.ok) {
+    window.location.replace(mapPathAfterAuth());
     return;
   }
 

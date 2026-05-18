@@ -9,21 +9,15 @@ import {
 
 export {
   NATIVE_OAUTH_REDIRECT,
-  shouldUseNativeOAuthBrowserFlow,
   syncCapacitorNativePlatform,
   isEmbeddedCapacitorWebAsset,
   isCapacitorNativeShell,
 } from "./oauthRedirects";
 
-/** @deprecated Import from `@/lib/site/oauthRedirects` — re-exported for existing imports. */
 export async function getSupabaseOAuthRedirectTo(): Promise<string> {
   return getOAuthRedirectTo();
 }
 
-/**
- * `signInWithOtp` / magic-link `emailRedirectTo`. Must exactly match a URL in Supabase
- * Authentication → URL configuration → Redirect URLs.
- */
 export async function getSupabaseEmailRedirectTo(): Promise<string | undefined> {
   const pinned = process.env.NEXT_PUBLIC_SUPABASE_EMAIL_REDIRECT_TO?.trim();
   if (pinned) return pinned;
