@@ -86,14 +86,7 @@ export async function getSupabaseOAuthRedirectTo(): Promise<string> {
   return getWebOAuthRedirectTo();
 }
 
-export function isNativeOAuthReturnUrl(url: string): boolean {
-  const scheme = NATIVE_OAUTH_REDIRECT.split("://")[0];
-  return Boolean(
-    scheme &&
-      url.includes(`${scheme}://`) &&
-      (url.includes("code=") || url.includes("access_token=") || url.includes("error=")),
-  );
-}
+export { isNativeOAuthReturnUrl } from "@/lib/auth/nativeOAuthUrl";
 
 export function mapPathAfterAuth(): string {
   return syncCapacitorNativePlatform() || isEmbeddedCapacitorWebAsset() ? "/map.html" : "/map";

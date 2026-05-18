@@ -5,6 +5,9 @@ import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { OAUTH_STATUS_ERROR } from "@/lib/auth/finishOAuthCallback";
+import { nativeOAuthDevLog } from "@/lib/auth/nativeOAuthDevLog";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
 import { detectInAppBrowser, isIosUserAgent } from "@/lib/auth/detectInAppBrowser";
@@ -99,6 +102,22 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
     return () => clearTimeout(t);
   }, [resendCooldown]);
 
+  useEffect(() => {
+    if (!syncCapacitorNativePlatform()) return;
+    const onErr = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      setMsg(typeof detail === "string" ? scrubAuthErrorForDisplay(detail) : OAUTH_STATUS_ERROR);
+      setBusy(false);
+    };
+    const onOk = () => setBusy(false);
+    window.addEventListener("maimo-auth-error", onErr);
+    window.addEventListener("maimo-auth-success", onOk);
+    return () => {
+      window.removeEventListener("maimo-auth-error", onErr);
+      window.removeEventListener("maimo-auth-success", onOk);
+    };
+  }, []);
+
   if (!supabase) return null;
 
   if (session?.user) {
@@ -149,6 +168,12 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                   }
                   const isNativeShell = syncCapacitorNativePlatform();
                   if (isNativeShell) {
+                    if (!isSupabaseConfigured()) {
+                      setMsg("Sign-in is not configured. Add Supabase env vars and rebuild the app.");
+                      return;
+                    }
+                    nativeOAuthDevLog("redirectTo:", NATIVE_OAUTH_REDIRECT);
+                    nativeOAuthDevLog("supabase configured:", true);
                     const redirectTo = NATIVE_OAUTH_REDIRECT;
                     const { data, error } = await withTimeout(
                       supabase.auth.signInWithOAuth({

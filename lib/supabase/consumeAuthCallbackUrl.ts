@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import { nativeOAuthDevLog } from "@/lib/auth/nativeOAuthDevLog";
+
 function devLog(...args: unknown[]): void {
-  if (process.env.NODE_ENV === "production") return;
-  console.log("[auth:oauth-callback]", ...args);
+  nativeOAuthDevLog(...args);
 }
 
 /** Pull query + hash fragments into one param bag (OAuth code / implicit tokens). */
