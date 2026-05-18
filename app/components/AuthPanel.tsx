@@ -7,7 +7,11 @@ import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
-import { getSupabaseOAuthRedirectTo, NATIVE_OAUTH_REDIRECT } from "@/lib/site/getSupabaseOAuthRedirectTo";
+import {
+  getWebOAuthRedirectTo,
+  NATIVE_OAUTH_REDIRECT,
+  syncCapacitorNativePlatform,
+} from "@/lib/site/oauthRedirects";
 import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 const AUTH_NETWORK_MS = 5000;
@@ -135,8 +139,9 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setBusy(true);
                 setMsg(null);
                 try {
-                  const redirectTo = await getSupabaseOAuthRedirectTo();
-                  if (redirectTo === NATIVE_OAUTH_REDIRECT) {
+                  const isNativeShell = syncCapacitorNativePlatform();
+                  if (isNativeShell) {
+                    const redirectTo = NATIVE_OAUTH_REDIRECT;
                     const { data, error } = await withTimeout(
                       supabase.auth.signInWithOAuth({
                         provider: "google",
@@ -161,9 +166,10 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url));
                     return;
                   }
+                  const redirectTo = getWebOAuthRedirectTo();
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: "google",
-                    options: { redirectTo: redirectTo || undefined },
+                    options: { redirectTo },
                   });
                   if (error) setMsg(scrubAuthErrorForDisplay(error.message));
                 } catch (e) {
