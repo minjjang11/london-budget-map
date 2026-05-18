@@ -51,7 +51,7 @@ async function writePng(buf, outPath) {
  * iOS app icon — white background like Android; larger pin (iOS has no adaptive-icon inset).
  */
 async function renderIosIconPng(size) {
-  const inner = Math.round(size * 0.8);
+  const inner = Math.round(size * 0.62);
   const icon = await renderPinIconPng(inner);
   return sharp({
     create: {
