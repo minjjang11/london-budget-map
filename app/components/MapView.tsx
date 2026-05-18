@@ -101,9 +101,10 @@ function makeLeafletIcon(spot: MapSpot, isSelected: boolean) {
   });
 }
 
-const DEFAULT_CENTER: [number, number] = [51.4927, -0.1565];
+/** Central London — zoom 10 shows roughly zones 1–3 at a glance on first open. */
+const DEFAULT_CENTER: [number, number] = [51.5074, -0.118];
 const DEFAULT_CENTER_LATLNG = { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
-const DEFAULT_ZOOM = 15;
+const DEFAULT_ZOOM = 10;
 
 const MAPTILER_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
