@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { finishOAuthCallback } from "@/lib/auth/finishOAuthCallback";
+import { ensureAuthSessionReady, finishOAuthCallback } from "@/lib/auth/finishOAuthCallback";
 import { syncCapacitorNativePlatform } from "@/lib/site/getSupabaseOAuthRedirectTo";
 
 /**
@@ -23,7 +23,8 @@ export function WebAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => void
     let cancelled = false;
     void (async () => {
       const result = await finishOAuthCallback(supabase, href);
-      if (!result.ok || cancelled) return;
+      if (cancelled) return;
+      if (!result.ok && !(await ensureAuthSessionReady(supabase))) return;
       consumedRef.current = true;
 
       try {

@@ -43,6 +43,12 @@ export async function consumeAuthTokensFromUrl(
 
   const code = params.get("code");
   if (code) {
+    const { data: existing } = await client.auth.getSession();
+    if (existing.session) {
+      devLog("session already present — skip exchange");
+      return { ok: true, error: null };
+    }
+
     const { error } = await client.auth.exchangeCodeForSession(code);
     if (!error) {
       devLog("exchangeCodeForSession succeeded");

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isIosUserAgent } from "@/lib/auth/detectInAppBrowser";
 import {
   consumeAuthTokensFromUrl,
   isOAuthCodeReuseError,
@@ -25,10 +26,14 @@ function redactAuthUrl(rawUrl: string): string {
     .replace(/refresh_token=[^&#]+/gi, "refresh_token=[redacted]");
 }
 
-/** Poll until Supabase session is visible (exchange can lag behind getSession). */
+function sessionWaitBudgetMs(): number {
+  return isIosUserAgent() ? 10_000 : 5_000;
+}
+
+/** Poll until Supabase session is visible (exchange can lag behind getSession, especially on iOS). */
 export async function waitForAuthSession(
   client: SupabaseClient,
-  maxMs = 4000,
+  maxMs = sessionWaitBudgetMs(),
   stepMs = 200,
 ): Promise<boolean> {
   const deadline = Date.now() + maxMs;
@@ -43,6 +48,38 @@ export async function waitForAuthSession(
   }
   devLog("session exists: false (timed out)");
   return false;
+}
+
+/** Resolves when auth state reports a session (faster than polling alone on Safari). */
+export function waitForAuthSessionViaSubscription(
+  client: SupabaseClient,
+  maxMs = sessionWaitBudgetMs(),
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      sub?.subscription.unsubscribe();
+      resolve(ok);
+    };
+
+    void client.auth.getSession().then(({ data }) => {
+      if (data.session) finish(true);
+    });
+
+    const { data: sub } = client.auth.onAuthStateChange((_event, session) => {
+      if (session) finish(true);
+    });
+
+    const timer = setTimeout(() => finish(false), maxMs);
+  });
+}
+
+export async function ensureAuthSessionReady(client: SupabaseClient): Promise<boolean> {
+  if (await waitForAuthSession(client, sessionWaitBudgetMs())) return true;
+  return waitForAuthSessionViaSubscription(client, sessionWaitBudgetMs());
 }
 
 /**
@@ -66,8 +103,8 @@ export async function finishOAuthCallback(
 
   if (ok) {
     devLog("exchangeCodeForSession succeeded");
-    const confirmed = await waitForAuthSession(client, 2000);
-    return confirmed ? { ok: true } : { ok: true };
+    const confirmed = await ensureAuthSessionReady(client);
+    return confirmed ? { ok: true } : { ok: false, error: null };
   }
 
   devLog("exchangeCodeForSession failed:", error ?? "(no error param)");

@@ -55,28 +55,27 @@ export function isNativeOAuthContext(): boolean {
   return syncCapacitorNativePlatform() || isEmbeddedCapacitorWebAsset();
 }
 
-/** Web/mobile browser OAuth return (not the Capacitor shell). */
+/**
+ * Web/mobile browser OAuth return (not the Capacitor shell).
+ * Production always uses maimomap.com — never NEXT_PUBLIC_SITE_URL (often still vercel.app on deploy).
+ */
 export function getWebOAuthRedirectTo(): string {
-  if (typeof window !== "undefined") {
-    const { hostname, origin } = window.location;
-    if (hostname === "localhost" || hostname === "127.0.0.1") {
-      return `${origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
-    }
+  if (typeof window === "undefined") {
+    return `${PUBLIC_SITE_HTTPS}${WEB_AUTH_CALLBACK_PATH}`;
   }
-  const pinned = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (pinned) {
-    try {
-      return `${new URL(pinned).origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
-    } catch {
-      console.warn("[auth] NEXT_PUBLIC_SITE_URL is invalid; using maimomap.com callback");
-    }
+  const { hostname, origin } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
+  }
+  if (hostname.endsWith(".vercel.app")) {
+    return `${origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
   }
   return `${PUBLIC_SITE_HTTPS}${WEB_AUTH_CALLBACK_PATH}`;
 }
 
 /**
  * Supabase `redirectTo` for Google OAuth.
- * Native app → custom scheme. Phone/desktop browser → /map (WebAuthUrlBridge handles ?code=).
+ * Native app → custom scheme. Web browser → /auth/callback on maimomap.com (or current vercel host).
  */
 export async function getSupabaseOAuthRedirectTo(): Promise<string> {
   if (typeof window === "undefined") return "";
