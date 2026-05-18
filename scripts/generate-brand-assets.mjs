@@ -47,23 +47,27 @@ async function writePng(buf, outPath) {
   await sharp(buf).png({ compressionLevel: 9 }).toFile(outPath);
 }
 
-/** iOS app icon: keep the mark comfortably inset inside the 1024 icon canvas. */
+/**
+ * iOS app icon — match Galaxy adaptive launcher: white background + same pin scale/inset.
+ * Mirrors @drawable/ic_launcher (white bg + ic_launcher_foreground 20dp inset on 108dp).
+ */
 async function renderIosIconPng(size) {
-  const inner = Math.round(size * 0.56);
-  const icon = await renderPinIconPng(inner);
+  const inset = Math.round(size * (20 / 108));
+  const foregroundSize = size - 2 * inset;
+  const foreground = await renderAndroidForegroundPng(foregroundSize);
   return sharp({
     create: {
       width: size,
       height: size,
       channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      background: { r: 255, g: 255, b: 255, alpha: 1 },
     },
   })
     .composite([
       {
-        input: icon,
-        left: Math.round((size - inner) / 2),
-        top: Math.round((size - inner) / 2),
+        input: foreground,
+        left: inset,
+        top: inset,
       },
     ])
     .png({
