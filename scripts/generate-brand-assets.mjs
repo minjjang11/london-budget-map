@@ -48,13 +48,11 @@ async function writePng(buf, outPath) {
 }
 
 /**
- * iOS app icon — match Galaxy adaptive launcher: white background + same pin scale/inset.
- * Mirrors @drawable/ic_launcher (white bg + ic_launcher_foreground 20dp inset on 108dp).
+ * iOS app icon — white background like Android; larger pin (iOS has no adaptive-icon inset).
  */
 async function renderIosIconPng(size) {
-  const inset = Math.round(size * (20 / 108));
-  const foregroundSize = size - 2 * inset;
-  const foreground = await renderAndroidForegroundPng(foregroundSize);
+  const inner = Math.round(size * 0.8);
+  const icon = await renderPinIconPng(inner);
   return sharp({
     create: {
       width: size,
@@ -65,9 +63,9 @@ async function renderIosIconPng(size) {
   })
     .composite([
       {
-        input: foreground,
-        left: inset,
-        top: inset,
+        input: icon,
+        left: Math.round((size - inner) / 2),
+        top: Math.round((size - inner) / 2),
       },
     ])
     .png({
