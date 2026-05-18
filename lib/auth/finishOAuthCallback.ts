@@ -5,7 +5,8 @@ import {
 } from "@/lib/supabase/consumeAuthCallbackUrl";
 
 export const OAUTH_STATUS_LOADING = "Completing sign-in…";
-export const OAUTH_STATUS_HANDOFF = "Returning to Maimo Map…";
+/** Shown only when a mobile browser tab must bounce to the native app scheme. */
+export const OAUTH_STATUS_HANDOFF = "Completing sign-in…";
 export const OAUTH_STATUS_ERROR = "Sign-in could not be completed. Please try again.";
 
 export type FinishOAuthCallbackResult =

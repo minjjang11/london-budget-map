@@ -9,6 +9,7 @@ import {
 
 export {
   NATIVE_OAUTH_REDIRECT,
+  shouldUseNativeOAuthBrowserFlow,
   syncCapacitorNativePlatform,
   isEmbeddedCapacitorWebAsset,
   isCapacitorNativeShell,

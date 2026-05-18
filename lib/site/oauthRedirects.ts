@@ -61,7 +61,17 @@ export function isNativeOAuthContext(): boolean {
 }
 
 export function isNativeOAuthRedirect(redirectTo: string): boolean {
-  return redirectTo.startsWith("maimomap://");
+  return (
+    redirectTo.startsWith("maimomap://") ||
+    redirectTo.includes("/auth/oauth-handoff")
+  );
+}
+
+/** True when Google OAuth must use Capacitor Browser (not WebView / window navigation). */
+export async function shouldUseNativeOAuthBrowserFlow(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  if (isNativeOAuthContext()) return true;
+  return isCapacitorNativeShell();
 }
 
 /** HTTPS callback for browser / Vercel (not Capacitor shell). */
@@ -86,8 +96,7 @@ export function getWebOAuthRedirectTo(): string {
 /** Supabase `redirectTo` for Google OAuth. */
 export async function getSupabaseOAuthRedirectTo(): Promise<string> {
   if (typeof window === "undefined") return "";
-  if (isNativeOAuthContext()) return NATIVE_OAUTH_HTTPS_HANDOFF;
-  if (await isCapacitorNativeShell()) return NATIVE_OAUTH_HTTPS_HANDOFF;
+  if (await shouldUseNativeOAuthBrowserFlow()) return NATIVE_OAUTH_REDIRECT;
   return getWebOAuthRedirectTo();
 }
 
