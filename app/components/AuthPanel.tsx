@@ -5,21 +5,15 @@ import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { withTimeout } from "@/lib/async/withTimeout";
 import { getBrowserSupabase } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { OAUTH_STATUS_ERROR } from "@/lib/auth/finishOAuthCallback";
-import { nativeOAuthDevLog } from "@/lib/auth/nativeOAuthDevLog";
-import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
-import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
-import { detectInAppBrowser, isIosUserAgent } from "@/lib/auth/detectInAppBrowser";
+import { isIosUserAgent } from "@/lib/auth/detectInAppBrowser";
 import { getOpenInBrowserUrl, openSiteInExternalBrowser } from "@/lib/auth/openInExternalBrowser";
-import {
-  getWebOAuthRedirectTo,
-  NATIVE_OAUTH_REDIRECT,
-  syncCapacitorNativePlatform,
-} from "@/lib/site/oauthRedirects";
+import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
+import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
+import { getBrowserAuthRedirectOrigin } from "@/lib/site/getBrowserAuthRedirectOrigin";
+import { syncCapacitorNativePlatform } from "@/lib/site/oauthRedirects";
 import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
-const AUTH_NETWORK_MS = 5000;
 /** Email OTP + SMTP can exceed OAuth handshakes — avoid false “network” timeouts. */
 const AUTH_OTP_SEND_MS = 22000;
 /** verifyOtp can be slower than signInWithOtp on cold storage. */
@@ -161,54 +155,43 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                 setBusy(true);
                 setMsg(null);
                 setInAppGoogleHelpOpen(false);
+
                 try {
-                  if (!syncCapacitorNativePlatform() && detectInAppBrowser().isInApp) {
-                    setInAppGoogleHelpOpen(true);
-                    return;
-                  }
-                  const isNativeShell = syncCapacitorNativePlatform();
-                  if (isNativeShell) {
-                    if (!isSupabaseConfigured()) {
-                      setMsg("Sign-in is not configured. Add Supabase env vars and rebuild the app.");
+                  const { Capacitor } = await import("@capacitor/core");
+                  const isNative = Capacitor.isNativePlatform();
+
+                  if (isNative) {
+                    const { data, error } = await supabase.auth.signInWithOAuth({
+                      provider: "google",
+                      options: {
+                        redirectTo: "maimomap://auth/callback",
+                        skipBrowserRedirect: true,
+                      },
+                    });
+
+                    if (error || !data.url) {
+                      setBusy(false);
+                      setMsg(error?.message ?? "Could not open Google sign-in.");
                       return;
                     }
-                    nativeOAuthDevLog("redirectTo:", NATIVE_OAUTH_REDIRECT);
-                    nativeOAuthDevLog("supabase configured:", true);
-                    const redirectTo = NATIVE_OAUTH_REDIRECT;
-                    const { data, error } = await withTimeout(
-                      supabase.auth.signInWithOAuth({
-                        provider: "google",
-                        options: {
-                          redirectTo,
-                          skipBrowserRedirect: true,
-                        },
-                      }),
-                      AUTH_NETWORK_MS,
-                      "Couldn’t start Google sign-in. Check your connection and try again.",
-                    );
-                    if (error) {
-                      setMsg(scrubAuthErrorForDisplay(error.message));
-                      return;
-                    }
-                    if (!data?.url) {
-                      console.error("[auth] signInWithOAuth returned no authorization URL");
-                      setMsg("Could not start Google sign-in. Try again or use email sign-in.");
-                      return;
-                    }
+
                     const { openOAuthInAppBrowser } = await import("@/lib/native/oauthInAppBrowser");
                     await openOAuthInAppBrowser(ensureSupabaseOAuthAuthorizeUrl(data.url));
                     return;
                   }
-                  const redirectTo = getWebOAuthRedirectTo();
+
+                  const origin = getBrowserAuthRedirectOrigin();
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: "google",
-                    options: { redirectTo },
+                    options: { redirectTo: origin ? `${origin}/map` : undefined },
                   });
-                  if (error) setMsg(scrubAuthErrorForDisplay(error.message));
+                  if (error) {
+                    setBusy(false);
+                    setMsg(error.message);
+                  }
                 } catch (e) {
-                  setMsg(e instanceof Error ? scrubAuthErrorForDisplay(e.message) : "Something went wrong. Please try again.");
-                } finally {
                   setBusy(false);
+                  setMsg(e instanceof Error ? scrubAuthErrorForDisplay(e.message) : "Something went wrong. Please try again.");
                 }
               }}
               className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-budget-surface bg-white px-3 py-3 text-[13px] font-extrabold text-budget-text shadow-sm disabled:cursor-not-allowed disabled:opacity-50"

@@ -2790,7 +2790,10 @@ export default function BudgetMapApp() {
 
       {coursePickingStart && (
         <div className="absolute inset-0 z-[95] bg-budget-text/24">
-          <div className="absolute inset-0 p-3 md:p-4">
+          <div
+            className="absolute inset-0 p-3 md:p-4"
+            style={{ paddingTop: "var(--bm-course-picker-padding-top)" }}
+          >
             <div className="relative h-full w-full overflow-hidden rounded-[28px] border border-budget-surface/80 bg-budget-white shadow-[0_24px_60px_rgb(13_31_26_/0.24)]">
               <div className="absolute inset-0 z-0">
                 <MapView
@@ -4472,13 +4475,13 @@ export default function BudgetMapApp() {
           minHeight: "58px",
           width: "100%",
           position: "absolute",
-          bottom: "0",
+          bottom: "var(--bm-bottom-nav-bottom)",
           left: "0",
           right: "0",
           display: "flex",
           alignItems: "flex-end",
           justifyContent: "space-around",
-          padding: "11px 8px calc(7px + env(safe-area-inset-bottom, 0px))",
+          padding: "var(--bm-bottom-nav-padding)",
           boxShadow: "0 -4px 20px rgba(13, 31, 26, 0.08)",
           border: "none",
           zIndex: 60,
@@ -4523,4 +4526,3 @@ export default function BudgetMapApp() {
     </>
   );
 }
-

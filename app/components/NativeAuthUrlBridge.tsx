@@ -48,6 +48,14 @@ function navigateNativeToMap(): void {
   }
 }
 
+function handledCallbackKey(rawUrl: string): string {
+  let hash = 0;
+  for (let i = 0; i < rawUrl.length; i += 1) {
+    hash = (hash * 31 + rawUrl.charCodeAt(i)) | 0;
+  }
+  return `${OAUTH_HANDLED_KEY}:${Math.abs(hash).toString(36)}:${rawUrl.length}`;
+}
+
 async function handleOAuthReturnUrl(
   rawUrl: string,
   onAuthApplied?: () => void | Promise<void>,
@@ -84,7 +92,7 @@ async function handleOAuthReturnUrl(
     return;
   }
 
-  const handledKey = `${OAUTH_HANDLED_KEY}:${rawUrl.replace(/code=[^&#]+/, "code=[x]")}`;
+  const handledKey = handledCallbackKey(rawUrl);
   if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(handledKey) === "1") {
     nativeOAuthDevLog("duplicate callback skipped");
     if (await ensureAuthSessionReady(supabase)) {
@@ -122,7 +130,10 @@ export function NativeAuthUrlBridge({ onAuthApplied }: { onAuthApplied?: () => v
   const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const oauthActiveRef = useRef(false);
   const onAuthAppliedRef = useRef(onAuthApplied);
-  onAuthAppliedRef.current = onAuthApplied;
+
+  useEffect(() => {
+    onAuthAppliedRef.current = onAuthApplied;
+  }, [onAuthApplied]);
 
   useEffect(() => {
     let appListener: { remove: () => Promise<void> } | undefined;
