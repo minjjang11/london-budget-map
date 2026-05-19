@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { PUBLIC_SITE_HTTPS } from "@/lib/auth/openInExternalBrowser";
+import { getWebAuthOrigin } from "./webAuthOrigin";
 
 /** Capacitor native — must match Android/iOS URL scheme + Supabase Auth "Redirect URLs". */
 export const NATIVE_OAUTH_REDIRECT = "maimomap://auth/callback";
@@ -60,17 +61,7 @@ export function isNativeOAuthContext(): boolean {
  * Production always uses maimomap.com — never NEXT_PUBLIC_SITE_URL (often still vercel.app on deploy).
  */
 export function getWebOAuthRedirectTo(): string {
-  if (typeof window === "undefined") {
-    return `${PUBLIC_SITE_HTTPS}${WEB_AUTH_CALLBACK_PATH}`;
-  }
-  const { hostname, origin } = window.location;
-  if (hostname === "localhost" || hostname === "127.0.0.1") {
-    return `${origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
-  }
-  if (hostname.endsWith(".vercel.app")) {
-    return `${origin.replace(/\/+$/, "")}${WEB_AUTH_CALLBACK_PATH}`;
-  }
-  return `${PUBLIC_SITE_HTTPS}${WEB_AUTH_CALLBACK_PATH}`;
+  return `${getWebAuthOrigin()}${WEB_AUTH_CALLBACK_PATH}`;
 }
 
 /**

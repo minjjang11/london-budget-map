@@ -10,8 +10,7 @@ import { isIosUserAgent } from "@/lib/auth/detectInAppBrowser";
 import { getOpenInBrowserUrl, openSiteInExternalBrowser } from "@/lib/auth/openInExternalBrowser";
 import { signInWithOtpWithOptionalRedirect } from "@/lib/auth/sendSignInOtp";
 import { ensureSupabaseOAuthAuthorizeUrl } from "@/lib/supabase/ensureSupabaseOAuthUrl";
-import { getBrowserAuthRedirectOrigin } from "@/lib/site/getBrowserAuthRedirectOrigin";
-import { syncCapacitorNativePlatform } from "@/lib/site/oauthRedirects";
+import { getWebOAuthRedirectTo, syncCapacitorNativePlatform } from "@/lib/site/oauthRedirects";
 import { MAIMAO_SUPPORT_EMAIL, maimoSupportMailtoHref } from "@/lib/site/supportContact";
 
 /** Email OTP + SMTP can exceed OAuth handshakes — avoid false “network” timeouts. */
@@ -180,10 +179,9 @@ export default function AuthPanel({ session, onSessionChange, compact }: Props) 
                     return;
                   }
 
-                  const origin = getBrowserAuthRedirectOrigin();
                   const { error } = await supabase.auth.signInWithOAuth({
                     provider: "google",
-                    options: { redirectTo: origin ? `${origin}/map` : undefined },
+                    options: { redirectTo: getWebOAuthRedirectTo() },
                   });
                   if (error) {
                     setBusy(false);
