@@ -4181,6 +4181,14 @@ export default function BudgetMapApp() {
               </p>
             </div>
           </div>
+          <p className="mt-8 pb-2 text-center">
+            <Link
+              href="/delete-account"
+              className="text-[11px] font-semibold text-budget-muted/75 underline decoration-budget-faint/80 underline-offset-[3px] transition hover:text-budget-text"
+            >
+              Delete account
+            </Link>
+          </p>
         </div>
       )}
 
