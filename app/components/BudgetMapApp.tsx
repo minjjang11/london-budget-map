@@ -57,6 +57,7 @@ import {
   type LocalSavedPlaceMap,
 } from "@/lib/savedPlaces/localSavedPlaces";
 import { fetchApprovedPlacesByIds } from "@/lib/places/fetchApprovedPlacesByIds";
+import { getMyLocation, type MyLocationFailureReason } from "@/lib/native/getMyLocation";
 import { openAppLocationSettings } from "@/lib/native/openAppLocationSettings";
 import { probeGeolocationPermission } from "@/lib/native/probeGeolocationPermission";
 import {
@@ -659,6 +660,7 @@ export default function BudgetMapApp() {
   }, [pendingRows, session?.user?.id]);
   const [toast, setToast] = useState<string | null>(null);
   const [locationHelpOpen, setLocationHelpOpen] = useState(false);
+  const [locationHelpReason, setLocationHelpReason] = useState<MyLocationFailureReason | null>(null);
   /** Bottom snackbar after Submit — avoids huge banner toast for success */
   const [submitFeedback, setSubmitFeedback] = useState<null | "queued" | "local">(null);
 
@@ -1970,29 +1972,40 @@ export default function BudgetMapApp() {
     }
   }, [session]);
 
-  const flyToMyLocation = () => {
-    if (!navigator.geolocation) return;
-    setLocationHelpOpen(false);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        setFlyTo({ center: [lat, lng], zoom: 15 });
+  const flyToMyLocation = useCallback(() => {
+    void (async () => {
+      setLocationHelpOpen(false);
+      const result = await getMyLocation();
+      if (result.ok) {
+        setLocationHelpReason(null);
+        setFlyTo({ center: [result.lat, result.lng], zoom: 15 });
         setTab("map");
-      },
-      (error) => {
-        if (error.code === error.PERMISSION_DENIED) {
-          setToast("Location blocked.");
-          window.setTimeout(() => setToast(null), 2200);
-          setLocationHelpOpen(true);
-          return;
-        }
-        setToast("Could not get location — try again.");
-        window.setTimeout(() => setToast(null), 3000);
-      },
-      { enableHighAccuracy: true, timeout: 12_000, maximumAge: 60_000 },
-    );
-  };
+        return;
+      }
+
+      setLocationHelpReason(result.reason);
+      if (result.reason === "denied") {
+        setToast("Location permission is off.");
+        window.setTimeout(() => setToast(null), 2800);
+        setLocationHelpOpen(true);
+        return;
+      }
+      if (result.reason === "timeout") {
+        setToast("Location timed out — try again.");
+        window.setTimeout(() => setToast(null), 3200);
+        setLocationHelpOpen(true);
+        return;
+      }
+      if (result.reason === "unsupported") {
+        setToast("Location is not available in this browser.");
+        window.setTimeout(() => setToast(null), 3200);
+        return;
+      }
+      setToast("Could not get location — try again.");
+      window.setTimeout(() => setToast(null), 3200);
+      setLocationHelpOpen(true);
+    })();
+  }, []);
 
   const openLocationSettings = useCallback(async () => {
     const result = await openAppLocationSettings();
@@ -2001,11 +2014,18 @@ export default function BudgetMapApp() {
       window.setTimeout(() => setToast(null), 5200);
       return;
     }
-    if (!result.native) {
-      setToast(result.message);
-      window.setTimeout(() => setToast(null), 5200);
+    if (result.native) {
+      setToast(
+        budgetMapHost === "ios"
+          ? "In Settings, open Location → While Using the App, then return and tap Try again."
+          : "Allow location for Maimo Map, then return and tap Try again.",
+      );
+      window.setTimeout(() => setToast(null), 6000);
+      return;
     }
-  }, []);
+    setToast(result.message);
+    window.setTimeout(() => setToast(null), 5200);
+  }, [budgetMapHost]);
 
   useEffect(() => {
     if (budgetMapHost === "web" || !locationHelpOpen) return;
@@ -2874,7 +2894,13 @@ export default function BudgetMapApp() {
           className="absolute left-3 right-3 z-[56] rounded-2xl border border-budget-primary/25 bg-budget-white/95 px-3.5 py-3 text-[12px] text-budget-text shadow-budget-float backdrop-blur-sm"
           style={{ top: "var(--bm-map-toast-top)" }}
         >
-          <p className="font-semibold">Location is blocked. Enable it to center the map on your current position.</p>
+          <p className="font-semibold">
+            {locationHelpReason === "timeout"
+              ? "Could not get a GPS fix. Try again near a window, or enable location in settings."
+              : locationHelpReason === "unavailable"
+                ? "Location is unavailable on this device right now. Check settings and try again."
+                : "Location is off. Allow it in settings to centre the map on you."}
+          </p>
           <div className="mt-2.5 flex gap-2">
             <button
               type="button"

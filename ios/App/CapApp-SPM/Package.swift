@@ -15,6 +15,7 @@ let package = Package(
         .package(name: "CapacitorApp", path: "..\..\..\node_modules\.pnpm\@capacitor+app@8.1.0_@capacitor+core@8.3.1\node_modules\@capacitor\app"),
         .package(name: "CapacitorAppLauncher", path: "..\..\..\node_modules\.pnpm\@capacitor+app-launcher@8.0.1_@capacitor+core@8.3.1\node_modules\@capacitor\app-launcher"),
         .package(name: "CapacitorBrowser", path: "..\..\..\node_modules\.pnpm\@capacitor+browser@8.0.3_@capacitor+core@8.3.1\node_modules\@capacitor\browser"),
+        .package(name: "CapacitorGeolocation", path: "..\..\..\node_modules\.pnpm\@capacitor+geolocation@8.2.0_@capacitor+core@8.3.1\node_modules\@capacitor\geolocation"),
         .package(name: "CapacitorNativeSettings", path: "..\..\..\node_modules\.pnpm\capacitor-native-settings@8.1.0_@capacitor+core@8.3.1\node_modules\capacitor-native-settings")
     ],
     targets: [
@@ -26,6 +27,7 @@ let package = Package(
                 .product(name: "CapacitorApp", package: "CapacitorApp"),
                 .product(name: "CapacitorAppLauncher", package: "CapacitorAppLauncher"),
                 .product(name: "CapacitorBrowser", package: "CapacitorBrowser"),
+                .product(name: "CapacitorGeolocation", package: "CapacitorGeolocation"),
                 .product(name: "CapacitorNativeSettings", package: "CapacitorNativeSettings")
             ]
         )

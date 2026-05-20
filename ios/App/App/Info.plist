@@ -63,5 +63,9 @@
 		<string>comgooglemaps</string>
 		<string>googlemaps</string>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Maimo Map uses your location to centre the map on where you are.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Maimo Map uses your location to centre the map on where you are.</string>
 </dict>
 </plist>
