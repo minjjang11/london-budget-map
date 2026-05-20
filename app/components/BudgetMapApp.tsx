@@ -557,6 +557,7 @@ export default function BudgetMapApp() {
   const [activeCats, setActiveCats] = useState<Category[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [budgetOpen, setBudgetOpen] = useState(false);
   const [mapBudget, setMapBudget] = useState(15);
   const [mounted, setMounted] = useState(false);
@@ -1978,6 +1979,7 @@ export default function BudgetMapApp() {
       const result = await getMyLocation();
       if (result.ok) {
         setLocationHelpReason(null);
+        setUserLocation({ lat: result.lat, lng: result.lng });
         setFlyTo({ center: [result.lat, result.lng], zoom: 15 });
         setTab("map");
         return;
@@ -2581,6 +2583,7 @@ export default function BudgetMapApp() {
             selectedId={selectedId}
             onSelect={handleSelect}
             flyTo={flyTo}
+            userLocation={userLocation}
           />
         </div>
       )}

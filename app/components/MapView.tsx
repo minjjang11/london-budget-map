@@ -106,6 +106,34 @@ const DEFAULT_CENTER: [number, number] = [51.5074, -0.118];
 const DEFAULT_CENTER_LATLNG = { lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] };
 const DEFAULT_ZOOM = 12;
 
+/** Brand green — matches `--color-budget-primary` (#00a878). */
+const USER_LOCATION_FILL = "#00a878";
+const USER_LOCATION_RING = "#ffffff";
+
+export type MapUserLocation = { lat: number; lng: number };
+
+/** Google Maps–style dot (no heading arrow). */
+function UserLocationDot() {
+  return (
+    <div
+      className="pointer-events-none grid place-items-center"
+      aria-hidden
+      style={{ width: 22, height: 22 }}
+    >
+      <div
+        className="rounded-full"
+        style={{
+          width: 14,
+          height: 14,
+          background: USER_LOCATION_FILL,
+          border: `3px solid ${USER_LOCATION_RING}`,
+          boxShadow: "0 0 0 1px rgba(13,31,26,0.1), 0 2px 10px rgba(0,168,120,0.4)",
+        }}
+      />
+    </div>
+  );
+}
+
 const MAPTILER_ATTR =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
   '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a>';
@@ -210,6 +238,7 @@ function MapViewLeaflet({
   onSelect,
   flyTo,
   pickedLocation,
+  userLocation,
   centerPinMode,
   onCenterChange,
 }: {
@@ -218,6 +247,7 @@ function MapViewLeaflet({
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
   pickedLocation?: { lat: number; lng: number } | null;
+  userLocation?: MapUserLocation | null;
   centerPinMode?: boolean;
   onCenterChange?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
@@ -225,6 +255,7 @@ function MapViewLeaflet({
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const pickedMarkerRef = useRef<L.CircleMarker | null>(null);
+  const userLocationMarkerRef = useRef<L.CircleMarker | null>(null);
   const lastFlyRef = useRef<string>("");
 
   useEffect(() => {
@@ -296,6 +327,24 @@ function MapViewLeaflet({
     }).addTo(map);
   }, [pickedLocation, centerPinMode]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    userLocationMarkerRef.current?.remove();
+    userLocationMarkerRef.current = null;
+    if (!userLocation || centerPinMode) return;
+    const dot = L.circleMarker([userLocation.lat, userLocation.lng], {
+      radius: 8,
+      color: USER_LOCATION_RING,
+      weight: 3,
+      fillColor: USER_LOCATION_FILL,
+      fillOpacity: 1,
+      interactive: false,
+    }).addTo(map);
+    dot.bringToFront();
+    userLocationMarkerRef.current = dot;
+  }, [userLocation, centerPinMode]);
+
   return (
     <div
       className="map-fill"
@@ -312,6 +361,7 @@ function MapViewGoogle({
   flyTo,
   apiKey,
   pickedLocation,
+  userLocation,
   centerPinMode,
   onCenterChange,
 }: {
@@ -321,6 +371,7 @@ function MapViewGoogle({
   flyTo?: { center: [number, number]; zoom: number } | null;
   apiKey: string;
   pickedLocation?: { lat: number; lng: number } | null;
+  userLocation?: MapUserLocation | null;
   centerPinMode?: boolean;
   onCenterChange?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
@@ -490,6 +541,19 @@ function MapViewGoogle({
             </div>
           </OverlayViewF>
         ) : null}
+        {userLocation && !centerPinMode ? (
+          <OverlayViewF
+            position={{ lat: userLocation.lat, lng: userLocation.lng }}
+            mapPaneName={OVERLAY_MOUSE_TARGET}
+            zIndex={1200}
+            getPixelPositionOffset={(w, h) => ({
+              x: -w / 2,
+              y: -h / 2,
+            })}
+          >
+            <UserLocationDot />
+          </OverlayViewF>
+        ) : null}
         </GoogleMap>
       </div>
     );
@@ -517,6 +581,7 @@ export default function MapView(props: {
   onSelect: (id: string) => void;
   flyTo?: { center: [number, number]; zoom: number } | null;
   pickedLocation?: { lat: number; lng: number } | null;
+  userLocation?: MapUserLocation | null;
   centerPinMode?: boolean;
   onCenterChange?: ((coords: { lat: number; lng: number }) => void) | null;
 }) {
